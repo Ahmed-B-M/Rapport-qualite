@@ -2,11 +2,12 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { type Delivery } from '@/lib/definitions';
+import { type Objectives } from '@/app/page';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Star, MessageSquareQuote, ThumbsDown, User, Building, Truck, Warehouse as WarehouseIcon, Bot, Loader2 } from 'lucide-react';
+import { Star, MessageSquareQuote, ThumbsDown, User, Building, Truck, Warehouse as WarehouseIcon, Bot, Loader2, AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { analyzeCustomerFeedback, type AnalyzeCustomerFeedbackOutput } from '@/ai/flows/analyze-customer-feedback';
 
@@ -201,7 +202,7 @@ const NegativeFeedbackAIAnalysis = ({ comments }: { comments: Comment[] }) => {
 };
 
 
-const EntitySatisfactionView = ({ stats }: { stats: EntitySatisfactionStats[] }) => {
+const EntitySatisfactionView = ({ stats, objectives }: { stats: EntitySatisfactionStats[], objectives: Objectives }) => {
     if (stats.length === 0) {
          return (
             <div className="flex h-96 flex-col items-center justify-center text-center text-muted-foreground">
@@ -219,8 +220,14 @@ const EntitySatisfactionView = ({ stats }: { stats: EntitySatisfactionStats[] })
                 <Card key={entity.name} className="overflow-hidden">
                     <CardHeader>
                         <CardTitle>{entity.name}</CardTitle>
-                        <CardDescription>
+                        <CardDescription className="flex items-center gap-2">
                             Note moyenne de {entity.averageRating.toFixed(2)} sur {entity.totalRatings} notations
+                            {entity.averageRating > 0 && entity.averageRating < objectives.averageRating && (
+                                <Badge variant="destructive" className="gap-1.5">
+                                    <AlertTriangle className="h-3 w-3" />
+                                    Sous l'objectif
+                                </Badge>
+                            )}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="grid gap-6 lg:grid-cols-2">
@@ -238,7 +245,7 @@ const EntitySatisfactionView = ({ stats }: { stats: EntitySatisfactionStats[] })
     )
 };
 
-export function CustomerSatisfaction({ data }: { data: Delivery[] }) {
+export function CustomerSatisfaction({ data, objectives }: { data: Delivery[], objectives: Objectives }) {
     const [activeTab, setActiveTab] = useState<GroupingKey>("depot");
 
     const satisfactionStats = useMemo(() => ({
@@ -263,16 +270,16 @@ export function CustomerSatisfaction({ data }: { data: Delivery[] }) {
                 ))}
             </TabsList>
             <TabsContent value="depot">
-                <EntitySatisfactionView stats={satisfactionStats.depot} />
+                <EntitySatisfactionView stats={satisfactionStats.depot} objectives={objectives} />
             </TabsContent>
             <TabsContent value="warehouse">
-                <EntitySatisfactionView stats={satisfactionStats.warehouse} />
+                <EntitySatisfactionView stats={satisfactionStats.warehouse} objectives={objectives} />
             </TabsContent>
             <TabsContent value="carrier">
-                <EntitySatisfactionView stats={satisfactionStats.carrier} />
+                <EntitySatisfactionView stats={satisfactionStats.carrier} objectives={objectives} />
             </TabsContent>
             <TabsContent value="driver">
-                <EntitySatisfactionView stats={satisfactionStats.driver} />
+                <EntitySatisfactionView stats={satisfactionStats.driver} objectives={objectives} />
             </TabsContent>
         </Tabs>
     );

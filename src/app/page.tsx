@@ -117,15 +117,15 @@ export default function DashboardPage() {
       case "overview":
         return <Overview data={filteredData} objectives={objectives} />;
       case "depots":
-        return <DepotAnalytics data={filteredData} />;
+        return <DepotAnalytics data={filteredData} objectives={objectives} />;
       case "warehouses":
         return <WarehouseAnalytics data={filteredData} />;
       case "carriers":
-        return <CarrierAnalytics data={filteredData} />;
+        return <CarrierAnalytics data={filteredData} objectives={objectives} />;
       case "drivers":
-        return <DriverAnalytics data={filteredData} />;
+        return <DriverAnalytics data={filteredData} objectives={objectives} />;
       case "satisfaction":
-        return <CustomerSatisfaction data={filteredData} />;
+        return <CustomerSatisfaction data={filteredData} objectives={objectives} />;
       default:
         return <Overview data={filteredData} objectives={objectives} />;
     }

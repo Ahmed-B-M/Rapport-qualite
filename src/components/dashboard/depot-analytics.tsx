@@ -2,19 +2,26 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { type Delivery, type AggregatedStats } from '@/lib/definitions';
+import { type Objectives } from '@/app/page';
 import { aggregateStats, getRankings, type Ranking, type RankingMetric } from '@/lib/data-processing';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { analyzeDepotDelivery } from '@/ai/flows/depot-delivery-analysis';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Bot, Loader2, ThumbsUp, ThumbsDown, Download } from 'lucide-react';
+import { Bot, Loader2, ThumbsUp, ThumbsDown, Download, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import * as XLSX from 'xlsx';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 type DepotStat = { name: string } & AggregatedStats;
 
-export function DepotAnalytics({ data }: { data: Delivery[] }) {
+export function DepotAnalytics({ data, objectives }: { data: Delivery[], objectives: Objectives }) {
     const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
     const [loadingAi, setLoadingAi] = useState(true);
 
@@ -74,6 +81,24 @@ export function DepotAnalytics({ data }: { data: Delivery[] }) {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Performance Dépôts');
         XLSX.writeFile(workbook, 'performance_depots.xlsx');
+    };
+
+    const ObjectiveIndicator = ({ value, objective, higherIsBetter, tooltipLabel }: { value: number, objective: number, higherIsBetter: boolean, tooltipLabel: string }) => {
+        const isBelowObjective = higherIsBetter ? value < objective : value > objective;
+        if (!isBelowObjective) return null;
+
+        return (
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger>
+                        <AlertTriangle className="h-4 w-4 text-destructive" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>{tooltipLabel}: {value.toFixed(2)}% (Objectif: {higherIsBetter ? '>' : '<'} {objective}%)</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        );
     };
 
     const RankingList = ({ title, ranking, metric, unit, higherIsBetter }: { title: string, ranking: Ranking<DepotStat>, metric: RankingMetric, unit: string, higherIsBetter: boolean }) => {
@@ -179,11 +204,36 @@ export function DepotAnalytics({ data }: { data: Delivery[] }) {
                                 <TableRow key={stat.name}>
                                     <TableCell className="font-medium">{stat.name}</TableCell>
                                     <TableCell className="text-right">{stat.totalDeliveries}</TableCell>
-                                    <TableCell className="text-right">{stat.averageRating > 0 ? stat.averageRating.toFixed(2) : 'N/A'}</TableCell>
-                                    <TableCell className="text-right">{stat.punctualityRate.toFixed(2)}%</TableCell>
-                                    <TableCell className="text-right">{(100 - stat.successRate).toFixed(2)}%</TableCell>
-                                    <TableCell className="text-right">{stat.forcedOnSiteRate.toFixed(2)}%</TableCell>
-                                    <TableCell className="text-right">{stat.forcedNoContactRate.toFixed(2)}%</TableCell>
+                                    <TableCell className="text-right flex items-center justify-end gap-2">
+                                        {stat.averageRating > 0 && stat.averageRating < objectives.averageRating && 
+                                            <ObjectiveIndicator value={stat.averageRating} objective={objectives.averageRating} higherIsBetter={true} tooltipLabel="Note moyenne" />
+                                        }
+                                        {stat.averageRating > 0 ? stat.averageRating.toFixed(2) : 'N/A'}
+                                    </TableCell>
+                                    <TableCell className="text-right flex items-center justify-end gap-2">
+                                        {stat.punctualityRate < objectives.punctualityRate && 
+                                             <ObjectiveIndicator value={stat.punctualityRate} objective={objectives.punctualityRate} higherIsBetter={true} tooltipLabel="Ponctualité" />
+                                        }
+                                        {stat.punctualityRate.toFixed(2)}%
+                                    </TableCell>
+                                    <TableCell className="text-right flex items-center justify-end gap-2">
+                                        {(100 - stat.successRate) > objectives.failureRate &&
+                                            <ObjectiveIndicator value={(100 - stat.successRate)} objective={objectives.failureRate} higherIsBetter={false} tooltipLabel="Taux d'échec" />
+                                        }
+                                        {(100 - stat.successRate).toFixed(2)}%
+                                    </TableCell>
+                                    <TableCell className="text-right flex items-center justify-end gap-2">
+                                        {stat.forcedOnSiteRate > objectives.forcedOnSiteRate &&
+                                            <ObjectiveIndicator value={stat.forcedOnSiteRate} objective={objectives.forcedOnSiteRate} higherIsBetter={false} tooltipLabel="Sur place forcé" />
+                                        }
+                                        {stat.forcedOnSiteRate.toFixed(2)}%
+                                    </TableCell>
+                                    <TableCell className="text-right flex items-center justify-end gap-2">
+                                        {stat.forcedNoContactRate > objectives.forcedNoContactRate &&
+                                            <ObjectiveIndicator value={stat.forcedNoContactRate} objective={objectives.forcedNoContactRate} higherIsBetter={false} tooltipLabel="Sans contact forcé" />
+                                        }
+                                        {stat.forcedNoContactRate.toFixed(2)}%
+                                    </TableCell>
                                     <TableCell className="text-right">{stat.webCompletionRate.toFixed(2)}%</TableCell>
                                     <TableCell className="text-right">{stat.ratingRate.toFixed(2)}%</TableCell>
                                 </TableRow>

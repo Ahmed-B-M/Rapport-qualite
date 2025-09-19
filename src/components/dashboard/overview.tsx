@@ -45,13 +45,43 @@ export function Overview({ data, objectives }: { data: Delivery[], objectives: O
     return (
         <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                <StatCard title="Note moyenne" value={`${overallStats.averageRating.toFixed(2)} / 5`} icon={Star} description={`Objectif: ${objectives.averageRating.toFixed(2)}`} />
-                <StatCard title="Taux de ponctualité" value={`${overallStats.punctualityRate.toFixed(2)}%`} icon={Timer} description={`Objectif: ${objectives.punctualityRate}%`} />
+                <StatCard 
+                    title="Note moyenne" 
+                    value={`${overallStats.averageRating.toFixed(2)} / 5`} 
+                    icon={Star} 
+                    description={`Objectif: > ${objectives.averageRating.toFixed(2)}`} 
+                    isBelowObjective={overallStats.averageRating > 0 && overallStats.averageRating < objectives.averageRating}
+                />
+                <StatCard 
+                    title="Taux de ponctualité" 
+                    value={`${overallStats.punctualityRate.toFixed(2)}%`} 
+                    icon={Timer} 
+                    description={`Objectif: > ${objectives.punctualityRate}%`}
+                    isBelowObjective={overallStats.punctualityRate < objectives.punctualityRate}
+                />
                 <StatCard title="Taux de notation" value={`${overallStats.ratingRate.toFixed(2)}%`} icon={PenSquare} />
                 <StatCard title="Commandes 'En attente'" value={`${overallStats.pendingDeliveries}`} icon={PackageSearch} />
-                <StatCard title="Taux d'échec" value={`${(100 - overallStats.successRate).toFixed(2)}%`} icon={AlertCircle} description={`Objectif: ${objectives.failureRate}% max`} />
-                <StatCard title="Sur place forcé" value={`${overallStats.forcedOnSiteRate.toFixed(2)}%`} icon={Target} description={`Objectif: ${objectives.forcedOnSiteRate}% max`} />
-                <StatCard title="Sans contact forcé" value={`${overallStats.forcedNoContactRate.toFixed(2)}%`} icon={Ban} description={`Objectif: ${objectives.forcedNoContactRate}% max`} />
+                <StatCard 
+                    title="Taux d'échec" 
+                    value={`${(100 - overallStats.successRate).toFixed(2)}%`} 
+                    icon={AlertCircle} 
+                    description={`Objectif: < ${objectives.failureRate}%`} 
+                    isBelowObjective={(100 - overallStats.successRate) > objectives.failureRate}
+                />
+                <StatCard 
+                    title="Sur place forcé" 
+                    value={`${overallStats.forcedOnSiteRate.toFixed(2)}%`} 
+                    icon={Target} 
+                    description={`Objectif: < ${objectives.forcedOnSiteRate}%`}
+                    isBelowObjective={overallStats.forcedOnSiteRate > objectives.forcedOnSiteRate}
+                />
+                <StatCard 
+                    title="Sans contact forcé" 
+                    value={`${overallStats.forcedNoContactRate.toFixed(2)}%`} 
+                    icon={Ban} 
+                    description={`Objectif: < ${objectives.forcedNoContactRate}%`}
+                    isBelowObjective={overallStats.forcedNoContactRate > objectives.forcedNoContactRate}
+                />
                 <StatCard title="Validation Web" value={`${overallStats.webCompletionRate.toFixed(2)}%`} icon={Globe} />
             </div>
 

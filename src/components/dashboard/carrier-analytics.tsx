@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { type Delivery } from '@/lib/definitions';
+import { type Objectives } from '@/app/page';
 import { aggregateStats } from '@/lib/data-processing';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -9,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { analyzeCarrierFailureModes } from '@/ai/flows/carrier-failure-mode-analysis';
 import { Badge } from '@/components/ui/badge';
-import { Bot, Loader2, Lightbulb, User, Building, ArrowLeft } from 'lucide-react';
+import { Bot, Loader2, Lightbulb, User, Building, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 type CarrierAIAnalysis = {
@@ -71,7 +72,7 @@ const UnknownCarrierDetailView = ({ data, onBack }: { data: Delivery[], onBack: 
     );
 };
 
-export function CarrierAnalytics({ data }: { data: Delivery[] }) {
+export function CarrierAnalytics({ data, objectives }: { data: Delivery[], objectives: Objectives }) {
     const [aiAnalysis, setAiAnalysis] = useState<Record<string, CarrierAIAnalysis>>({});
     const [loadingAi, setLoadingAi] = useState<Record<string, boolean>>({});
     const [showUnknownDetail, setShowUnknownDetail] = useState(false);
@@ -137,17 +138,16 @@ export function CarrierAnalytics({ data }: { data: Delivery[] }) {
                         <AccordionTrigger
                             onClick={() => handleCarrierClick(carrier.name)}
                             className={carrier.name === 'Inconnu' ? 'cursor-pointer' : ''}
-                            // This is a special case. We want the click to work but not open the accordion
-                            // The disabled prop on AccordionTrigger prevents the click handler from firing at all.
-                            // The disabled prop on the AccordionItem itself would disable the whole thing.
-                            // So we pass an empty onClick to override the accordion's internal one if it's 'Inconnu'
                             {...(carrier.name === 'Inconnu' ? { onClick: (e) => { e.preventDefault(); handleCarrierClick(carrier.name); } } : {})}
                         >
                             <div className="flex items-center justify-between w-full pr-4">
                                 <span className="text-lg font-medium">{carrier.name}</span>
                                 <div className="flex items-center gap-4 text-sm">
                                     <span>{carrier.totalDeliveries} livraisons</span>
-                                    <Badge variant={(100 - carrier.successRate) > 1 ? "destructive" : "default"}>{(100 - carrier.successRate).toFixed(2)}% échecs</Badge>
+                                    <Badge variant={(100 - carrier.successRate) > objectives.failureRate ? "destructive" : "default"}>
+                                        {(100 - carrier.successRate).toFixed(2)}% échecs
+                                        {(100 - carrier.successRate) > objectives.failureRate && <AlertTriangle className="h-3 w-3 ml-1.5" />}
+                                    </Badge>
                                 </div>
                             </div>
                         </AccordionTrigger>
