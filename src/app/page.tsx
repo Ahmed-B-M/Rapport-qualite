@@ -10,7 +10,7 @@ import { DepotAnalytics } from "@/components/dashboard/depot-analytics";
 import { WarehouseAnalytics } from "@/components/dashboard/warehouse-analytics";
 import { CarrierAnalytics } from "@/components/dashboard/carrier-analytics";
 import { DriverAnalytics } from "@/components/dashboard/driver-analytics";
-import { SentimentAnalysis } from "@/components/dashboard/sentiment-analysis";
+import { CustomerSatisfaction } from "@/components/dashboard/customer-satisfaction";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -73,8 +73,8 @@ export default function DashboardPage() {
         return <CarrierAnalytics data={data} />;
       case "drivers":
         return <DriverAnalytics data={data} />;
-      case "sentiment":
-        return <SentimentAnalysis data={data} />;
+      case "satisfaction":
+        return <CustomerSatisfaction data={data} />;
       default:
         return <Overview data={data} />;
     }

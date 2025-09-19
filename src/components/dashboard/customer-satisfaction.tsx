@@ -1,0 +1,206 @@
+"use client"
+
+import { useMemo, useState } from 'react';
+import { type Delivery } from '@/lib/definitions';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { Star, MessageSquareQuote, ThumbsDown, User, Building, Truck, Warehouse as WarehouseIcon } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+
+type GroupingKey = "depot" | "warehouse" | "carrier" | "driver";
+
+type Comment = {
+    comment: string;
+    rating: number;
+    driver: string;
+    depot: string;
+    warehouse: string;
+    carrier: string;
+};
+
+type RatingData = {
+    name: string;
+    count: number;
+}
+
+type EntitySatisfactionStats = {
+    name: string;
+    averageRating: number;
+    totalRatings: number;
+    ratingDistribution: RatingData[];
+    comments: Comment[];
+    negativeComments: Comment[];
+}
+
+const getSatisfactionStats = (data: Delivery[], groupBy: GroupingKey): EntitySatisfactionStats[] => {
+    const entities: Record<string, { totalRating: number, count: number, comments: Comment[], ratingCounts: Record<number, number> }> = {};
+
+    data.forEach(d => {
+        if (d.deliveryRating) {
+            const entityName = d[groupBy];
+            if (!entities[entityName]) {
+                entities[entityName] = { totalRating: 0, count: 0, comments: [], ratingCounts: {1:0, 2:0, 3:0, 4:0, 5:0} };
+            }
+            entities[entityName].totalRating += d.deliveryRating;
+            entities[entityName].count++;
+            entities[entityName].ratingCounts[d.deliveryRating]++;
+            
+            if (d.feedbackComment) {
+                entities[entityName].comments.push({
+                    comment: d.feedbackComment,
+                    rating: d.deliveryRating,
+                    driver: d.driver,
+                    depot: d.depot,
+                    warehouse: d.warehouse,
+                    carrier: d.carrier
+                });
+            }
+        }
+    });
+
+    return Object.entries(entities).map(([name, stats]) => ({
+        name,
+        averageRating: stats.count > 0 ? stats.totalRating / stats.count : 0,
+        totalRatings: stats.count,
+        ratingDistribution: Object.entries(stats.ratingCounts).map(([rating, count]) => ({ name: `${rating} ★`, count })).reverse(),
+        comments: stats.comments,
+        negativeComments: stats.comments.filter(c => c.rating <= 3)
+    })).sort((a,b) => b.totalRatings - a.totalRatings);
+}
+
+const RatingChart = ({ data }: { data: RatingData[] }) => (
+    <ResponsiveContainer width="100%" height={150}>
+        <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+            <XAxis type="number" hide />
+            <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} />
+            <Tooltip
+                cursor={{ fill: 'hsl(var(--muted))' }}
+                contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
+            />
+            <Bar dataKey="count" barSize={20} radius={[4, 4, 0, 0]}>
+                {data.map((entry, index) => {
+                    const rating = parseInt(entry.name.charAt(0));
+                    const color = rating <= 3 ? "hsl(var(--destructive))" : (rating === 4 ? "hsl(var(--primary))" : "hsl(var(--chart-1))");
+                    return <Cell key={`cell-${index}`} fill={color} />;
+                })}
+            </Bar>
+        </BarChart>
+    </ResponsiveContainer>
+);
+
+const CommentsList = ({ title, comments, icon }: { title: string; comments: Comment[], icon: React.ElementType }) => {
+    const Icon = icon;
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg"><Icon className="h-5 w-5" /> {title}</CardTitle>
+                <CardDescription>{comments.length} commentaire{comments.length > 1 ? 's' : ''}</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {comments.length > 0 ? (
+                    <ScrollArea className="h-64">
+                        <div className="space-y-4 pr-4">
+                        {comments.map((c, i) => (
+                            <div key={i} className="p-3 border rounded-lg bg-muted/20">
+                                <div className="flex justify-between items-start">
+                                    <p className="text-sm italic">"{c.comment}"</p>
+                                    <Badge variant={c.rating <= 3 ? "destructive": "default"}>
+                                        {c.rating} <Star className="h-3 w-3 ml-1" />
+                                    </Badge>
+                                </div>
+                                <div className="flex items-center justify-start mt-2 text-xs text-muted-foreground">
+                                    <span>Livreur: {c.driver}</span>
+                                </div>
+                            </div>
+                        ))}
+                        </div>
+                    </ScrollArea>
+                ) : (
+                    <div className="flex h-64 flex-col items-center justify-center text-center text-muted-foreground">
+                        <MessageSquareQuote className="h-10 w-10 mb-4" />
+                        <p className="font-semibold">Aucun {title.toLowerCase()} trouvé.</p>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    )
+};
+
+
+const EntitySatisfactionView = ({ stats }: { stats: EntitySatisfactionStats[] }) => {
+    if (stats.length === 0) {
+         return (
+            <div className="flex h-96 flex-col items-center justify-center text-center text-muted-foreground">
+                 <Star className="h-12 w-12 mb-4" />
+                <p className="font-semibold text-lg">Aucune donnée de notation disponible.</p>
+                <p>Aucune livraison dans cet ensemble de données n'a encore été notée.</p>
+            </div>
+        )
+    }
+    
+    return (
+       <ScrollArea className="h-[75vh]">
+         <div className="space-y-6 pr-4">
+            {stats.map(entity => (
+                <Card key={entity.name} className="overflow-hidden">
+                    <CardHeader>
+                        <CardTitle>{entity.name}</CardTitle>
+                        <CardDescription>
+                            Note moyenne de {entity.averageRating.toFixed(2)} sur {entity.totalRatings} notations
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid gap-6 lg:grid-cols-2">
+                        <div>
+                             <h4 className="font-semibold mb-2 text-center">Distribution des notes</h4>
+                             <RatingChart data={entity.ratingDistribution} />
+                        </div>
+                       <CommentsList title="Commentaires Négatifs (<= 3★)" comments={entity.negativeComments} icon={ThumbsDown} />
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+       </ScrollArea>
+    )
+};
+
+export function CustomerSatisfaction({ data }: { data: Delivery[] }) {
+    const [activeTab, setActiveTab] = useState<GroupingKey>("depot");
+
+    const satisfactionStats = useMemo(() => ({
+        depot: getSatisfactionStats(data, "depot"),
+        warehouse: getSatisfactionStats(data, "warehouse"),
+        carrier: getSatisfactionStats(data, "carrier"),
+        driver: getSatisfactionStats(data, "driver"),
+    }), [data]);
+    
+    const tabs : {id: GroupingKey, label: string, icon: React.ElementType}[] = [
+        { id: "depot", label: "Par Dépôt", icon: Building },
+        { id: "warehouse", label: "Par Entrepôt", icon: WarehouseIcon },
+        { id: "carrier", label: "Par Transporteur", icon: Truck },
+        { id: "driver", label: "Par Livreur", icon: User },
+    ]
+
+    return (
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as GroupingKey)}>
+            <TabsList className="grid w-full grid-cols-4">
+                {tabs.map(tab => (
+                    <TabsTrigger key={tab.id} value={tab.id}><tab.icon className="mr-2" />{tab.label}</TabsTrigger>
+                ))}
+            </TabsList>
+            <TabsContent value="depot">
+                <EntitySatisfactionView stats={satisfactionStats.depot} />
+            </TabsContent>
+            <TabsContent value="warehouse">
+                <EntitySatisfactionView stats={satisfactionStats.warehouse} />
+            </TabsContent>
+            <TabsContent value="carrier">
+                <EntitySatisfactionView stats={satisfactionStats.carrier} />
+            </TabsContent>
+            <TabsContent value="driver">
+                <EntitySatisfactionView stats={satisfactionStats.driver} />
+            </TabsContent>
+        </Tabs>
+    );
+}

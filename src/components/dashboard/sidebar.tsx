@@ -30,7 +30,7 @@ const menuItems = [
   { id: "warehouses", label: "Entrepôts", icon: Warehouse },
   { id: "carriers", label: "Transporteurs", icon: Truck },
   { id: "drivers", label: "Livreurs", icon: Users },
-  { id: "sentiment", label: "Sentiment", icon: Smile },
+  { id: "satisfaction", label: "Satisfaction Clients", icon: Smile },
 ];
 
 const CarrefourIcon = () => (
