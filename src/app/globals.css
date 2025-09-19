@@ -115,12 +115,27 @@
   body * {
     visibility: hidden;
   }
+  
+  #main-content.print-satisfaction-report *,
+  #main-content .print-satisfaction-content,
+  #main-content .print-satisfaction-content * {
+    visibility: visible;
+  }
+
+  #main-content.print-satisfaction-report {
+    position: static;
+  }
+
+  .print-satisfaction-page {
+    page-break-after: always;
+    visibility: visible !important;
+  }
 
   #main-content, #main-content * {
     visibility: visible;
   }
   
-  #main-content {
+  #main-content:not(.print-satisfaction-report) {
     position: absolute;
     left: 0;
     top: 0;
@@ -149,6 +164,10 @@
 
   .print-title {
     page-break-after: avoid;
+  }
+  
+  [role="tabpanel"][data-state="inactive"] {
+      display: block !important;
   }
 }
 

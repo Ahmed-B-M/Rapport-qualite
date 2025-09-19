@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Star, MessageSquareQuote, ThumbsDown, User, Building, Truck, Warehouse as WarehouseIcon, Bot, Loader2, AlertTriangle } from 'lucide-react';
+import { Star, MessageSquareQuote, ThumbsDown, User, Building, Truck, Warehouse as WarehouseIcon, Bot, Loader2, AlertTriangle, Search, Printer } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { analyzeCustomerFeedback, type AnalyzeCustomerFeedbackOutput } from '@/ai/flows/analyze-customer-feedback';
+import { Button } from '../ui/button';
 
 type GroupingKey = "depot" | "warehouse" | "carrier" | "driver";
 
@@ -130,7 +131,7 @@ const CommentsList = ({ title, comments, icon }: { title: string; comments: Comm
     )
 };
 
-const NegativeFeedbackAIAnalysis = ({ comments }: { comments: Comment[] }) => {
+const NegativeFeedbackAIAnalysis = ({ comments, title }: { comments: Comment[], title?: string }) => {
     const [analysis, setAnalysis] = useState<AnalyzeCustomerFeedbackOutput | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -159,13 +160,15 @@ const NegativeFeedbackAIAnalysis = ({ comments }: { comments: Comment[] }) => {
     ), [analysis]);
 
     if (comments.length === 0) {
-        return null; // Don't show the card if there are no negative comments
+        return null;
     }
 
     return (
         <Card className="mt-6 col-span-full">
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Bot /> Analyse IA des retours négatifs</CardTitle>
+                 <CardTitle className="flex items-center gap-2">
+                    <Search /> {title || "Analyse des retours négatifs"}
+                </CardTitle>
             </CardHeader>
             <CardContent>
                 {loading ? (
@@ -254,6 +257,18 @@ export function CustomerSatisfaction({ data, objectives }: { data: Delivery[], o
         carrier: getSatisfactionStats(data, "carrier"),
         driver: getSatisfactionStats(data, "driver"),
     }), [data]);
+
+    const allNegativeComments = useMemo(() => {
+        return data.filter(d => d.deliveryRating && d.deliveryRating <= 3 && d.feedbackComment)
+            .map(d => ({
+                comment: d.feedbackComment!,
+                rating: d.deliveryRating!,
+                driver: d.driver,
+                depot: d.depot,
+                warehouse: d.warehouse,
+                carrier: d.carrier
+            }));
+    }, [data]);
     
     const tabs : {id: GroupingKey, label: string, icon: React.ElementType}[] = [
         { id: "depot", label: "Par Dépôt", icon: Building },
@@ -262,25 +277,59 @@ export function CustomerSatisfaction({ data, objectives }: { data: Delivery[], o
         { id: "driver", label: "Par Livreur", icon: User },
     ]
 
+    const handlePrint = () => {
+        const mainContent = document.getElementById('main-content');
+        if (mainContent) {
+            mainContent.classList.add('print-satisfaction-report');
+            window.print();
+            mainContent.classList.remove('print-satisfaction-report');
+        }
+    };
+
     return (
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as GroupingKey)}>
-            <TabsList className="grid w-full grid-cols-4">
-                {tabs.map(tab => (
-                    <TabsTrigger key={tab.id} value={tab.id}><tab.icon className="mr-2 h-4 w-4" />{tab.label}</TabsTrigger>
+        <>
+            <div className="no-print">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-2xl font-bold font-headline">Satisfaction Client</h2>
+                    <Button onClick={handlePrint} variant="outline">
+                        <Printer className="mr-2 h-4 w-4" />
+                        Exporter en PDF
+                    </Button>
+                </div>
+                <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as GroupingKey)}>
+                    <TabsList className="grid w-full grid-cols-4">
+                        {tabs.map(tab => (
+                            <TabsTrigger key={tab.id} value={tab.id}><tab.icon className="mr-2 h-4 w-4" />{tab.label}</TabsTrigger>
+                        ))}
+                    </TabsList>
+                    <TabsContent value="depot">
+                        <EntitySatisfactionView stats={satisfactionStats.depot} objectives={objectives} />
+                    </TabsContent>
+                    <TabsContent value="warehouse">
+                        <EntitySatisfactionView stats={satisfactionStats.warehouse} objectives={objectives} />
+                    </TabsContent>
+                    <TabsContent value="carrier">
+                        <EntitySatisfactionView stats={satisfactionStats.carrier} objectives={objectives} />
+                    </TabsContent>
+                    <TabsContent value="driver">
+                        <EntitySatisfactionView stats={satisfactionStats.driver} objectives={objectives} />
+                    </TabsContent>
+                </Tabs>
+            </div>
+             <div className="print-only print-satisfaction-content">
+                <div className="print-satisfaction-page">
+                    <h1 className="text-2xl font-bold mb-4">Rapport de Satisfaction Client - Global</h1>
+                    <CommentsList title="Commentaires Négatifs (≤ 3★) - Tous les dépôts" comments={allNegativeComments} icon={ThumbsDown} />
+                    <NegativeFeedbackAIAnalysis comments={allNegativeComments} title="Analyse Globale des Retours Négatifs" />
+                </div>
+                {satisfactionStats.depot.map(depotStat => (
+                    <div key={depotStat.name} className="print-satisfaction-page">
+                        <h1 className="text-2xl font-bold mb-4">Rapport de Satisfaction Client - Dépôt: {depotStat.name}</h1>
+                        <CommentsList title={`Commentaires Négatifs (≤ 3★) - ${depotStat.name}`} comments={depotStat.negativeComments} icon={ThumbsDown} />
+                        <NegativeFeedbackAIAnalysis comments={depotStat.negativeComments} title={`Analyse des Retours Négatifs - ${depotStat.name}`} />
+                    </div>
                 ))}
-            </TabsList>
-            <TabsContent value="depot">
-                <EntitySatisfactionView stats={satisfactionStats.depot} objectives={objectives} />
-            </TabsContent>
-            <TabsContent value="warehouse">
-                <EntitySatisfactionView stats={satisfactionStats.warehouse} objectives={objectives} />
-            </TabsContent>
-            <TabsContent value="carrier">
-                <EntitySatisfactionView stats={satisfactionStats.carrier} objectives={objectives} />
-            </TabsContent>
-            <TabsContent value="driver">
-                <EntitySatisfactionView stats={satisfactionStats.driver} objectives={objectives} />
-            </TabsContent>
-        </Tabs>
+            </div>
+        </>
     );
 }
