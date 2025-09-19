@@ -109,8 +109,8 @@
     width: 100%;
   }
   
-  #main-content [data-state="inactive"] {
-    display: block !important;
+  #main-content [role="tabpanel"][data-state="inactive"] {
+      display: block !important;
   }
 
   .grid {
