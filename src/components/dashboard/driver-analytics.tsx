@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ArrowUpDown } from 'lucide-react';
 
-type SortKey = 'name' | 'totalDeliveries' | 'averageRating' | 'punctualityRate' | 'failureRate' | 'forcedOnSiteRate' | 'forcedNoContactRate';
+type SortKey = 'name' | 'totalDeliveries' | 'averageRating' | 'punctualityRate' | 'failureRate' | 'forcedOnSiteRate' | 'forcedNoContactRate' | 'webCompletionRate' | 'ratingRate';
 
 export function DriverAnalytics({ data }: { data: Delivery[] }) {
     const [filter, setFilter] = useState('');
@@ -84,6 +84,8 @@ export function DriverAnalytics({ data }: { data: Delivery[] }) {
                             <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('failureRate')}>Échec % {getSortIcon('failureRate')}</Button></TableHead>
                             <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('forcedOnSiteRate')}>S.P. forcé {getSortIcon('forcedOnSiteRate')}</Button></TableHead>
                             <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('forcedNoContactRate')}>S. contact {getSortIcon('forcedNoContactRate')}</Button></TableHead>
+                            <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('webCompletionRate')}>Web Val. {getSortIcon('webCompletionRate')}</Button></TableHead>
+                            <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('ratingRate')}>Noté % {getSortIcon('ratingRate')}</Button></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -93,10 +95,12 @@ export function DriverAnalytics({ data }: { data: Delivery[] }) {
                                 <TableCell className="text-muted-foreground">{stat.carrier}</TableCell>
                                 <TableCell className="text-right">{stat.totalDeliveries}</TableCell>
                                 <TableCell className="text-right">{stat.averageRating > 0 ? stat.averageRating.toFixed(2) : 'N/A'}</TableCell>
-                                <TableCell className="text-right">{stat.punctualityRate.toFixed(1)}%</TableCell>
-                                <TableCell className="text-right">{stat.failureRate.toFixed(1)}%</TableCell>
-                                <TableCell className="text-right">{stat.forcedOnSiteRate.toFixed(1)}%</TableCell>
-                                <TableCell className="text-right">{stat.forcedNoContactRate.toFixed(1)}%</TableCell>
+                                <TableCell className="text-right">{stat.punctualityRate.toFixed(2)}%</TableCell>
+                                <TableCell className="text-right">{stat.failureRate.toFixed(2)}%</TableCell>
+                                <TableCell className="text-right">{stat.forcedOnSiteRate.toFixed(2)}%</TableCell>
+                                <TableCell className="text-right">{stat.forcedNoContactRate.toFixed(2)}%</TableCell>
+                                <TableCell className="text-right">{stat.webCompletionRate.toFixed(2)}%</TableCell>
+                                <TableCell className="text-right">{stat.ratingRate.toFixed(2)}%</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>

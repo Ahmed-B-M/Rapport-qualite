@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { type Delivery, type AggregatedStats } from '@/lib/definitions';
-import { aggregateStats, getRankings, type Ranking } from '@/lib/data-processing';
+import { aggregateStats, getRankings, type Ranking, type RankingMetric } from '@/lib/data-processing';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { analyzeDepotDelivery } from '@/ai/flows/depot-delivery-analysis';
@@ -24,9 +24,10 @@ export function DepotAnalytics({ data }: { data: Delivery[] }) {
     const rankings = useMemo(() => ({
         averageRating: getRankings(depotStats, 'averageRating'),
         punctualityRate: getRankings(depotStats, 'punctualityRate'),
-        failureRate: getRankings(depotStats, 'successRate', 3, 'asc'), // Lower is better for failure
-        forcedOnSiteRate: getRankings(depotStats, 'forcedOnSiteRate', 3, 'asc'),
-        forcedNoContactRate: getRankings(depotStats, 'forcedNoContactRate', 3, 'asc'),
+        failureRate: getRankings(depotStats, 'successRate', 3, 'desc'), // Now using successRate and descending to get the worst
+        forcedOnSiteRate: getRankings(depotStats, 'forcedOnSiteRate', 3, 'desc'),
+        forcedNoContactRate: getRankings(depotStats, 'forcedNoContactRate', 3, 'desc'),
+        webCompletionRate: getRankings(depotStats, 'webCompletionRate', 3, 'desc'),
     }), [depotStats]);
 
     useEffect(() => {
@@ -54,16 +55,16 @@ export function DepotAnalytics({ data }: { data: Delivery[] }) {
         generateAnalysis();
     }, [data]);
 
-    const RankingList = ({ title, ranking, metric, unit, higherIsBetter }: { title: string, ranking: Ranking<DepotStat>, metric: keyof AggregatedStats, unit: string, higherIsBetter: boolean }) => {
-        const getBadgeVariant = (value: number, target: number, higherIsBetter: boolean) => {
-            if (higherIsBetter) {
-                return value >= target ? 'default' : 'destructive';
-            }
-            return value <= target ? 'default' : 'destructive';
+    const RankingList = ({ title, ranking, metric, unit, higherIsBetter }: { title: string, ranking: Ranking<DepotStat>, metric: RankingMetric, unit: string, higherIsBetter: boolean }) => {
+        const formatValue = (value: number) => {
+            return value.toFixed(2) + unit;
         }
 
-        const formatValue = (value: number) => {
-            return value.toFixed(1) + unit;
+        const getMetricValue = (stat: DepotStat) => {
+            if (metric === 'successRate') {
+                return 100 - stat.successRate; // Display failure rate
+            }
+            return stat[metric];
         }
 
         return (
@@ -76,7 +77,7 @@ export function DepotAnalytics({ data }: { data: Delivery[] }) {
                         <h4 className="flex items-center gap-2 font-semibold text-green-600"><ThumbsUp /> Top 3</h4>
                         <ul className="list-disc pl-5 text-sm space-y-1 mt-2">
                             {ranking.top.map(d => (
-                                <li key={d.name}>{d.name} <Badge variant="secondary">{formatValue(metric === 'successRate' ? 100 - d[metric] : d[metric])}</Badge></li>
+                                <li key={d.name}>{d.name} <Badge variant="secondary">{formatValue(getMetricValue(d))}</Badge></li>
                             ))}
                         </ul>
                     </div>
@@ -84,7 +85,7 @@ export function DepotAnalytics({ data }: { data: Delivery[] }) {
                         <h4 className="flex items-center gap-2 font-semibold text-red-600"><ThumbsDown /> Flop 3</h4>
                         <ul className="list-disc pl-5 text-sm space-y-1 mt-2">
                              {ranking.flop.map(d => (
-                                <li key={d.name}>{d.name} <Badge variant="destructive">{formatValue(metric === 'successRate' ? 100 - d[metric] : d[metric])}</Badge></li>
+                                <li key={d.name}>{d.name} <Badge variant="destructive">{formatValue(getMetricValue(d))}</Badge></li>
                             ))}
                         </ul>
                     </div>
@@ -99,6 +100,11 @@ export function DepotAnalytics({ data }: { data: Delivery[] }) {
                 <RankingList title="Classement par Note Moyenne" ranking={rankings.averageRating} metric="averageRating" unit="/5" higherIsBetter={true} />
                 <RankingList title="Classement par Ponctualité" ranking={rankings.punctualityRate} metric="punctualityRate" unit="%" higherIsBetter={true} />
                 <RankingList title="Classement Taux d'Échec" ranking={rankings.failureRate} metric="successRate" unit="%" higherIsBetter={false} />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <RankingList title="Taux de 'Sur Place Forcé'" ranking={rankings.forcedOnSiteRate} metric="forcedOnSiteRate" unit="%" higherIsBetter={false} />
+                <RankingList title="Taux de 'Sans Contact Forcé'" ranking={rankings.forcedNoContactRate} metric="forcedNoContactRate" unit="%" higherIsBetter={false} />
+                <RankingList title="Taux de 'Validation Web'" ranking={rankings.webCompletionRate} metric="webCompletionRate" unit="%" higherIsBetter={true} />
             </div>
              <Card>
                 <CardHeader>
@@ -140,6 +146,8 @@ export function DepotAnalytics({ data }: { data: Delivery[] }) {
                                 <TableHead className="text-right">Taux d'échec</TableHead>
                                 <TableHead className="text-right">Sur place forcé</TableHead>
                                 <TableHead className="text-right">Sans contact forcé</TableHead>
+                                <TableHead className="text-right">Validation Web</TableHead>
+                                <TableHead className="text-right">Taux de notation</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -148,10 +156,12 @@ export function DepotAnalytics({ data }: { data: Delivery[] }) {
                                     <TableCell className="font-medium">{stat.name}</TableCell>
                                     <TableCell className="text-right">{stat.totalDeliveries}</TableCell>
                                     <TableCell className="text-right">{stat.averageRating > 0 ? stat.averageRating.toFixed(2) : 'N/A'}</TableCell>
-                                    <TableCell className="text-right">{stat.punctualityRate.toFixed(1)}%</TableCell>
-                                    <TableCell className="text-right">{(100 - stat.successRate).toFixed(1)}%</TableCell>
-                                    <TableCell className="text-right">{stat.forcedOnSiteRate.toFixed(1)}%</TableCell>
-                                    <TableCell className="text-right">{stat.forcedNoContactRate.toFixed(1)}%</TableCell>
+                                    <TableCell className="text-right">{stat.punctualityRate.toFixed(2)}%</TableCell>
+                                    <TableCell className="text-right">{(100 - stat.successRate).toFixed(2)}%</TableCell>
+                                    <TableCell className="text-right">{stat.forcedOnSiteRate.toFixed(2)}%</TableCell>
+                                    <TableCell className="text-right">{stat.forcedNoContactRate.toFixed(2)}%</TableCell>
+                                    <TableCell className="text-right">{stat.webCompletionRate.toFixed(2)}%</TableCell>
+                                    <TableCell className="text-right">{stat.ratingRate.toFixed(2)}%</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>

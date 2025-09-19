@@ -70,7 +70,7 @@ export function CarrierAnalytics({ data }: { data: Delivery[] }) {
                                 <span className="text-lg font-medium">{carrier.name}</span>
                                 <div className="flex items-center gap-4 text-sm">
                                     <span>{carrier.totalDeliveries} livraisons</span>
-                                    <Badge variant={carrier.successRate > 95 ? "default" : "secondary"}>{carrier.successRate.toFixed(1)}% succès</Badge>
+                                    <Badge variant={(100 - carrier.successRate) > 1 ? "destructive" : "default"}>{(100 - carrier.successRate).toFixed(2)}% échecs</Badge>
                                 </div>
                             </div>
                         </AccordionTrigger>

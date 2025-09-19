@@ -5,7 +5,7 @@ import { type Delivery } from '@/lib/definitions';
 import { getOverallStats, aggregateStats } from '@/lib/data-processing';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, Star, Timer, Ban, Globe, Target } from 'lucide-react';
+import { AlertCircle, Star, Timer, Ban, Globe, Target, PenSquare } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { Bar, Pie, Cell, PieChart, BarChart as RechartsBarChart, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -40,11 +40,12 @@ export function Overview({ data }: { data: Delivery[] }) {
         <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 <StatCard title="Note moyenne" value={`${overallStats.averageRating.toFixed(2)} / 5`} icon={Star} description={`Objectif: 4.80`} />
-                <StatCard title="Taux de ponctualité" value={`${overallStats.punctualityRate.toFixed(1)}%`} icon={Timer} description={`Objectif: 95%`} />
-                <StatCard title="Taux d'échec" value={`${(100 - overallStats.successRate).toFixed(1)}%`} icon={AlertCircle} description={`Objectif: 1% max`} />
-                <StatCard title="Sur place forcé" value={`${overallStats.forcedOnSiteRate.toFixed(1)}%`} icon={Target} description={`Objectif: 10% max`} />
-                <StatCard title="Sans contact forcé" value={`${overallStats.forcedNoContactRate.toFixed(1)}%`} icon={Ban} description={`Objectif: 10% max`} />
-                <StatCard title="Validation Web" value={`${overallStats.webCompletionRate.toFixed(1)}%`} icon={Globe} />
+                <StatCard title="Taux de ponctualité" value={`${overallStats.punctualityRate.toFixed(2)}%`} icon={Timer} description={`Objectif: 95%`} />
+                <StatCard title="Taux d'échec" value={`${(100 - overallStats.successRate).toFixed(2)}%`} icon={AlertCircle} description={`Objectif: 1% max`} />
+                <StatCard title="Taux de notation" value={`${overallStats.ratingRate.toFixed(2)}%`} icon={PenSquare} />
+                <StatCard title="Sur place forcé" value={`${overallStats.forcedOnSiteRate.toFixed(2)}%`} icon={Target} description={`Objectif: 10% max`} />
+                <StatCard title="Sans contact forcé" value={`${overallStats.forcedNoContactRate.toFixed(2)}%`} icon={Ban} description={`Objectif: 10% max`} />
+                <StatCard title="Validation Web" value={`${overallStats.webCompletionRate.toFixed(2)}%`} icon={Globe} />
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">

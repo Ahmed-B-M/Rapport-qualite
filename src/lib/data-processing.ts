@@ -118,6 +118,7 @@ const createInitialStats = (): AggregatedStats => ({
     forcedOnSiteRate: 0,
     webCompletionCount: 0,
     webCompletionRate: 0,
+    ratingRate: 0,
 });
 
 const updateStats = (stats: AggregatedStats, delivery: Delivery) => {
@@ -160,6 +161,7 @@ const finalizeStats = (stats: AggregatedStats) => {
         stats.forcedNoContactRate = (stats.forcedNoContactCount / stats.totalDeliveries) * 100;
         stats.forcedOnSiteRate = (stats.forcedOnSiteCount / stats.totalDeliveries) * 100;
         stats.webCompletionRate = (stats.webCompletionCount / stats.totalDeliveries) * 100;
+        stats.ratingRate = (stats.ratedDeliveries / stats.totalDeliveries) * 100;
     }
     if (stats.ratedDeliveries > 0) {
         stats.averageRating = stats.totalRating / stats.ratedDeliveries;
@@ -189,7 +191,7 @@ export const getOverallStats = (data: Delivery[]): AggregatedStats => {
     return overallStats;
 }
 
-export type RankingMetric = 'averageRating' | 'punctualityRate' | 'successRate' | 'forcedOnSiteRate' | 'forcedNoContactRate';
+export type RankingMetric = 'averageRating' | 'punctualityRate' | 'successRate' | 'forcedOnSiteRate' | 'forcedNoContactRate' | 'webCompletionRate';
 export type Ranking<T> = {
     top: T[],
     flop: T[]

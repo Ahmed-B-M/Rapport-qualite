@@ -16,6 +16,7 @@ import {
   Truck,
   Users,
   Smile,
+  PenSquare,
 } from "lucide-react";
 
 interface DashboardSidebarProps {

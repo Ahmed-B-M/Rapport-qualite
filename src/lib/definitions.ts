@@ -41,6 +41,7 @@ export type AggregatedStats = {
   forcedOnSiteRate: number;
   webCompletionCount: number;
   webCompletionRate: number;
+  ratingRate: number;
 };
 
 export type StatsByEntity = {
