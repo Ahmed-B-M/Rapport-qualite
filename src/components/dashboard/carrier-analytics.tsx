@@ -137,7 +137,11 @@ export function CarrierAnalytics({ data }: { data: Delivery[] }) {
                         <AccordionTrigger
                             onClick={() => handleCarrierClick(carrier.name)}
                             className={carrier.name === 'Inconnu' ? 'cursor-pointer' : ''}
-                            disabled={carrier.name === 'Inconnu'}
+                            // This is a special case. We want the click to work but not open the accordion
+                            // The disabled prop on AccordionTrigger prevents the click handler from firing at all.
+                            // The disabled prop on the AccordionItem itself would disable the whole thing.
+                            // So we pass an empty onClick to override the accordion's internal one if it's 'Inconnu'
+                            {...(carrier.name === 'Inconnu' ? { onClick: (e) => { e.preventDefault(); handleCarrierClick(carrier.name); } } : {})}
                         >
                             <div className="flex items-center justify-between w-full pr-4">
                                 <span className="text-lg font-medium">{carrier.name}</span>
