@@ -7,10 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Star, MessageSquareQuote, ThumbsDown, User, Building, Truck, Warehouse as WarehouseIcon, Bot, Loader2, AlertTriangle, Search, Printer } from 'lucide-react';
+import { Star, MessageSquareQuote, ThumbsDown, User, Building, Truck, Warehouse as WarehouseIcon, Bot, Loader2, AlertTriangle, Search, Printer, Download } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { analyzeCustomerFeedback, type AnalyzeCustomerFeedbackOutput } from '@/ai/flows/analyze-customer-feedback';
 import { Button } from '../ui/button';
+import * as XLSX from 'xlsx';
+import { getRankings } from '@/lib/data-processing';
 
 type GroupingKey = "depot" | "warehouse" | "carrier" | "driver";
 
@@ -35,6 +37,24 @@ type EntitySatisfactionStats = {
     ratingDistribution: RatingData[];
     comments: Comment[];
     negativeComments: Comment[];
+    // Add missing fields for getRankings
+    totalDeliveries: number;
+    successfulDeliveries: number;
+    failedDeliveries: number;
+    pendingDeliveries: number;
+    successRate: number;
+    failureReasons: Record<string, number>;
+    totalRating: number;
+    ratedDeliveries: number;
+    onTimeDeliveries: number;
+    punctualityRate: number;
+    forcedNoContactCount: number;
+    forcedNoContactRate: number;
+    forcedOnSiteCount: number;
+    forcedOnSiteRate: number;
+    webCompletionCount: number;
+    webCompletionRate: number;
+    ratingRate: number;
 }
 
 const getSatisfactionStats = (data: Delivery[], groupBy: GroupingKey): EntitySatisfactionStats[] => {
@@ -67,9 +87,27 @@ const getSatisfactionStats = (data: Delivery[], groupBy: GroupingKey): EntitySat
         name,
         averageRating: stats.count > 0 ? stats.totalRating / stats.count : 0,
         totalRatings: stats.count,
+        ratedDeliveries: stats.count,
         ratingDistribution: Object.entries(stats.ratingCounts).map(([rating, count]) => ({ name: `${rating} ★`, count })).reverse(),
         comments: stats.comments,
-        negativeComments: stats.comments.filter(c => c.rating <= 3)
+        negativeComments: stats.comments.filter(c => c.rating <= 3),
+        // Add dummy fields to satisfy getRankings
+        totalDeliveries: stats.count,
+        successfulDeliveries: 0,
+        failedDeliveries: 0,
+        pendingDeliveries: 0,
+        successRate: 0,
+        failureReasons: {},
+        totalRating: stats.totalRating,
+        onTimeDeliveries: 0,
+        punctualityRate: 0,
+        forcedNoContactCount: 0,
+        forcedNoContactRate: 0,
+        forcedOnSiteCount: 0,
+        forcedOnSiteRate: 0,
+        webCompletionCount: 0,
+        webCompletionRate: 0,
+        ratingRate: 0,
     })).sort((a,b) => b.totalRatings - a.totalRatings);
 }
 
@@ -286,15 +324,87 @@ export function CustomerSatisfaction({ data, objectives }: { data: Delivery[], o
         }
     };
 
+    const handleExcelExport = () => {
+        const wb = XLSX.utils.book_new();
+
+        // 1. Detail par depot
+        const depotData = satisfactionStats.depot.map(d => ({
+            "Dépôt": d.name,
+            "Note Moyenne": d.averageRating.toFixed(2),
+            "Nombre de notes": d.totalRatings
+        }));
+        const depotSheet = XLSX.utils.json_to_sheet(depotData);
+        XLSX.utils.book_append_sheet(wb, depotSheet, "Satisfaction par Dépôt");
+
+        // 2. Detail par transporteur
+        const carrierData = satisfactionStats.carrier.map(c => ({
+            "Transporteur": c.name,
+            "Note Moyenne": c.averageRating.toFixed(2),
+            "Nombre de notes": c.totalRatings
+        }));
+        const carrierSheet = XLSX.utils.json_to_sheet(carrierData);
+        XLSX.utils.book_append_sheet(wb, carrierSheet, "Satisfaction par Transporteur");
+        
+        // 3. Classements
+        const depotRankings = getRankings(satisfactionStats.depot, 'averageRating', 5);
+        const carrierRankings = getRankings(satisfactionStats.carrier, 'averageRating', 5);
+        const driverRankings = getRankings(satisfactionStats.driver, 'averageRating', 10);
+        
+        const formatRankingData = (ranking: any[], entityName: string) => 
+            ranking.map(r => ({
+                [entityName]: r.name,
+                "Note Moyenne": r.averageRating.toFixed(2),
+                "Nombre de notes": r.totalRatings
+            }));
+
+        const depotRankingData = [
+            { "Classement Dépôts": "TOP 5" },
+            ...formatRankingData(depotRankings.top, "Dépôt"),
+            {},
+            { "Classement Dépôts": "FLOP 5" },
+            ...formatRankingData(depotRankings.flop, "Dépôt"),
+        ];
+        const depotRankingSheet = XLSX.utils.json_to_sheet(depotRankingData, {skipHeader: true});
+        XLSX.utils.book_append_sheet(wb, depotRankingSheet, "Classement Dépôts");
+        
+        const carrierRankingData = [
+            { "Classement Transporteurs": "TOP 5" },
+            ...formatRankingData(carrierRankings.top, "Transporteur"),
+            {},
+            { "Classement Transporteurs": "FLOP 5" },
+            ...formatRankingData(carrierRankings.flop, "Transporteur"),
+        ];
+        const carrierRankingSheet = XLSX.utils.json_to_sheet(carrierRankingData, {skipHeader: true});
+        XLSX.utils.book_append_sheet(wb, carrierRankingSheet, "Classement Transporteurs");
+        
+        const driverRankingData = [
+            { "Classement Livreurs": "TOP 10" },
+            ...formatRankingData(driverRankings.top, "Livreur"),
+            {},
+            { "Classement Livreurs": "FLOP 10" },
+            ...formatRankingData(driverRankings.flop, "Livreur"),
+        ];
+        const driverRankingSheet = XLSX.utils.json_to_sheet(driverRankingData, {skipHeader: true});
+        XLSX.utils.book_append_sheet(wb, driverRankingSheet, "Classement Livreurs");
+
+        XLSX.writeFile(wb, "satisfaction_report.xlsx");
+    };
+
     return (
         <>
             <div className="no-print">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-2xl font-bold font-headline">Satisfaction Client</h2>
-                    <Button onClick={handlePrint} variant="outline">
-                        <Printer className="mr-2 h-4 w-4" />
-                        Exporter en PDF
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button onClick={handleExcelExport} variant="outline">
+                            <Download className="mr-2 h-4 w-4" />
+                            Exporter en Excel
+                        </Button>
+                        <Button onClick={handlePrint} variant="outline">
+                            <Printer className="mr-2 h-4 w-4" />
+                            Exporter en PDF
+                        </Button>
+                    </div>
                 </div>
                 <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as GroupingKey)}>
                     <TabsList className="grid w-full grid-cols-4">
@@ -333,3 +443,5 @@ export function CustomerSatisfaction({ data, objectives }: { data: Delivery[], o
         </>
     );
 }
+
+    
