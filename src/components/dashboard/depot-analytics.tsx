@@ -36,7 +36,7 @@ export function DepotAnalytics({ data, objectives }: { data: Delivery[], objecti
         failureRate: getRankings(depotStats, 'successRate', 3, 'desc'), // Now using successRate and descending to get the worst
         forcedOnSiteRate: getRankings(depotStats, 'forcedOnSiteRate', 3, 'desc'),
         forcedNoContactRate: getRankings(depotStats, 'forcedNoContactRate', 3, 'desc'),
-        webCompletionRate: getRankings(depotStats, 'webCompletionRate'),
+        webCompletionRate: getRankings(depotStats, 'webCompletionRate', 3, 'desc'),
     }), [depotStats]);
 
     useEffect(() => {
@@ -85,7 +85,8 @@ export function DepotAnalytics({ data, objectives }: { data: Delivery[], objecti
 
     const ObjectiveIndicator = ({ value, objective, higherIsBetter, tooltipLabel, unit = '' }: { value: number, objective: number, higherIsBetter: boolean, tooltipLabel: string, unit?: string }) => {
         const isBelowObjective = higherIsBetter ? value < objective : value > objective;
-        if (!isBelowObjective || value <= 0) return null;
+        if (!isBelowObjective || (higherIsBetter && value <= 0)) return null;
+
 
         return (
             <TooltipProvider>
@@ -151,7 +152,7 @@ export function DepotAnalytics({ data, objectives }: { data: Delivery[], objecti
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <RankingList title="Taux de 'Sur Place Forcé'" ranking={rankings.forcedOnSiteRate} metric="forcedOnSiteRate" unit="%" higherIsBetter={false} />
                 <RankingList title="Taux de 'Sans Contact Forcé'" ranking={rankings.forcedNoContactRate} metric="forcedNoContactRate" unit="%" higherIsBetter={false} />
-                <RankingList title="Taux de 'Validation Web'" ranking={rankings.webCompletionRate} metric="webCompletionRate" unit="%" higherIsBetter={true} />
+                <RankingList title="Taux de 'Validation Web'" ranking={rankings.webCompletionRate} metric="webCompletionRate" unit="%" higherIsBetter={false} />
             </div>
              <Card>
                 <CardHeader>
@@ -235,7 +236,12 @@ export function DepotAnalytics({ data, objectives }: { data: Delivery[], objecti
                                             {stat.forcedNoContactRate.toFixed(2)}%
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-right">{stat.webCompletionRate.toFixed(2)}%</TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex items-center justify-end gap-1">
+                                            <ObjectiveIndicator value={stat.webCompletionRate} objective={objectives.webCompletionRate} higherIsBetter={false} tooltipLabel="Validation Web" unit="%" />
+                                            {stat.webCompletionRate.toFixed(2)}%
+                                        </div>
+                                    </TableCell>
                                     <TableCell className="text-right">{stat.ratingRate.toFixed(2)}%</TableCell>
                                 </TableRow>
                             ))}

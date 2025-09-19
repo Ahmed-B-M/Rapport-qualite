@@ -185,10 +185,7 @@ export const aggregateStats = (data: Delivery[], groupBy: keyof Delivery): Stats
   data.forEach((delivery) => {
     let entityName: string;
     if (groupBy === 'driver') {
-        // We use the raw driver name for aggregation to avoid splitting by depot
-        const rawDriverName = (delivery as any).driver.split(' (')[0];
-        const depot = (delivery as any).depot;
-        entityName = rawDriverName ? `${rawDriverName} (${depot})` : 'Livreur Inconnu';
+        entityName = delivery[groupBy] as string || 'Livreur Inconnu';
     } else {
         entityName = delivery[groupBy] as string || 'Inconnu';
     }
@@ -221,6 +218,7 @@ export function getRankings<T extends {name: string} & AggregatedStats>(
     stats: T[],
     metric: RankingMetric,
     take: number = 5,
+    order: 'asc' | 'desc' = 'asc'
 ): Ranking<T> {
 
     // Filter out entities that should not be ranked (e.g., no rated deliveries for averageRating)
@@ -229,29 +227,52 @@ export function getRankings<T extends {name: string} & AggregatedStats>(
         return s.totalDeliveries > 0;
     });
 
-    const higherIsBetter = ['averageRating', 'punctualityRate', 'webCompletionRate', 'successRate'].includes(metric);
+    // For flop, a higher value is worse. For top, a higher value is better.
+    // The 'order' param dictates the sorting for the "Top" list. 'asc' means higher is better.
+    // 'desc' means lower is better (e.g., for failure rates).
+    const higherIsBetter = order === 'asc';
     
     const sorted = [...validStats].sort((a, b) => {
-        const valA = a[metric];
-        const valB = b[metric];
+        const valA = metric === 'successRate' ? 100 - a.successRate : a[metric];
+        const valB = metric === 'successRate' ? 100 - b.successRate : b[metric];
 
         if (valA !== valB) {
-            // Main sorting based on metric value
             return higherIsBetter ? valB - valA : valA - valB;
         }
         
-        // Secondary sorting based on total deliveries
         return b.totalDeliveries - a.totalDeliveries;
     });
 
     if (sorted.length < 10) {
         const top = sorted.slice(0, take);
-        const flop = sorted.slice(take).reverse(); // The rest are flops
+        const flopData = sorted.slice(take);
+        // For flop list, we want to show the absolute worst, so we reverse the secondary sort logic
+        const flop = flopData.sort((a, b) => {
+             const valA = metric === 'successRate' ? 100 - a.successRate : a[metric];
+             const valB = metric === 'successRate' ? 100 - b.successRate : b[metric];
+             if (valA !== valB) {
+                return higherIsBetter ? valA - valB : valB - valA;
+             }
+             return b.totalDeliveries - a.totalDeliveries;
+        });
+
         return { top, flop };
     }
 
     const top = sorted.slice(0, take);
-    const flop = sorted.slice(-take).reverse();
+    const flopSorted = [...validStats].sort((a,b) => {
+        const valA = metric === 'successRate' ? 100 - a.successRate : a[metric];
+        const valB = metric === 'successRate' ? 100 - b.successRate : b[metric];
+
+        if (valA !== valB) {
+            return higherIsBetter ? valA - valB : valB - valA;
+        }
+
+        return b.totalDeliveries - a.totalDeliveries;
+    });
+
+    const flop = flopSorted.slice(0, take);
+
 
     return { top, flop };
 }

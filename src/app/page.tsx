@@ -33,6 +33,7 @@ export type Objectives = {
     failureRate: number;
     forcedOnSiteRate: number;
     forcedNoContactRate: number;
+    webCompletionRate: number;
 };
 
 export default function DashboardPage() {
@@ -48,6 +49,7 @@ export default function DashboardPage() {
     failureRate: 1,
     forcedOnSiteRate: 10,
     forcedNoContactRate: 10,
+    webCompletionRate: 1,
   });
 
   const handleDataUploaded = (processedData: Delivery[], error?: string) => {
@@ -76,6 +78,7 @@ export default function DashboardPage() {
         failureRate: parseFloat(formData.get("failureRate") as string),
         forcedOnSiteRate: parseFloat(formData.get("forcedOnSiteRate") as string),
         forcedNoContactRate: parseFloat(formData.get("forcedNoContactRate") as string),
+        webCompletionRate: parseFloat(formData.get("webCompletionRate") as string),
     };
     setObjectives(newObjectives);
     setIsSettingsOpen(false);
@@ -188,6 +191,10 @@ export default function DashboardPage() {
                       <div className="grid grid-cols-4 items-center gap-4">
                           <Label htmlFor="forcedNoContactRate" className="text-right">Sans contact forcé (% max)</Label>
                           <Input id="forcedNoContactRate" name="forcedNoContactRate" type="number" step="1" defaultValue={objectives.forcedNoContactRate} className="col-span-3" />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="webCompletionRate" className="text-right">Validation Web (% max)</Label>
+                          <Input id="webCompletionRate" name="webCompletionRate" type="number" step="0.5" defaultValue={objectives.webCompletionRate} className="col-span-3" />
                       </div>
                   </div>
                   <DialogFooter>

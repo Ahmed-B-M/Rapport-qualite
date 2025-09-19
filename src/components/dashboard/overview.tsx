@@ -62,7 +62,7 @@ const RankingList = <T,>({ title, icon, rankings, metric, unit, isFlop, onDrillD
                  <ul className="space-y-2 text-xs">
                     {rankings.map(item => (
                         <li key={item.name} className="flex flex-col items-start">
-                            <span className="font-medium text-foreground">{item.name}</span>
+                            <span className="font-medium text-foreground leading-tight">{item.name}</span>
                             <div className="flex items-center gap-2">
                                 <Badge variant={isFlop ? "destructive" : "secondary"} className="font-mono mt-1">{formatValue(item[metric], metric)}</Badge>
                                 {isFlop && <span className="text-muted-foreground text-xs mt-1">({getRecurrence(item)})</span>}
@@ -177,14 +177,23 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
         const depotStats = Object.entries(aggregateStats(data, 'depot')).map(([name, stat]) => ({ name, ...stat }));
         const warehouseStats = Object.entries(aggregateStats(data, 'warehouse')).map(([name, stat]) => ({ name, ...stat }));
         const carrierStats = Object.entries(aggregateStats(data, 'carrier')).map(([name, stat]) => ({ name, ...stat }));
-        const driverStats = Object.entries(aggregateStats(data, 'driver')).map(([name, stat]) => ({ name, ...stat }));
+        const driverStats = Object.entries(aggregateStats(data, 'driver')).map(([name, stat]) => {
+            const rawDriverName = name.split(' (')[0];
+            const depot = name.match(/\(([^)]+)\)/)?.[1] || '';
+            return { ...stat, name: `${rawDriverName} (${depot})` };
+        });
 
         const metrics: RankingMetric[] = ['averageRating', 'punctualityRate', 'successRate', 'forcedOnSiteRate', 'forcedNoContactRate', 'webCompletionRate'];
 
         const getRankingsForAllMetrics = (stats: any[], filterFn: (item: any) => boolean = () => true) => {
             const filteredStats = stats.filter(filterFn);
             return metrics.reduce((acc, metric) => {
-                acc[metric] = getRankings(filteredStats, metric, 5);
+                const take = 5;
+                if (metric === 'successRate' || metric === 'forcedOnSiteRate' || metric === 'forcedNoContactRate' || metric === 'webCompletionRate') {
+                    acc[metric] = getRankings(filteredStats, metric, take, 'desc');
+                } else {
+                    acc[metric] = getRankings(filteredStats, metric, take, 'asc');
+                }
                 return acc;
             }, {} as Record<RankingMetric, Ranking<any>>);
         };
@@ -253,7 +262,13 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
                         description={`Objectif: < ${objectives.forcedNoContactRate}%`}
                         isBelowObjective={overallStats.forcedNoContactRate > objectives.forcedNoContactRate}
                     />
-                    <StatCard title="Validation Web" value={`${overallStats.webCompletionRate.toFixed(2)}%`} icon={Globe} />
+                    <StatCard 
+                        title="Validation Web" 
+                        value={`${overallStats.webCompletionRate.toFixed(2)}%`} 
+                        icon={Globe}
+                        description={`Objectif: < ${objectives.webCompletionRate}%`}
+                        isBelowObjective={overallStats.webCompletionRate > objectives.webCompletionRate}
+                     />
                     <StatCard title="Taux de notation" value={`${overallStats.ratingRate.toFixed(2)}%`} icon={PenSquare} />
                 </div>
             </div>
