@@ -94,6 +94,7 @@ export const processRawData = (rawData: any[]): Delivery[] => {
       forcedNoContact: String(delivery.forcedNoContact).toLowerCase() === 'true',
       forcedOnSite: delivery.forcedOnSite === 'Yes' ? 'Yes' : 'No',
       completedBy: String(delivery.completedBy).toLowerCase() === 'web' ? 'web' : (String(delivery.completedBy).toLowerCase() === 'mobile' ? 'mobile' : 'unknown'),
+      deliveryRating: delivery.deliveryRating ? Number(delivery.deliveryRating) : undefined,
       depot,
       carrier,
     } as Delivery;
@@ -108,6 +109,11 @@ const createInitialStats = (): AggregatedStats => ({
     totalDelay: 0,
     averageDelay: 0,
     failureReasons: {},
+    totalRating: 0,
+    ratedDeliveries: 0,
+    averageRating: 0,
+    onTimeDeliveries: 0,
+    punctualityRate: 0,
 });
 
 const updateStats = (stats: AggregatedStats, delivery: Delivery) => {
@@ -122,12 +128,25 @@ const updateStats = (stats: AggregatedStats, delivery: Delivery) => {
         }
     }
     stats.totalDelay += delivery.delaySeconds;
+
+    if (delivery.delaySeconds <= 0) {
+        stats.onTimeDeliveries++;
+    }
+
+    if (delivery.deliveryRating !== undefined && delivery.deliveryRating !== null) {
+        stats.ratedDeliveries++;
+        stats.totalRating += delivery.deliveryRating;
+    }
 };
 
 const finalizeStats = (stats: AggregatedStats) => {
     if (stats.totalDeliveries > 0) {
         stats.successRate = (stats.successfulDeliveries / stats.totalDeliveries) * 100;
         stats.averageDelay = stats.totalDelay / stats.totalDeliveries;
+        stats.punctualityRate = (stats.onTimeDeliveries / stats.totalDeliveries) * 100;
+    }
+    if (stats.ratedDeliveries > 0) {
+        stats.averageRating = stats.totalRating / stats.ratedDeliveries;
     }
 };
 

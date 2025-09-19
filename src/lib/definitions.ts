@@ -31,6 +31,11 @@ export type AggregatedStats = {
   totalDelay: number;
   averageDelay: number;
   failureReasons: Record<string, number>;
+  totalRating: number;
+  ratedDeliveries: number;
+  averageRating: number;
+  onTimeDeliveries: number;
+  punctualityRate: number;
 };
 
 export type StatsByEntity = {
