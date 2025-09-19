@@ -16,7 +16,6 @@ import {
   Truck,
   Users,
   Smile,
-  ChevronsRight,
 } from "lucide-react";
 
 interface DashboardSidebarProps {
@@ -25,22 +24,52 @@ interface DashboardSidebarProps {
 }
 
 const menuItems = [
-  { id: "overview", label: "Overview", icon: LayoutDashboard },
-  { id: "depots", label: "Depots", icon: Building2 },
-  { id: "warehouses", label: "Warehouses", icon: Warehouse },
-  { id: "carriers", label: "Carriers", icon: Truck },
-  { id: "drivers", label: "Drivers", icon: Users },
+  { id: "overview", label: "Aperçu", icon: LayoutDashboard },
+  { id: "depots", label: "Dépôts", icon: Building2 },
+  { id: "warehouses", label: "Entrepôts", icon: Warehouse },
+  { id: "carriers", label: "Transporteurs", icon: Truck },
+  { id: "drivers", label: "Livreurs", icon: Users },
   { id: "sentiment", label: "Sentiment", icon: Smile },
 ];
+
+const CarrefourIcon = () => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 100 100"
+      className="w-8 h-8"
+      fill="none"
+    >
+      <path
+        d="M50 15C36.2 15 25 26.2 25 40C25 53.8 36.2 65 50 65C63.8 65 75 53.8 75 40C75 26.2 63.8 15 50 15Z"
+        fill="hsl(var(--primary))"
+      />
+      <path
+        d="M50 15C36.2 15 25 26.2 25 40L50 65V15Z"
+        fill="hsl(var(--accent))"
+      />
+      <text
+        x="50"
+        y="85"
+        fontFamily="sans-serif"
+        fontSize="20"
+        fill="hsl(var(--primary))"
+        textAnchor="middle"
+        fontWeight="bold"
+      >
+        C
+      </text>
+    </svg>
+  );
+  
 
 export function DashboardSidebar({ activeView, setActiveView }: DashboardSidebarProps) {
   return (
     <Sidebar>
       <SidebarHeader>
         <div className="flex items-center gap-2">
-            <Truck className="w-8 h-8 text-primary" />
+            <CarrefourIcon />
             <div className="flex flex-col">
-                <h2 className="text-lg font-semibold font-headline">Delivery Insights</h2>
+                <h2 className="text-lg font-semibold font-headline">Carrefour</h2>
             </div>
         </div>
       </SidebarHeader>
@@ -61,7 +90,7 @@ export function DashboardSidebar({ activeView, setActiveView }: DashboardSidebar
       </SidebarMenu>
       <SidebarFooter>
         <div className="text-xs text-muted-foreground p-2">
-            <p>&copy; {new Date().getFullYear()} Delivery Insights</p>
+            <p>&copy; {new Date().getFullYear()} Carrefour</p>
         </div>
       </SidebarFooter>
     </Sidebar>

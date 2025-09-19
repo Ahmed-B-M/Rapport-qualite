@@ -20,17 +20,17 @@ export function FileUploader({ onDataUploaded, setLoading }: FileUploaderProps) 
     (acceptedFiles: File[]) => {
       setLoading(true);
       if (acceptedFiles.length === 0) {
-        onDataUploaded([], "No files were dropped or selected.");
+        onDataUploaded([], "Aucun fichier n'a été déposé ou sélectionné.");
         return;
       }
 
       const file = acceptedFiles[0];
 
       if (!file.name.endsWith(".xlsx")) {
-        onDataUploaded([], "Invalid file type. Please upload a .xlsx file.");
+        onDataUploaded([], "Type de fichier invalide. Veuillez télécharger un fichier .xlsx.");
         toast({
-          title: "Invalid File Type",
-          description: "Please upload a .xlsx file.",
+          title: "Type de fichier invalide",
+          description: "Veuillez télécharger un fichier .xlsx.",
           variant: "destructive",
         });
         setLoading(false);
@@ -39,11 +39,11 @@ export function FileUploader({ onDataUploaded, setLoading }: FileUploaderProps) 
 
       const reader = new FileReader();
       reader.onabort = () => {
-        onDataUploaded([], "File reading was aborted.");
+        onDataUploaded([], "La lecture du fichier a été interrompue.");
         setLoading(false);
       }
       reader.onerror = () => {
-        onDataUploaded([], "File reading has failed.");
+        onDataUploaded([], "La lecture du fichier a échoué.");
         setLoading(false);
       }
       reader.onload = () => {
@@ -55,20 +55,20 @@ export function FileUploader({ onDataUploaded, setLoading }: FileUploaderProps) 
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
           
           if (jsonData.length === 0) {
-            throw new Error("The uploaded file is empty or in an incorrect format.");
+            throw new Error("Le fichier téléchargé est vide ou dans un format incorrect.");
           }
 
           const processedData = processRawData(jsonData);
           onDataUploaded(processedData);
           toast({
-            title: "File Uploaded Successfully",
-            description: `${processedData.length} records have been processed.`,
+            title: "Fichier téléchargé avec succès",
+            description: `${processedData.length} enregistrements ont été traités.`,
           });
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during file processing.";
+          const errorMessage = error instanceof Error ? error.message : "Une erreur inconnue est survenue lors du traitement du fichier.";
           onDataUploaded([], errorMessage);
           toast({
-            title: "Processing Error",
+            title: "Erreur de traitement",
             description: errorMessage,
             variant: "destructive",
           });
@@ -100,11 +100,11 @@ export function FileUploader({ onDataUploaded, setLoading }: FileUploaderProps) 
         <div className="text-center">
           <UploadCloud className="w-12 h-12 mx-auto text-muted-foreground" />
           <p className="mt-4 text-lg font-semibold">
-            {isDragActive ? "Drop the file here..." : "Drag & drop your XLSX file here"}
+            {isDragActive ? "Déposez le fichier ici..." : "Glissez-déposez votre fichier XLSX ici"}
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">or click to select a file</p>
+          <p className="mt-1 text-sm text-muted-foreground">ou cliquez pour sélectionner un fichier</p>
           <p className="mt-4 text-xs text-muted-foreground flex items-center justify-center gap-2">
-            <FileSpreadsheet className="w-4 h-4" /> Supported format: .xlsx
+            <FileSpreadsheet className="w-4 h-4" /> Format pris en charge : .xlsx
           </p>
         </div>
       </div>

@@ -36,8 +36,8 @@ export function DepotAnalytics({ data }: { data: Delivery[] }) {
                 const result = await analyzeDepotDelivery({ deliveryData: csvData });
                 setAiAnalysis(result.analysisResults);
             } catch (error) {
-                console.error("AI analysis failed:", error);
-                setAiAnalysis("We couldn't generate an AI analysis at this time. Please try again later.");
+                console.error("L'analyse IA a échoué:", error);
+                setAiAnalysis("Nous n'avons pas pu générer d'analyse IA pour le moment. Veuillez réessayer plus tard.");
             }
             setLoadingAi(false);
         };
@@ -54,7 +54,7 @@ export function DepotAnalytics({ data }: { data: Delivery[] }) {
             <div className="grid gap-4 md:grid-cols-2">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Success Rate by Depot</CardTitle>
+                        <CardTitle>Taux de réussite par dépôt</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <ResponsiveContainer width="100%" height={300}>
@@ -62,14 +62,14 @@ export function DepotAnalytics({ data }: { data: Delivery[] }) {
                                 <XAxis dataKey="name" />
                                 <YAxis unit="%" domain={[0, 100]} />
                                 <Tooltip formatter={(value) => `${Number(value).toFixed(1)}%`} contentStyle={{ background: "hsl(var(--background))" }} />
-                                <Bar dataKey="successRate" fill="hsl(var(--chart-1))" name="Success Rate" />
+                                <Bar dataKey="successRate" fill="hsl(var(--chart-1))" name="Taux de réussite" />
                             </BarChart>
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader>
-                        <CardTitle>Average Delay by Depot</CardTitle>
+                        <CardTitle>Retard moyen par dépôt</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <ResponsiveContainer width="100%" height={300}>
@@ -77,7 +77,7 @@ export function DepotAnalytics({ data }: { data: Delivery[] }) {
                                 <XAxis dataKey="name" />
                                 <YAxis unit="m" formatter={val => Math.floor(val/60).toString()} />
                                 <Tooltip formatter={(value) => formatDelay(Number(value))} contentStyle={{ background: "hsl(var(--background))" }}/>
-                                <Bar dataKey="averageDelay" fill="hsl(var(--chart-2))" name="Avg. Delay" />
+                                <Bar dataKey="averageDelay" fill="hsl(var(--chart-2))" name="Retard moy." />
                             </BarChart>
                         </ResponsiveContainer>
                     </CardContent>
@@ -87,17 +87,17 @@ export function DepotAnalytics({ data }: { data: Delivery[] }) {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Bot />
-                        AI-Powered Depot Analysis
+                        Analyse de dépôt par l'IA
                     </CardTitle>
                     <CardDescription>
-                        An automated analysis of performance across depots.
+                        Une analyse automatisée des performances des dépôts.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                      {loadingAi ? (
                         <div className="flex items-center gap-2 text-muted-foreground">
                             <Loader2 className="animate-spin h-4 w-4" />
-                            <span>Generating analysis...</span>
+                            <span>Génération de l'analyse...</span>
                         </div>
                     ) : (
                         <Alert>
@@ -110,16 +110,16 @@ export function DepotAnalytics({ data }: { data: Delivery[] }) {
             </Card>
             <Card>
                 <CardHeader>
-                    <CardTitle>Depot Performance Data</CardTitle>
+                    <CardTitle>Données sur la performance des dépôts</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Depot</TableHead>
+                                <TableHead>Dépôt</TableHead>
                                 <TableHead className="text-right">Total</TableHead>
-                                <TableHead className="text-right">Success Rate</TableHead>
-                                <TableHead className="text-right">Avg. Delay</TableHead>
+                                <TableHead className="text-right">Taux de réussite</TableHead>
+                                <TableHead className="text-right">Retard moy.</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>

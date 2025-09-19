@@ -17,7 +17,7 @@ export function DriverAnalytics({ data }: { data: Delivery[] }) {
 
     const driverStats = useMemo(() => {
         const stats = aggregateStats(data, 'driver');
-        return Object.entries(stats).map(([name, stat]) => ({ name, ...stat, carrier: data.find(d => d.driver === name)?.carrier || 'Unknown' }));
+        return Object.entries(stats).map(([name, stat]) => ({ name, ...stat, carrier: data.find(d => d.driver === name)?.carrier || 'Inconnu' }));
     }, [data]);
 
     const sortedAndFilteredStats = useMemo(() => {
@@ -59,9 +59,9 @@ export function DriverAnalytics({ data }: { data: Delivery[] }) {
         <Card>
             <CardHeader>
                 <div className="flex justify-between items-center">
-                    <CardTitle>Driver Performance</CardTitle>
+                    <CardTitle>Performance des livreurs</CardTitle>
                     <Input 
-                        placeholder="Filter drivers..." 
+                        placeholder="Filtrer les livreurs..." 
                         className="max-w-sm"
                         value={filter}
                         onChange={(e) => setFilter(e.target.value)}
@@ -72,11 +72,11 @@ export function DriverAnalytics({ data }: { data: Delivery[] }) {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead><Button variant="ghost" onClick={() => requestSort('name')}>Driver {getSortIcon('name')}</Button></TableHead>
-                            <TableHead>Carrier</TableHead>
+                            <TableHead><Button variant="ghost" onClick={() => requestSort('name')}>Livreur {getSortIcon('name')}</Button></TableHead>
+                            <TableHead>Transporteur</TableHead>
                             <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('totalDeliveries')}>Total {getSortIcon('totalDeliveries')}</Button></TableHead>
-                            <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('successRate')}>Success % {getSortIcon('successRate')}</Button></TableHead>
-                            <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('averageDelay')}>Avg. Delay {getSortIcon('averageDelay')}</Button></TableHead>
+                            <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('successRate')}>Succès % {getSortIcon('successRate')}</Button></TableHead>
+                            <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('averageDelay')}>Retard moy. {getSortIcon('averageDelay')}</Button></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>

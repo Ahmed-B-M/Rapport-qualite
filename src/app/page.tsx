@@ -43,7 +43,7 @@ export default function DashboardPage() {
       return (
         <div className="flex flex-col items-center justify-center h-full min-h-[400px]">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="mt-4 text-muted-foreground">Processing your data...</p>
+          <p className="mt-4 text-muted-foreground">Traitement de vos données...</p>
         </div>
       );
     }
@@ -52,7 +52,7 @@ export default function DashboardPage() {
       return (
         <Alert variant="destructive" className="max-w-lg mx-auto">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Error Processing File</AlertTitle>
+          <AlertTitle>Erreur lors du traitement du fichier</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       );
@@ -87,11 +87,11 @@ export default function DashboardPage() {
         <div className="p-4 sm:p-6 lg:p-8">
             <header className="flex items-center justify-between mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold font-headline text-primary">Delivery Insights Dashboard</h1>
-                    <p className="text-muted-foreground">Upload and analyze your delivery performance data.</p>
+                    <h1 className="text-3xl font-bold font-headline text-primary">Tableau de Bord Carrefour</h1>
+                    <p className="text-muted-foreground">Téléchargez et analysez les données sur les performances de vos livraisons.</p>
                 </div>
                 {data && (
-                    <Button variant="outline" onClick={handleReset}>Upload New File</Button>
+                    <Button variant="outline" onClick={handleReset}>Télécharger un nouveau fichier</Button>
                 )}
             </header>
             {renderContent()}

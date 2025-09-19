@@ -31,9 +31,9 @@ export function WarehouseAnalytics({ data }: { data: Delivery[] }) {
         <Card>
             <CardHeader>
                 <div className="flex justify-between items-center">
-                    <CardTitle>Warehouse Performance</CardTitle>
+                    <CardTitle>Performance des entrepôts</CardTitle>
                     <Input 
-                        placeholder="Filter warehouses..." 
+                        placeholder="Filtrer les entrepôts..." 
                         className="max-w-sm"
                         value={filter}
                         onChange={(e) => setFilter(e.target.value)}
@@ -44,11 +44,11 @@ export function WarehouseAnalytics({ data }: { data: Delivery[] }) {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Warehouse</TableHead>
-                            <TableHead className="text-right">Depot</TableHead>
-                            <TableHead className="text-right">Total Deliveries</TableHead>
-                            <TableHead className="text-right">Success Rate</TableHead>
-                            <TableHead className="text-right">Avg. Delay</TableHead>
+                            <TableHead>Entrepôt</TableHead>
+                            <TableHead className="text-right">Dépôt</TableHead>
+                            <TableHead className="text-right">Livraisons totales</TableHead>
+                            <TableHead className="text-right">Taux de réussite</TableHead>
+                            <TableHead className="text-right">Retard moy.</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -65,7 +65,7 @@ export function WarehouseAnalytics({ data }: { data: Delivery[] }) {
                         )) : (
                             <TableRow>
                                 <TableCell colSpan={5} className="text-center h-24">
-                                    No warehouses found matching your filter.
+                                    Aucun entrepôt ne correspond à votre filtre.
                                 </TableCell>
                             </TableRow>
                         )}

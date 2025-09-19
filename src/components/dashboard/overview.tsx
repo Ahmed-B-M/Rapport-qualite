@@ -47,33 +47,33 @@ export function Overview({ data }: { data: Delivery[] }) {
     return (
         <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <StatCard title="Total Deliveries" value={overallStats.totalDeliveries.toLocaleString()} icon={Truck} />
-                <StatCard title="Success Rate" value={`${overallStats.successRate.toFixed(1)}%`} icon={Percent} description={`${overallStats.successfulDeliveries.toLocaleString()} delivered`} />
-                <StatCard title="Failed Deliveries" value={overallStats.failedDeliveries.toLocaleString()} icon={AlertCircle} description={`${(100 - overallStats.successRate).toFixed(1)}% failed`} />
-                <StatCard title="Avg. Delay" value={formatDelay(overallStats.averageDelay)} icon={Clock} description={overallStats.averageDelay > 0 ? "Late on average" : "Early on average"} />
+                <StatCard title="Livraisons totales" value={overallStats.totalDeliveries.toLocaleString()} icon={Truck} />
+                <StatCard title="Taux de réussite" value={`${overallStats.successRate.toFixed(1)}%`} icon={Percent} description={`${overallStats.successfulDeliveries.toLocaleString()} livrées`} />
+                <StatCard title="Livraisons échouées" value={overallStats.failedDeliveries.toLocaleString()} icon={AlertCircle} description={`${(100 - overallStats.successRate).toFixed(1)}% échouées`} />
+                <StatCard title="Retard moyen" value={formatDelay(overallStats.averageDelay)} icon={Clock} description={overallStats.averageDelay > 0 ? "En retard en moyenne" : "En avance en moyenne"} />
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
                 <Card className="lg:col-span-4">
                     <CardHeader>
-                        <CardTitle>Deliveries Over Time</CardTitle>
+                        <CardTitle>Livraisons au fil du temps</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <ResponsiveContainer width="100%" height={300}>
                             <RechartsBarChart data={statsByDay}>
-                                <XAxis dataKey="date" tickFormatter={(str) => new Date(str).toLocaleDateString('en-GB', { month:'short', day: 'numeric'})} />
+                                <XAxis dataKey="date" tickFormatter={(str) => new Date(str).toLocaleDateString('fr-FR', { month:'short', day: 'numeric'})} />
                                 <YAxis />
                                 <Tooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }} />
                                 <ChartLegend />
-                                <Bar dataKey="delivered" stackId="a" fill="hsl(var(--chart-1))" name="Delivered" />
-                                <Bar dataKey="failed" stackId="a" fill="hsl(var(--chart-2))" name="Failed" />
+                                <Bar dataKey="delivered" stackId="a" fill="hsl(var(--chart-1))" name="Livré" />
+                                <Bar dataKey="failed" stackId="a" fill="hsl(var(--chart-2))" name="Échoué" />
                             </RechartsBarChart>
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
                 <Card className="lg:col-span-3">
                     <CardHeader>
-                        <CardTitle>Completion Method</CardTitle>
+                        <CardTitle>Méthode de complétion</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <ChartContainer config={{}} className="mx-auto aspect-square h-[300px]">

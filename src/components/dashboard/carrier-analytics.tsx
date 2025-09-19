@@ -35,15 +35,15 @@ export function CarrierAnalytics({ data }: { data: Delivery[] }) {
                     .map(d => d.failureReason!);
                 
                 if (failureReasons.length === 0) {
-                    return { [carrier.name]: { worstFailureReason: "No failures recorded.", analysisSummary: "This carrier has a perfect delivery record in this dataset." } };
+                    return { [carrier.name]: { worstFailureReason: "Aucun échec enregistré.", analysisSummary: "Ce transporteur a un historique de livraison parfait dans cet ensemble de données." } };
                 }
 
                 try {
                     const result = await analyzeCarrierFailureModes({ carrierName: carrier.name, deliveryFailureReasons: failureReasons });
                     return { [carrier.name]: result };
                 } catch (error) {
-                    console.error(`AI analysis failed for ${carrier.name}:`, error);
-                    return { [carrier.name]: { worstFailureReason: "Error", analysisSummary: "Could not generate AI analysis." } };
+                    console.error(`L'analyse IA a échoué pour ${carrier.name}:`, error);
+                    return { [carrier.name]: { worstFailureReason: "Erreur", analysisSummary: "Impossible de générer l'analyse IA." } };
                 }
             }));
             
@@ -66,7 +66,7 @@ export function CarrierAnalytics({ data }: { data: Delivery[] }) {
 
     return (
         <div className="space-y-4">
-            <h2 className="text-2xl font-bold font-headline">Carrier Performance</h2>
+            <h2 className="text-2xl font-bold font-headline">Performance par transporteur</h2>
             <Accordion type="single" collapsible className="w-full">
                 {carrierStats.map((carrier) => (
                     <AccordionItem value={carrier.name} key={carrier.name}>
@@ -74,10 +74,10 @@ export function CarrierAnalytics({ data }: { data: Delivery[] }) {
                             <div className="flex items-center justify-between w-full pr-4">
                                 <span className="text-lg font-medium">{carrier.name}</span>
                                 <div className="flex items-center gap-4 text-sm">
-                                    <span>{carrier.totalDeliveries} deliveries</span>
-                                    <Badge variant={carrier.successRate > 95 ? "default" : "secondary"}>{carrier.successRate.toFixed(1)}% success</Badge>
+                                    <span>{carrier.totalDeliveries} livraisons</span>
+                                    <Badge variant={carrier.successRate > 95 ? "default" : "secondary"}>{carrier.successRate.toFixed(1)}% succès</Badge>
                                     <span style={{color: carrier.averageDelay > 0 ? "hsl(var(--destructive))" : "hsl(var(--primary))"}}>
-                                        Avg Delay: {formatDelay(carrier.averageDelay)}
+                                        Retard moyen: {formatDelay(carrier.averageDelay)}
                                     </span>
                                 </div>
                             </div>
@@ -85,19 +85,19 @@ export function CarrierAnalytics({ data }: { data: Delivery[] }) {
                         <AccordionContent>
                             <Card className="m-2">
                                 <CardHeader>
-                                    <CardTitle className="flex items-center gap-2"><Bot /> AI Failure Mode Analysis</CardTitle>
+                                    <CardTitle className="flex items-center gap-2"><Bot /> Analyse IA des modes de défaillance</CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                     {loadingAi[carrier.name] ? (
                                         <div className="flex items-center gap-2 text-muted-foreground">
                                             <Loader2 className="animate-spin h-4 w-4" />
-                                            <span>Analyzing failure modes...</span>
+                                            <span>Analyse des modes de défaillance...</span>
                                         </div>
                                     ) : (
                                         <div className="space-y-2">
-                                            <h4 className="font-semibold">Worst Failure Reason:</h4>
+                                            <h4 className="font-semibold">Pire motif de défaillance :</h4>
                                             <Badge variant="destructive">{aiAnalysis[carrier.name]?.worstFailureReason}</Badge>
-                                            <h4 className="font-semibold pt-2">Summary:</h4>
+                                            <h4 className="font-semibold pt-2">Résumé :</h4>
                                             <p className="text-sm text-muted-foreground">{aiAnalysis[carrier.name]?.analysisSummary}</p>
                                         </div>
                                     )}
