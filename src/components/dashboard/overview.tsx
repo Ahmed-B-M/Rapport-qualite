@@ -34,13 +34,16 @@ const RankingList = <T,>({ title, icon, rankings, metric, unit, isFlop, onDrillD
     const getRecurrence = (item: RankingEntity<T>) => {
         switch (metric) {
             case 'successRate':
-                return `${item.failedDeliveries} échecs`;
+                return isFlop ? `${item.failedDeliveries} échecs` : `${item.successfulDeliveries} succès`;
             case 'punctualityRate':
-                 return `${item.totalDeliveries - item.onTimeDeliveries} retards`;
+                 return isFlop ? `${item.totalDeliveries - item.onTimeDeliveries} retards` : `${item.onTimeDeliveries} à l'heure`;
             case 'forcedOnSiteRate':
-                return `${item.forcedOnSiteCount} cas`;
             case 'forcedNoContactRate':
-                return `${item.forcedNoContactCount} cas`;
+            case 'webCompletionRate':
+                const count = metric === 'forcedOnSiteRate' ? item.forcedOnSiteCount : (metric === 'forcedNoContactRate' ? item.forcedNoContactCount : item.webCompletionCount);
+                return `${count} cas`;
+            case 'averageRating':
+                return `${item.ratedDeliveries} notes`;
             default:
                 return `${item.totalDeliveries} livraisons`;
         }
@@ -65,7 +68,7 @@ const RankingList = <T,>({ title, icon, rankings, metric, unit, isFlop, onDrillD
                             <span className="font-medium text-foreground leading-tight">{item.name}</span>
                             <div className="flex items-center gap-2">
                                 <Badge variant={isFlop ? "destructive" : "secondary"} className="font-mono mt-1">{formatValue(item[metric], metric)}</Badge>
-                                {isFlop && <span className="text-muted-foreground text-xs mt-1">({getRecurrence(item)})</span>}
+                                <span className="text-muted-foreground text-xs mt-1">({getRecurrence(item)})</span>
                             </div>
                         </li>
                     ))}
@@ -178,9 +181,8 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
         const warehouseStats = Object.entries(aggregateStats(data, 'warehouse')).map(([name, stat]) => ({ name, ...stat }));
         const carrierStats = Object.entries(aggregateStats(data, 'carrier')).map(([name, stat]) => ({ name, ...stat }));
         const driverStats = Object.entries(aggregateStats(data, 'driver')).map(([name, stat]) => {
-            const rawDriverName = name.split(' (')[0];
-            const depot = name.match(/\(([^)]+)\)/)?.[1] || '';
-            return { ...stat, name: `${rawDriverName} (${depot})` };
+            const depot = stat.depot || data.find(d => d.driver === name)?.depot || '';
+            return { ...stat, name: `${stat.name.replace(` (${depot})`,'')} (${depot})`};
         });
 
         const metrics: RankingMetric[] = ['averageRating', 'punctualityRate', 'successRate', 'forcedOnSiteRate', 'forcedNoContactRate', 'webCompletionRate'];
@@ -189,11 +191,10 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
             const filteredStats = stats.filter(filterFn);
             return metrics.reduce((acc, metric) => {
                 const take = 5;
-                if (metric === 'successRate' || metric === 'forcedOnSiteRate' || metric === 'forcedNoContactRate' || metric === 'webCompletionRate') {
-                    acc[metric] = getRankings(filteredStats, metric, take, 'desc');
-                } else {
-                    acc[metric] = getRankings(filteredStats, metric, take, 'asc');
-                }
+                const isFailureMetric = metric === 'successRate' || metric === 'forcedOnSiteRate' || metric === 'forcedNoContactRate' || metric === 'webCompletionRate';
+                
+                acc[metric] = getRankings(filteredStats, metric, take, isFailureMetric ? 'desc' : 'asc');
+                
                 return acc;
             }, {} as Record<RankingMetric, Ranking<any>>);
         };
@@ -202,7 +203,7 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
             depots: getRankingsForAllMetrics(depotStats),
             warehouses: getRankingsForAllMetrics(warehouseStats),
             carriers: getRankingsForAllMetrics(carrierStats, c => c.name !== "Inconnu"),
-            drivers: getRankingsForAllMetrics(driverStats, d => d.name !== "Livreur Inconnu"),
+            drivers: getRankingsForAllMetrics(driverStats, d => !d.name.startsWith("Livreur Inconnu")),
         };
     }, [data]);
     
