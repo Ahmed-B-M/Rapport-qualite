@@ -11,8 +11,9 @@ import { WarehouseAnalytics } from "@/components/dashboard/warehouse-analytics";
 import { CarrierAnalytics } from "@/components/dashboard/carrier-analytics";
 import { DriverAnalytics } from "@/components/dashboard/driver-analytics";
 import { CustomerSatisfaction } from "@/components/dashboard/customer-satisfaction";
+import { ReportDisplay } from "@/components/dashboard/report-display";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, AlertTriangle, Settings } from "lucide-react";
+import { Loader2, AlertTriangle, Settings, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -42,6 +43,7 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState("overview");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
   const [excludeMagasin, setExcludeMagasin] = useState(false);
   const [objectives, setObjectives] = useState<Objectives>({
     averageRating: 4.8,
@@ -67,6 +69,7 @@ export default function DashboardPage() {
     setData(null);
     setError(null);
     setActiveView("overview");
+    setIsReportOpen(false);
   };
 
   const handleSaveSettings = (e: React.FormEvent<HTMLFormElement>) => {
@@ -116,6 +119,10 @@ export default function DashboardPage() {
       return <FileUploader onDataUploaded={handleDataUploaded} setLoading={setLoading} />;
     }
 
+    if (isReportOpen) {
+        return <ReportDisplay data={filteredData} onBack={() => setIsReportOpen(false)} />;
+    }
+
     switch (activeView) {
       case "overview":
         return <Overview data={filteredData} objectives={objectives} setActiveView={setActiveView} />;
@@ -151,6 +158,10 @@ export default function DashboardPage() {
                           <Switch id="exclude-magasin" checked={excludeMagasin} onCheckedChange={setExcludeMagasin} />
                           <Label htmlFor="exclude-magasin">Exclure Magasin</Label>
                         </div>
+                         <Button variant="outline" onClick={() => setIsReportOpen(true)}>
+                            <FileText className="mr-2 h-4 w-4" />
+                            Générer un rapport
+                        </Button>
                         <Button variant="outline" onClick={handleReset}>Nouveau fichier</Button>
                       </>
                     )}
