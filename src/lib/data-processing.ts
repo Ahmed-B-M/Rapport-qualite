@@ -95,6 +95,7 @@ export const processRawData = (rawData: any[]): Delivery[] => {
       forcedOnSite: delivery.forcedOnSite === 'Yes' ? 'Yes' : 'No',
       completedBy: String(delivery.completedBy).toLowerCase() === 'web' ? 'web' : (String(delivery.completedBy).toLowerCase() === 'mobile' ? 'mobile' : 'unknown'),
       deliveryRating: delivery.deliveryRating ? Number(delivery.deliveryRating) : undefined,
+      feedbackComment: delivery.feedbackComment ? String(delivery.feedbackComment) : undefined,
       depot,
       carrier,
     } as Delivery;
