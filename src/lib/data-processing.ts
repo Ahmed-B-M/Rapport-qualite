@@ -1,4 +1,5 @@
 
+
 import { type Delivery, type StatsByEntity, type AggregatedStats } from './definitions';
 import { WAREHOUSE_DEPOT_MAP, CARRIERS } from './constants';
 
@@ -131,13 +132,15 @@ const createInitialStats = (): AggregatedStats => ({
 const updateStats = (stats: AggregatedStats, delivery: Delivery) => {
     if (delivery.status === 'En attente') {
         stats.pendingDeliveries++;
-        return;
+        // Do not process 'En attente' for other stats
+        return; 
     }
     
     stats.totalDeliveries++;
+    
     if (delivery.status === 'Livré') {
         stats.successfulDeliveries++;
-    } else {
+    } else { // 'Non livré'
         stats.failedDeliveries++;
         if (delivery.failureReason) {
             const reason = delivery.failureReason.trim();
