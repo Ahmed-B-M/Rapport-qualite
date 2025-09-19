@@ -45,22 +45,22 @@ const RankingCard = <T,>({ title, icon, rankings, metric, unit, onDrillDown }: {
             <CardContent className="flex-grow grid grid-cols-2 gap-4">
                 <div>
                     <h4 className="flex items-center gap-2 text-sm font-semibold text-green-600"><ThumbsUp size={14} /> Top 3</h4>
-                    <ul className="mt-2 space-y-1 text-xs">
+                    <ul className="mt-2 space-y-2 text-xs">
                         {rankings.top.map(item => (
-                            <li key={item.name} className="flex justify-between items-center">
-                                <span className="truncate pr-2">{item.name}</span>
-                                <Badge variant="secondary" className="font-mono">{formatValue(item[metric], metric)}</Badge>
+                            <li key={item.name} className="flex flex-col items-start">
+                                <span className="font-medium text-foreground">{item.name}</span>
+                                <Badge variant="secondary" className="font-mono mt-1">{formatValue(item[metric], metric)}</Badge>
                             </li>
                         ))}
                     </ul>
                 </div>
                  <div>
                     <h4 className="flex items-center gap-2 text-sm font-semibold text-red-600"><ThumbsDown size={14} /> Flop 3</h4>
-                    <ul className="mt-2 space-y-1 text-xs">
+                    <ul className="mt-2 space-y-2 text-xs">
                         {rankings.flop.map(item => (
-                            <li key={item.name} className="flex justify-between items-center">
-                                <span className="truncate pr-2">{item.name}</span>
-                                <Badge variant="destructive" className="font-mono">{formatValue(item[metric], metric)}</Badge>
+                             <li key={item.name} className="flex flex-col items-start">
+                                <span className="font-medium text-foreground">{item.name}</span>
+                                <Badge variant="destructive" className="font-mono mt-1">{formatValue(item[metric], metric)}</Badge>
                             </li>
                         ))}
                     </ul>
@@ -127,12 +127,10 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
         const driverStats = Object.entries(aggregateStats(data, 'driver')).map(([name, stat]) => ({ name, ...stat }));
 
         const metrics: RankingMetric[] = ['averageRating', 'punctualityRate', 'successRate', 'forcedOnSiteRate', 'forcedNoContactRate', 'webCompletionRate'];
-        const higherIsBetterMetrics: RankingMetric[] = ['averageRating', 'punctualityRate', 'webCompletionRate'];
 
         const getRankingsForAllMetrics = (stats: any[], filterFn: (item: any) => boolean = () => true) => {
             const filteredStats = stats.filter(filterFn);
             return metrics.reduce((acc, metric) => {
-                const direction = higherIsBetterMetrics.includes(metric) ? 'desc' : 'asc';
                 acc[metric] = getRankings(filteredStats, metric, 3);
                 return acc;
             }, {} as Record<RankingMetric, Ranking<any>>);
