@@ -115,7 +115,7 @@ export default function DashboardPage() {
 
     switch (activeView) {
       case "overview":
-        return <Overview data={filteredData} objectives={objectives} />;
+        return <Overview data={filteredData} objectives={objectives} setActiveView={setActiveView} />;
       case "depots":
         return <DepotAnalytics data={filteredData} objectives={objectives} />;
       case "warehouses":
@@ -127,7 +127,7 @@ export default function DashboardPage() {
       case "satisfaction":
         return <CustomerSatisfaction data={filteredData} objectives={objectives} />;
       default:
-        return <Overview data={filteredData} objectives={objectives} />;
+        return <Overview data={filteredData} objectives={objectives} setActiveView={setActiveView} />;
     }
   };
 
