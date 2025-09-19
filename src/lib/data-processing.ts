@@ -1,3 +1,4 @@
+
 import { type Delivery, type StatsByEntity, type AggregatedStats } from './definitions';
 import { WAREHOUSE_DEPOT_MAP, CARRIERS } from './constants';
 
@@ -70,8 +71,9 @@ export const processRawData = (rawData: any[]): Delivery[] => {
     
     const warehouse = (delivery.warehouse || 'Inconnu').trim();
     const depot = WAREHOUSE_DEPOT_MAP[warehouse] || 'Dépôt Inconnu';
-    const driver = (delivery.driver || '').trim();
-    const carrier = getCarrierFromDriver(driver || '');
+    const driverName = (delivery.driver || '').trim();
+    const driver = driverName ? `${driverName} (${depot})` : 'Livreur Inconnu';
+    const carrier = getCarrierFromDriver(driverName || '');
 
     let status = delivery.status;
     let failureReason = delivery.failureReason;
@@ -181,7 +183,16 @@ export const aggregateStats = (data: Delivery[], groupBy: keyof Delivery): Stats
   const statsByEntity: StatsByEntity = {};
   
   data.forEach((delivery) => {
-    const entityName = delivery[groupBy] as string || 'Inconnu';
+    let entityName: string;
+    if (groupBy === 'driver') {
+        // We use the raw driver name for aggregation to avoid splitting by depot
+        const rawDriverName = (delivery as any).driver.split(' (')[0];
+        const depot = (delivery as any).depot;
+        entityName = rawDriverName ? `${rawDriverName} (${depot})` : 'Livreur Inconnu';
+    } else {
+        entityName = delivery[groupBy] as string || 'Inconnu';
+    }
+
     if (!statsByEntity[entityName]) {
       statsByEntity[entityName] = createInitialStats();
     }
@@ -209,23 +220,20 @@ export type Ranking<T> = {
 export function getRankings<T extends {name: string} & AggregatedStats>(
     stats: T[],
     metric: RankingMetric,
-    take: number = 3,
+    take: number = 5,
 ): Ranking<T> {
 
     // Filter out entities that should not be ranked (e.g., no rated deliveries for averageRating)
     const validStats = stats.filter(s => {
-        if (metric === 'averageRating') return s.averageRating > 0;
+        if (metric === 'averageRating') return s.averageRating > 0 && s.ratedDeliveries > 0;
         return s.totalDeliveries > 0;
     });
 
     const higherIsBetter = ['averageRating', 'punctualityRate', 'webCompletionRate', 'successRate'].includes(metric);
     
-    // Invert metric for successRate to sort by failure rate
-    const getMetricValue = (stat: T) => metric === 'successRate' ? 100 - stat.successRate : stat[metric];
-
     const sorted = [...validStats].sort((a, b) => {
-        const valA = getMetricValue(a);
-        const valB = getMetricValue(b);
+        const valA = a[metric];
+        const valB = b[metric];
 
         if (valA !== valB) {
             // Main sorting based on metric value
@@ -236,8 +244,14 @@ export function getRankings<T extends {name: string} & AggregatedStats>(
         return b.totalDeliveries - a.totalDeliveries;
     });
 
+    if (sorted.length < 10) {
+        const top = sorted.slice(0, take);
+        const flop = sorted.slice(take).reverse(); // The rest are flops
+        return { top, flop };
+    }
+
     const top = sorted.slice(0, take);
-    const flop = sorted.reverse().slice(0, take);
+    const flop = sorted.slice(-take).reverse();
 
     return { top, flop };
 }

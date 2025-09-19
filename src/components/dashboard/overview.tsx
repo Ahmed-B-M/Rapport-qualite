@@ -7,17 +7,18 @@ import { type Objectives } from '@/app/page';
 import { getOverallStats, aggregateStats, getRankings, type Ranking, type RankingMetric } from '@/lib/data-processing';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { AlertCircle, Star, Timer, Ban, Globe, Target, PenSquare, PackageSearch, Building2, Truck, User, ThumbsDown, ThumbsUp, Warehouse } from 'lucide-react';
+import { AlertCircle, Star, Timer, Ban, Globe, Target, PenSquare, PackageSearch, Building2, Truck, User, ThumbsDown, ThumbsUp, Warehouse, TrendingDown, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 type RankingEntity<T> = T & { name: string } & AggregatedStats;
 
-const RankingCard = <T,>({ title, icon, rankings, metric, unit, onDrillDown }: {
+const RankingList = <T,>({ title, icon, rankings, metric, unit, isFlop, onDrillDown }: {
     title: string;
     icon: React.ElementType;
-    rankings: Ranking<RankingEntity<T>>;
+    rankings: (RankingEntity<T>)[];
     metric: RankingMetric;
     unit: string;
+    isFlop: boolean;
     onDrillDown?: (entityType: string) => void;
 }) => {
     const Icon = icon;
@@ -29,6 +30,21 @@ const RankingCard = <T,>({ title, icon, rankings, metric, unit, onDrillDown }: {
         }
         return `${value.toFixed(2)}${unit}`;
     };
+    
+    const getRecurrence = (item: RankingEntity<T>) => {
+        switch (metric) {
+            case 'successRate':
+                return `${item.failedDeliveries} échecs`;
+            case 'punctualityRate':
+                 return `${item.totalDeliveries - item.onTimeDeliveries} retards`;
+            case 'forcedOnSiteRate':
+                return `${item.forcedOnSiteCount} cas`;
+            case 'forcedNoContactRate':
+                return `${item.forcedNoContactCount} cas`;
+            default:
+                return `${item.totalDeliveries} livraisons`;
+        }
+    }
 
     return (
         <Card className="flex flex-col">
@@ -38,33 +54,22 @@ const RankingCard = <T,>({ title, icon, rankings, metric, unit, onDrillDown }: {
                         <Icon /> {title}
                     </CardTitle>
                     {onDrillDown && (
-                        <button onClick={() => onDrillDown(title.toLowerCase())} className="text-xs text-primary hover:underline">Voir plus</button>
+                        <button onClick={() => onDrillDown(title.toLowerCase().replace(/s$/, ''))} className="text-xs text-primary hover:underline">Voir plus</button>
                     )}
                 </div>
             </CardHeader>
-            <CardContent className="flex-grow grid grid-cols-2 gap-4">
-                <div>
-                    <h4 className="flex items-center gap-2 text-sm font-semibold text-green-600"><ThumbsUp size={14} /> Top 3</h4>
-                    <ul className="mt-2 space-y-2 text-xs">
-                        {rankings.top.map(item => (
-                            <li key={item.name} className="flex flex-col items-start">
-                                <span className="font-medium text-foreground">{item.name}</span>
-                                <Badge variant="secondary" className="font-mono mt-1">{formatValue(item[metric], metric)}</Badge>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-                 <div>
-                    <h4 className="flex items-center gap-2 text-sm font-semibold text-red-600"><ThumbsDown size={14} /> Flop 3</h4>
-                    <ul className="mt-2 space-y-2 text-xs">
-                        {rankings.flop.map(item => (
-                             <li key={item.name} className="flex flex-col items-start">
-                                <span className="font-medium text-foreground">{item.name}</span>
-                                <Badge variant="destructive" className="font-mono mt-1">{formatValue(item[metric], metric)}</Badge>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
+            <CardContent className="flex-grow">
+                 <ul className="space-y-2 text-xs">
+                    {rankings.map(item => (
+                        <li key={item.name} className="flex flex-col items-start">
+                            <span className="font-medium text-foreground">{item.name}</span>
+                            <div className="flex items-center gap-2">
+                                <Badge variant={isFlop ? "destructive" : "secondary"} className="font-mono mt-1">{formatValue(item[metric], metric)}</Badge>
+                                {isFlop && <span className="text-muted-foreground text-xs mt-1">({getRecurrence(item)})</span>}
+                            </div>
+                        </li>
+                    ))}
+                </ul>
             </CardContent>
         </Card>
     );
@@ -79,39 +84,87 @@ const ThematicRankingSection = ({ title, metric, unit, data, onDrillDown }: {
 }) => (
     <div>
         <h3 className="text-xl font-semibold font-headline mb-4">{title}</h3>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <RankingCard
-                title="Dépôts"
-                icon={Building2}
-                rankings={data.depots[metric]}
-                metric={metric}
-                unit={unit}
-                onDrillDown={() => onDrillDown('depots')}
-            />
-            <RankingCard
-                title="Entrepôts"
-                icon={Warehouse}
-                rankings={data.warehouses[metric]}
-                metric={metric}
-                unit={unit}
-                onDrillDown={() => onDrillDown('warehouses')}
-            />
-            <RankingCard
-                title="Transporteurs"
-                icon={Truck}
-                rankings={data.carriers[metric]}
-                metric={metric}
-                unit={unit}
-                onDrillDown={() => onDrillDown('carriers')}
-            />
-            <RankingCard
-                title="Livreurs"
-                icon={User}
-                rankings={data.drivers[metric]}
-                metric={metric}
-                unit={unit}
-                onDrillDown={() => onDrillDown('drivers')}
-            />
+        <div className="mb-6">
+            <h4 className="flex items-center gap-2 font-semibold text-green-600 mb-3"><TrendingUp /> Top 5</h4>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <RankingList
+                    title="Dépôts"
+                    icon={Building2}
+                    rankings={data.depots[metric].top}
+                    metric={metric}
+                    unit={unit}
+                    isFlop={false}
+                    onDrillDown={onDrillDown}
+                />
+                <RankingList
+                    title="Entrepôts"
+                    icon={Warehouse}
+                    rankings={data.warehouses[metric].top}
+                    metric={metric}
+                    unit={unit}
+                    isFlop={false}
+                    onDrillDown={onDrillDown}
+                />
+                <RankingList
+                    title="Transporteurs"
+                    icon={Truck}
+                    rankings={data.carriers[metric].top}
+                    metric={metric}
+                    unit={unit}
+                    isFlop={false}
+                    onDrillDown={onDrillDown}
+                />
+                <RankingList
+                    title="Livreurs"
+                    icon={User}
+                    rankings={data.drivers[metric].top}
+                    metric={metric}
+                    unit={unit}
+                    isFlop={false}
+                    onDrillDown={onDrillDown}
+                />
+            </div>
+        </div>
+         <div>
+            <h4 className="flex items-center gap-2 font-semibold text-red-600 mb-3"><TrendingDown /> Flop 5</h4>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <RankingList
+                    title="Dépôts"
+                    icon={Building2}
+                    rankings={data.depots[metric].flop}
+                    metric={metric}
+                    unit={unit}
+                    isFlop={true}
+                    onDrillDown={onDrillDown}
+                />
+                <RankingList
+                    title="Entrepôts"
+                    icon={Warehouse}
+                    rankings={data.warehouses[metric].flop}
+                    metric={metric}
+                    unit={unit}
+                    isFlop={true}
+                    onDrillDown={onDrillDown}
+                />
+                <RankingList
+                    title="Transporteurs"
+                    icon={Truck}
+                    rankings={data.carriers[metric].flop}
+                    metric={metric}
+                    unit={unit}
+                    isFlop={true}
+                    onDrillDown={onDrillDown}
+                />
+                <RankingList
+                    title="Livreurs"
+                    icon={User}
+                    rankings={data.drivers[metric].flop}
+                    metric={metric}
+                    unit={unit}
+                    isFlop={true}
+                    onDrillDown={onDrillDown}
+                />
+            </div>
         </div>
     </div>
 );
@@ -131,7 +184,7 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
         const getRankingsForAllMetrics = (stats: any[], filterFn: (item: any) => boolean = () => true) => {
             const filteredStats = stats.filter(filterFn);
             return metrics.reduce((acc, metric) => {
-                acc[metric] = getRankings(filteredStats, metric, 3);
+                acc[metric] = getRankings(filteredStats, metric, 5);
                 return acc;
             }, {} as Record<RankingMetric, Ranking<any>>);
         };
@@ -140,7 +193,7 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
             depots: getRankingsForAllMetrics(depotStats),
             warehouses: getRankingsForAllMetrics(warehouseStats),
             carriers: getRankingsForAllMetrics(carrierStats, c => c.name !== "Inconnu"),
-            drivers: getRankingsForAllMetrics(driverStats),
+            drivers: getRankingsForAllMetrics(driverStats, d => d.name !== "Livreur Inconnu"),
         };
     }, [data]);
     
