@@ -87,7 +87,29 @@
 @media print {
   @page {
     size: A4;
-    margin: 1cm;
+    margin: 1.5cm;
+  }
+  
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .no-print, 
+  #main-header, 
+  #sidebar-container,
+  [data-sidebar="trigger"],
+  [data-sidebar="rail"],
+  button[onclick*="handlePrintOverview"],
+  button[onclick*="handleReset"],
+  button[onclick*="setIsReportOpen"],
+  button[onclick*="setIsSettingsOpen"]
+   {
+    display: none !important;
+  }
+
+  .print-only {
+      display: block !important;
   }
 
   body * {
@@ -98,36 +120,40 @@
     visibility: visible;
   }
   
-  #main-header, #sidebar-container {
-      display: none;
-  }
-
   #main-content {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
+    padding: 0 !important;
+    margin: 0 !important;
   }
   
-  #main-content [role="tabpanel"][data-state="inactive"] {
-      display: block !important;
-  }
-
   .grid {
-    display: block !important;
+    display: grid !important;
   }
 
   .card {
     page-break-inside: avoid;
     box-shadow: none;
-    border: 1px solid #ccc;
+    border: 1px solid #e2e8f0;
   }
   
   .recharts-wrapper {
       width: 100% !important;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-      page-break-after: avoid;
+  .print-section {
+    page-break-inside: avoid;
   }
+
+  .print-title {
+    page-break-after: avoid;
+  }
+}
+
+@layer utilities {
+    .print-only {
+        display: none;
+    }
 }

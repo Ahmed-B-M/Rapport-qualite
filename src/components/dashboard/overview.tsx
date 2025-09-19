@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { AlertCircle, Star, Timer, Ban, Globe, Target, PenSquare, PackageSearch, Building2, Truck, User, Warehouse as WarehouseIcon, TrendingDown, TrendingUp, ChevronsRight } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
-import { Badge } from '@/components/ui/badge';
 
 type RankingEntity = { name: string } & AggregatedStats;
 
@@ -18,7 +17,7 @@ const CustomTooltip = ({ active, payload, label, metric, unit, isFlop }: any) =>
     if (active && payload && payload.length) {
         const data = payload[0].payload;
         const recurrence = getRecurrence(data, metric as RankingMetric, isFlop);
-        const value = formatValue(data[metric], metric as RankingMetric, unit);
+        const value = formatValue(data.value, metric as RankingMetric, unit);
         
         return (
             <div className="bg-background border border-border p-2 rounded-lg shadow-lg text-sm">
@@ -33,9 +32,6 @@ const CustomTooltip = ({ active, payload, label, metric, unit, isFlop }: any) =>
 
 const formatValue = (value: number, metric: RankingMetric, unit: string) => {
     if (metric === 'averageRating' && value === 0) return 'N/A';
-    if (metric === 'successRate') { 
-        return `${(100 - value).toFixed(2)}${unit}`;
-    }
     return `${value.toFixed(2)}${unit}`;
 };
 
@@ -91,7 +87,7 @@ const RankingChart = ({ title, icon, rankings, metric, unit, isFlop, onDrillDown
                 {chartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height={160}>
                         <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
-                            <XAxis type="number" hide />
+                            <XAxis type="number" dataKey="value" hide />
                             <YAxis 
                                 type="category" 
                                 dataKey="name" 
@@ -121,14 +117,16 @@ const RankingChart = ({ title, icon, rankings, metric, unit, isFlop, onDrillDown
 };
 
 
-const ThematicRankingSection = ({ data, metric, unit, onDrillDown }: {
+const ThematicRankingSection = ({ data, metric, unit, title, onDrillDown }: {
     data: any;
     metric: RankingMetric;
     unit: string;
+    title: string;
     onDrillDown: (view: string) => void;
 }) => (
     <div className="space-y-6">
-        <div>
+        <div className="print-section">
+            <h3 className="text-xl font-bold font-headline mb-4 print-title">{title}</h3>
             <h4 className="flex items-center gap-2 font-semibold text-green-600 mb-3"><TrendingUp /> Top 5</h4>
             <div className="grid gap-4 md:grid-cols-2">
                 <RankingChart
@@ -169,7 +167,7 @@ const ThematicRankingSection = ({ data, metric, unit, onDrillDown }: {
                 />
             </div>
         </div>
-         <div>
+         <div className="print-section">
             <h4 className="flex items-center gap-2 font-semibold text-red-600 mb-3"><TrendingDown /> Flop 5</h4>
             <div className="grid gap-4 md:grid-cols-2">
                 <RankingChart
@@ -223,7 +221,8 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
         const carrierStats = Object.entries(aggregateStats(data, 'carrier')).map(([name, stat]) => ({ name, ...stat }));
         const driverStats = Object.entries(aggregateStats(data, 'driver')).map(([name, stat]) => {
             const depot = data.find(d => d.driver === name)?.depot || '';
-            return { ...stat, name: `${name.replace(` (${depot})`,'')}`};
+            const driverName = name.replace(` (${depot})`,'')
+            return { ...stat, name: driverName ? `${driverName} (${depot})` : name };
         });
 
         const metrics: RankingMetric[] = ['averageRating', 'punctualityRate', 'successRate', 'forcedOnSiteRate', 'forcedNoContactRate', 'webCompletionRate'];
@@ -232,7 +231,7 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
             const filteredStats = stats.filter(filterFn);
             return metrics.reduce((acc, metric) => {
                 const take = 5;
-                const higherIsBetter = metric === 'averageRating' || metric === 'punctualityRate';
+                const higherIsBetter = !['successRate', 'forcedOnSiteRate', 'forcedNoContactRate', 'webCompletionRate'].includes(metric);
                 acc[metric] = getRankings(filteredStats, metric, take, higherIsBetter ? 'asc' : 'desc');
                 return acc;
             }, {} as Record<RankingMetric, Ranking<any>>);
@@ -263,7 +262,7 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
 
     return (
         <div className="space-y-8">
-            <div>
+            <div className="print-section">
                 <h2 className="text-2xl font-bold font-headline mb-4">Indicateurs Clés de Performance (KPIs)</h2>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <StatCard 
@@ -313,7 +312,7 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
                 </div>
             </div>
 
-            <div>
+            <div className="no-print">
                 <h2 className="text-2xl font-bold font-headline mb-6">Classements de Performance par Thématique</h2>
                 <Tabs defaultValue={rankingSections[0].metric}>
                     <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-6 mb-4">
@@ -327,6 +326,7 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
                     {rankingSections.map((section) => (
                         <TabsContent key={section.metric} value={section.metric}>
                             <ThematicRankingSection
+                                title={section.title}
                                 metric={section.metric}
                                 unit={section.unit}
                                 data={aggregatedData}
@@ -336,6 +336,21 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
                     ))}
                 </Tabs>
             </div>
+            
+            <div id="print-view" className="print-only space-y-12">
+                <h2 className="text-2xl font-bold font-headline mb-6">Classements de Performance par Thématique</h2>
+                {rankingSections.map((section) => (
+                     <ThematicRankingSection
+                        key={section.metric}
+                        title={section.title}
+                        metric={section.metric}
+                        unit={section.unit}
+                        data={aggregatedData}
+                        onDrillDown={() => {}}
+                    />
+                ))}
+            </div>
+
         </div>
     );
 }
