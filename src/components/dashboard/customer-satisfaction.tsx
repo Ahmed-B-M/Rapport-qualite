@@ -34,6 +34,7 @@ type EntitySatisfactionStats = {
     name: string;
     averageRating: number;
     totalRatings: number;
+    badRatings: number;
     ratingDistribution: RatingData[];
     comments: Comment[];
     negativeComments: Comment[];
@@ -58,17 +59,21 @@ type EntitySatisfactionStats = {
 }
 
 const getSatisfactionStats = (data: Delivery[], groupBy: GroupingKey): EntitySatisfactionStats[] => {
-    const entities: Record<string, { totalRating: number, count: number, comments: Comment[], ratingCounts: Record<number, number> }> = {};
+    const entities: Record<string, { totalRating: number, count: number, comments: Comment[], ratingCounts: Record<number, number>, badRatings: number }> = {};
 
     data.forEach(d => {
         if (d.deliveryRating) {
             const entityName = d[groupBy];
             if (!entities[entityName]) {
-                entities[entityName] = { totalRating: 0, count: 0, comments: [], ratingCounts: {1:0, 2:0, 3:0, 4:0, 5:0} };
+                entities[entityName] = { totalRating: 0, count: 0, comments: [], ratingCounts: {1:0, 2:0, 3:0, 4:0, 5:0}, badRatings: 0 };
             }
             entities[entityName].totalRating += d.deliveryRating;
             entities[entityName].count++;
             entities[entityName].ratingCounts[d.deliveryRating]++;
+            
+            if (d.deliveryRating <= 3) {
+                entities[entityName].badRatings++;
+            }
             
             if (d.feedbackComment) {
                 entities[entityName].comments.push({
@@ -88,6 +93,7 @@ const getSatisfactionStats = (data: Delivery[], groupBy: GroupingKey): EntitySat
         averageRating: stats.count > 0 ? stats.totalRating / stats.count : 0,
         totalRatings: stats.count,
         ratedDeliveries: stats.count,
+        badRatings: stats.badRatings,
         ratingDistribution: Object.entries(stats.ratingCounts).map(([rating, count]) => ({ name: `${rating} ★`, count })).reverse(),
         comments: stats.comments,
         negativeComments: stats.comments.filter(c => c.rating <= 3),
@@ -327,67 +333,72 @@ export function CustomerSatisfaction({ data, objectives }: { data: Delivery[], o
     const handleExcelExport = () => {
         const wb = XLSX.utils.book_new();
 
-        // 1. Detail par depot
-        const depotData = satisfactionStats.depot.map(d => ({
-            "Dépôt": d.name,
-            "Note Moyenne": d.averageRating.toFixed(2),
-            "Nombre de notes": d.totalRatings
-        }));
-        const depotSheet = XLSX.utils.json_to_sheet(depotData);
-        XLSX.utils.book_append_sheet(wb, depotSheet, "Satisfaction par Dépôt");
-
-        // 2. Detail par transporteur
-        const carrierData = satisfactionStats.carrier.map(c => ({
-            "Transporteur": c.name,
-            "Note Moyenne": c.averageRating.toFixed(2),
-            "Nombre de notes": c.totalRatings
-        }));
-        const carrierSheet = XLSX.utils.json_to_sheet(carrierData);
-        XLSX.utils.book_append_sheet(wb, carrierSheet, "Satisfaction par Transporteur");
-        
-        // 3. Classements
+        // Sheet 1: Rankings
         const depotRankings = getRankings(satisfactionStats.depot, 'averageRating', 5);
         const carrierRankings = getRankings(satisfactionStats.carrier, 'averageRating', 5);
         const driverRankings = getRankings(satisfactionStats.driver, 'averageRating', 10);
         
-        const formatRankingData = (ranking: any[], entityName: string) => 
+        const formatTopRankingData = (ranking: any[], entityName: string) => 
             ranking.map(r => ({
                 [entityName]: r.name,
                 "Note Moyenne": r.averageRating.toFixed(2),
                 "Nombre de notes": r.totalRatings
             }));
 
-        const depotRankingData = [
-            { "Classement Dépôts": "TOP 5" },
-            ...formatRankingData(depotRankings.top, "Dépôt"),
-            {},
-            { "Classement Dépôts": "FLOP 5" },
-            ...formatRankingData(depotRankings.flop, "Dépôt"),
-        ];
-        const depotRankingSheet = XLSX.utils.json_to_sheet(depotRankingData, {skipHeader: true});
-        XLSX.utils.book_append_sheet(wb, depotRankingSheet, "Classement Dépôts");
-        
-        const carrierRankingData = [
-            { "Classement Transporteurs": "TOP 5" },
-            ...formatRankingData(carrierRankings.top, "Transporteur"),
-            {},
-            { "Classement Transporteurs": "FLOP 5" },
-            ...formatRankingData(carrierRankings.flop, "Transporteur"),
-        ];
-        const carrierRankingSheet = XLSX.utils.json_to_sheet(carrierRankingData, {skipHeader: true});
-        XLSX.utils.book_append_sheet(wb, carrierRankingSheet, "Classement Transporteurs");
-        
-        const driverRankingData = [
-            { "Classement Livreurs": "TOP 10" },
-            ...formatRankingData(driverRankings.top, "Livreur"),
-            {},
-            { "Classement Livreurs": "FLOP 10" },
-            ...formatRankingData(driverRankings.flop, "Livreur"),
-        ];
-        const driverRankingSheet = XLSX.utils.json_to_sheet(driverRankingData, {skipHeader: true});
-        XLSX.utils.book_append_sheet(wb, driverRankingSheet, "Classement Livreurs");
+        const formatFlopRankingData = (ranking: any[], entityName: string) => 
+            ranking.map(r => ({
+                [entityName]: r.name,
+                "Note Moyenne": r.averageRating.toFixed(2),
+                "Nombre de notes": r.totalRatings,
+                "Mauvaises Notes (≤3★)": r.badRatings
+            }));
 
-        XLSX.writeFile(wb, "satisfaction_report.xlsx");
+        const rankingData: any[] = [
+            { "Classements": "Satisfaction Client" },
+            {},
+            { "Classements": "TOP 5 Dépôts" },
+            ...formatTopRankingData(depotRankings.top, "Dépôt"),
+            {},
+            { "Classements": "FLOP 5 Dépôts" },
+            ...formatFlopRankingData(depotRankings.flop, "Dépôt"),
+            {},
+            { "Classements": "TOP 5 Transporteurs" },
+            ...formatTopRankingData(carrierRankings.top, "Transporteur"),
+            {},
+            { "Classements": "FLOP 5 Transporteurs" },
+            ...formatFlopRankingData(carrierRankings.flop, "Transporteur"),
+            {},
+            { "Classements": "TOP 10 Livreurs" },
+            ...formatTopRankingData(driverRankings.top, "Livreur"),
+            {},
+            { "Classements": "FLOP 10 Livreurs" },
+            ...formatFlopRankingData(driverRankings.flop, "Livreur"),
+        ];
+
+        const rankingSheet = XLSX.utils.json_to_sheet(rankingData, {skipHeader: true});
+        XLSX.utils.book_append_sheet(wb, rankingSheet, "Classements Satisfaction");
+
+        // Sheet 2: Detail par depot
+        const depotData = satisfactionStats.depot.map(d => ({
+            "Dépôt": d.name,
+            "Note Moyenne": d.averageRating.toFixed(2),
+            "Nombre de notes": d.totalRatings,
+            "Mauvaises Notes (≤3★)": d.badRatings,
+        }));
+        const depotSheet = XLSX.utils.json_to_sheet(depotData);
+        XLSX.utils.book_append_sheet(wb, depotSheet, "Détail par Dépôt");
+
+        // Sheet 3: Detail par transporteur
+        const carrierData = satisfactionStats.carrier.map(c => ({
+            "Transporteur": c.name,
+            "Note Moyenne": c.averageRating.toFixed(2),
+            "Nombre de notes": c.totalRatings,
+            "Mauvaises Notes (≤3★)": c.badRatings,
+        }));
+        const carrierSheet = XLSX.utils.json_to_sheet(carrierData);
+        XLSX.utils.book_append_sheet(wb, carrierSheet, "Détail par Transporteur");
+        
+        XLSX.writeFile(wb, "rapport_satisfaction.xlsx");
     };
 
     return (
@@ -443,5 +454,3 @@ export function CustomerSatisfaction({ data, objectives }: { data: Delivery[], o
         </>
     );
 }
-
-    
