@@ -74,14 +74,14 @@ export const processRawData = (rawData: any[]): Delivery[] => {
     const carrier = getCarrierFromDriver(driver || '');
 
     let status = delivery.status;
+    let failureReason = delivery.failureReason;
     if (status === 'Livré') {
-        status = 'Livré';
+        failureReason = undefined;
     } else if (status === 'En attente') {
         status = 'En attente';
     } else {
         status = 'Non livré';
     }
-    const failureReason = status === 'Livré' ? undefined : delivery.failureReason;
 
     return {
       ...delivery,
@@ -179,9 +179,8 @@ const finalizeStats = (stats: AggregatedStats) => {
 
 export const aggregateStats = (data: Delivery[], groupBy: keyof Delivery): StatsByEntity => {
   const statsByEntity: StatsByEntity = {};
-  const dataForStats = data.filter(d => d.status !== 'En attente');
-
-  dataForStats.forEach((delivery) => {
+  
+  data.forEach((delivery) => {
     const entityName = delivery[groupBy] as string || 'Inconnu';
     if (!statsByEntity[entityName]) {
       statsByEntity[entityName] = createInitialStats();
@@ -211,41 +210,34 @@ export function getRankings<T extends {name: string} & AggregatedStats>(
     stats: T[],
     metric: RankingMetric,
     take: number = 3,
-    direction: 'asc' | 'desc' = 'desc'
 ): Ranking<T> {
-    const validStats = stats.filter(s => s.totalDeliveries > 0);
+
+    // Filter out entities that should not be ranked (e.g., no rated deliveries for averageRating)
+    const validStats = stats.filter(s => {
+        if (metric === 'averageRating') return s.averageRating > 0;
+        return s.totalDeliveries > 0;
+    });
+
+    const higherIsBetter = ['averageRating', 'punctualityRate', 'webCompletionRate', 'successRate'].includes(metric);
+    
+    // Invert metric for successRate to sort by failure rate
+    const getMetricValue = (stat: T) => metric === 'successRate' ? 100 - stat.successRate : stat[metric];
 
     const sorted = [...validStats].sort((a, b) => {
-        const valA = metric === 'successRate' ? 100 - a.successRate : a[metric];
-        const valB = metric === 'successRate' ? 100 - b.successRate : b[metric];
-        
-        // For 'flop', lower is better for these metrics
-        if (['successRate', 'forcedOnSiteRate', 'forcedNoContactRate'].includes(metric)) {
-             if (direction === 'desc') return valB - valA;
-             return valA - valB;
+        const valA = getMetricValue(a);
+        const valB = getMetricValue(b);
+
+        if (valA !== valB) {
+            // Main sorting based on metric value
+            return higherIsBetter ? valB - valA : valA - valB;
         }
-
-        // For 'top', higher is better
-        if (direction === 'desc') return valB - valA;
-        return valA - valB;
+        
+        // Secondary sorting based on total deliveries
+        return b.totalDeliveries - a.totalDeliveries;
     });
 
-    const topDirection = ['averageRating', 'punctualityRate', 'webCompletionRate'].includes(metric) ? 'desc' : 'asc';
-
-    const topSorted = [...validStats].filter(s => metric === 'averageRating' ? s.averageRating > 0 : true).sort((a, b) => {
-         const valA = metric === 'successRate' ? 100 - a.successRate : a[metric];
-         const valB = metric === 'successRate' ? 100 - b.successRate : b[metric];
-         return topDirection === 'desc' ? valB - valA : valA - valB;
-    });
-    
-    const flopSorted = [...validStats].filter(s => metric === 'averageRating' ? s.averageRating > 0 : true).sort((a, b) => {
-         const valA = metric === 'successRate' ? 100 - a.successRate : a[metric];
-         const valB = metric === 'successRate' ? 100 - b.successRate : b[metric];
-         return topDirection === 'desc' ? valA - valB : valB - valA;
-    });
-
-    const top = topSorted.slice(0, take);
-    const flop = flopSorted.slice(0, take);
+    const top = sorted.slice(0, take);
+    const flop = sorted.reverse().slice(0, take);
 
     return { top, flop };
 }
