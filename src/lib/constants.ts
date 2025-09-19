@@ -54,10 +54,10 @@ export const WAREHOUSE_DEPOT_MAP: Record<string, string> = {
 };
 
 export const CARRIERS = [
-    { name: 'GPL', suffixes: ['7'] },
-    { name: 'GPC', suffixes: ['8'] },
     { name: 'BC one', suffixes: ['3'] },
     { name: 'DUB', suffixes: ['0'] },
+    { name: 'GPC', suffixes: ['8'] },
+    { name: 'GPL', suffixes: ['7'] },
     { name: 'RK', suffixes: ['6'] },
     { name: 'Express', suffixes: ['2'] },
     { name: 'MLG', suffixes: ['5'] },

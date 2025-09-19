@@ -21,15 +21,49 @@ const HEADER_MAPPING: Record<string, keyof Delivery> = {
 
 const getCarrierFromDriver = (driverName: string): string => {
     if (!driverName) return 'Unknown';
-    const driverSuffix = driverName.trim().split(' ').pop() || '';
+
+    const name = driverName.trim();
+    
+    // Check for carriers with numeric suffixes first
+    for (const carrier of CARRIERS) {
+        for (const suffix of carrier.suffixes) {
+            if (suffix && name.endsWith(suffix)) {
+                // Check if the character before the suffix is not a space, if so, it's attached
+                const suffixIndex = name.lastIndexOf(suffix);
+                if (suffixIndex > 0) {
+                     return carrier.name;
+                }
+            }
+        }
+    }
+
+    const driverParts = name.split(' ');
+    const driverSuffix = driverParts.pop() || '';
+
     for (const carrier of CARRIERS) {
         if (carrier.suffixes.includes(driverSuffix)) {
             return carrier.name;
         }
     }
-    // Handle cases where there is no suffix, could be ID LOGISTICS or Unknown
-    if (!isNaN(parseInt(driverSuffix))) return 'Unknown Carrier';
     
+    // Handle cases where there is no suffix or it's not a recognized numeric suffix
+    // ID LOGISTICS has an empty suffix and would have been matched if the name was just the name without suffix.
+    if (CARRIERS.find(c => c.name === 'ID LOGISTICS')?.suffixes.includes('')) {
+        const idLogisticsCarrier = CARRIERS.find(c => c.name === 'ID LOGISTICS');
+        if (idLogisticsCarrier) {
+             // Check if it's not another carrier by checking if the last part is not a number suffix of another carrier
+            let isOtherCarrier = false;
+            for (const c of CARRIERS) {
+                if (c.suffixes.some(s => s && name.endsWith(s))) {
+                    isOtherCarrier = true;
+                    break;
+                }
+            }
+            if (!isOtherCarrier) return idLogisticsCarrier.name;
+        }
+    }
+    
+    // Default to ID LOGISTICS if no other carrier matches.
     return 'ID LOGISTICS';
 };
 
