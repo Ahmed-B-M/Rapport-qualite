@@ -55,8 +55,6 @@ const getCarrierFromDriver = (driverName: string): string => {
         }
     }
     
-    // If no specific suffix matches, mark as 'Inconnu' for review.
-    // This avoids incorrect assignment to a default carrier.
     return 'Inconnu';
 };
 
@@ -145,7 +143,6 @@ const updateStats = (stats: AggregatedStats, delivery: Delivery) => {
         }
     }
 
-    // Punctuality is now between -15 and +15 minutes
     if (delivery.delaySeconds >= -900 && delivery.delaySeconds <= 900) {
         stats.onTimeDeliveries++;
     }
@@ -216,16 +213,39 @@ export function getRankings<T extends {name: string} & AggregatedStats>(
     take: number = 3,
     direction: 'asc' | 'desc' = 'desc'
 ): Ranking<T> {
-    const sorted = [...stats].sort((a, b) => {
-        if (direction === 'desc') {
-            return b[metric] - a[metric];
-        } else {
-            return a[metric] - b[metric];
+    const validStats = stats.filter(s => s.totalDeliveries > 0);
+
+    const sorted = [...validStats].sort((a, b) => {
+        const valA = metric === 'successRate' ? 100 - a.successRate : a[metric];
+        const valB = metric === 'successRate' ? 100 - b.successRate : b[metric];
+        
+        // For 'flop', lower is better for these metrics
+        if (['successRate', 'forcedOnSiteRate', 'forcedNoContactRate'].includes(metric)) {
+             if (direction === 'desc') return valB - valA;
+             return valA - valB;
         }
+
+        // For 'top', higher is better
+        if (direction === 'desc') return valB - valA;
+        return valA - valB;
     });
 
-    const top = sorted.slice(0, take);
-    const flop = sorted.slice(-take).reverse();
+    const topDirection = ['averageRating', 'punctualityRate', 'webCompletionRate'].includes(metric) ? 'desc' : 'asc';
+
+    const topSorted = [...validStats].sort((a, b) => {
+         const valA = metric === 'successRate' ? 100 - a.successRate : a[metric];
+         const valB = metric === 'successRate' ? 100 - b.successRate : b[metric];
+         return topDirection === 'desc' ? valB - valA : valA - valB;
+    });
+    
+    const flopSorted = [...validStats].sort((a, b) => {
+         const valA = metric === 'successRate' ? 100 - a.successRate : a[metric];
+         const valB = metric === 'successRate' ? 100 - b.successRate : b[metric];
+         return topDirection === 'desc' ? valA - valB : valB - valA;
+    });
+
+    const top = topSorted.slice(0, take);
+    const flop = flopSorted.slice(0, take);
 
     return { top, flop };
 }
