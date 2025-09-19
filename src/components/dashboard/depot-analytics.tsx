@@ -103,6 +103,7 @@ export function DepotAnalytics({ data, objectives }: { data: Delivery[], objecti
 
     const RankingList = ({ title, ranking, metric, unit, higherIsBetter }: { title: string, ranking: Ranking<DepotStat>, metric: RankingMetric, unit: string, higherIsBetter: boolean }) => {
         const formatValue = (value: number) => {
+            if (metric === 'averageRating' && value === 0) return 'N/A';
             return value.toFixed(2) + unit;
         }
 

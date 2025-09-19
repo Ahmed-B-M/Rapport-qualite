@@ -71,7 +71,7 @@ export const processRawData = (rawData: any[]): Delivery[] => {
     const warehouse = (delivery.warehouse || 'Inconnu').trim();
     const depot = WAREHOUSE_DEPOT_MAP[warehouse] || 'Dépôt Inconnu';
     const driver = (delivery.driver || '').trim();
-    const carrier = getCarrierFromDriver(driver);
+    const carrier = getCarrierFromDriver(driver || '');
 
     let status = delivery.status;
     if (status === 'Livré') {
@@ -232,13 +232,13 @@ export function getRankings<T extends {name: string} & AggregatedStats>(
 
     const topDirection = ['averageRating', 'punctualityRate', 'webCompletionRate'].includes(metric) ? 'desc' : 'asc';
 
-    const topSorted = [...validStats].sort((a, b) => {
+    const topSorted = [...validStats].filter(s => metric === 'averageRating' ? s.averageRating > 0 : true).sort((a, b) => {
          const valA = metric === 'successRate' ? 100 - a.successRate : a[metric];
          const valB = metric === 'successRate' ? 100 - b.successRate : b[metric];
          return topDirection === 'desc' ? valB - valA : valA - valB;
     });
     
-    const flopSorted = [...validStats].sort((a, b) => {
+    const flopSorted = [...validStats].filter(s => metric === 'averageRating' ? s.averageRating > 0 : true).sort((a, b) => {
          const valA = metric === 'successRate' ? 100 - a.successRate : a[metric];
          const valB = metric === 'successRate' ? 100 - b.successRate : b[metric];
          return topDirection === 'desc' ? valA - valB : valB - valA;

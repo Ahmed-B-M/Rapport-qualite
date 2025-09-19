@@ -22,7 +22,8 @@ const RankingCard = <T,>({ title, icon, rankings, metric, unit, onDrillDown }: {
 }) => {
     const Icon = icon;
 
-    const formatValue = (value: number) => {
+    const formatValue = (value: number, metric: RankingMetric) => {
+        if (metric === 'averageRating' && value === 0) return 'N/A';
         if (metric === 'successRate') { 
             return `${(100 - value).toFixed(2)}${unit}`;
         }
@@ -48,7 +49,7 @@ const RankingCard = <T,>({ title, icon, rankings, metric, unit, onDrillDown }: {
                         {rankings.top.map(item => (
                             <li key={item.name} className="flex justify-between items-center">
                                 <span className="truncate pr-2">{item.name}</span>
-                                <Badge variant="secondary" className="font-mono">{formatValue(item[metric])}</Badge>
+                                <Badge variant="secondary" className="font-mono">{formatValue(item[metric], metric)}</Badge>
                             </li>
                         ))}
                     </ul>
@@ -59,7 +60,7 @@ const RankingCard = <T,>({ title, icon, rankings, metric, unit, onDrillDown }: {
                         {rankings.flop.map(item => (
                             <li key={item.name} className="flex justify-between items-center">
                                 <span className="truncate pr-2">{item.name}</span>
-                                <Badge variant="destructive" className="font-mono">{formatValue(item[metric])}</Badge>
+                                <Badge variant="destructive" className="font-mono">{formatValue(item[metric], metric)}</Badge>
                             </li>
                         ))}
                     </ul>
