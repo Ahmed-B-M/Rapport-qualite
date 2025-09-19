@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { type Delivery } from "@/lib/definitions";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
@@ -13,7 +13,7 @@ import { DriverAnalytics } from "@/components/dashboard/driver-analytics";
 import { CustomerSatisfaction } from "@/components/dashboard/customer-satisfaction";
 import { ReportDisplay } from "@/components/dashboard/report-display";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, AlertTriangle, Settings, FileText } from "lucide-react";
+import { Loader2, AlertTriangle, Settings, FileText, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -53,6 +53,8 @@ export default function DashboardPage() {
     forcedNoContactRate: 10,
     webCompletionRate: 1,
   });
+  const overviewRef = useRef<HTMLDivElement>(null);
+
 
   const handleDataUploaded = (processedData: Delivery[], error?: string) => {
     if (error) {
@@ -85,6 +87,10 @@ export default function DashboardPage() {
     };
     setObjectives(newObjectives);
     setIsSettingsOpen(false);
+  };
+
+  const handlePrintOverview = () => {
+    window.print();
   };
 
   const filteredData = useMemo(() => {
@@ -125,7 +131,7 @@ export default function DashboardPage() {
 
     switch (activeView) {
       case "overview":
-        return <Overview data={filteredData} objectives={objectives} setActiveView={setActiveView} />;
+        return <div ref={overviewRef}><Overview data={filteredData} objectives={objectives} setActiveView={setActiveView} /></div>;
       case "depots":
         return <DepotAnalytics data={filteredData} objectives={objectives} />;
       case "warehouses":
@@ -137,16 +143,18 @@ export default function DashboardPage() {
       case "satisfaction":
         return <CustomerSatisfaction data={filteredData} objectives={objectives} />;
       default:
-        return <Overview data={filteredData} objectives={objectives} setActiveView={setActiveView} />;
+        return <div ref={overviewRef}><Overview data={filteredData} objectives={objectives} setActiveView={setActiveView} /></div>;
     }
   };
 
   return (
     <SidebarProvider>
-      <DashboardSidebar activeView={activeView} setActiveView={setActiveView} />
+      <div id="sidebar-container">
+        <DashboardSidebar activeView={activeView} setActiveView={setActiveView} />
+      </div>
       <SidebarInset>
         <div className="p-4 sm:p-6 lg:p-8">
-            <header className="flex items-center justify-between mb-8">
+            <header id="main-header" className="flex items-center justify-between mb-8">
                 <div>
                     <h1 className="text-3xl font-bold font-headline text-primary">Tableau de Bord Carrefour</h1>
                     <p className="text-muted-foreground">Téléchargez et analysez les données sur les performances de vos livraisons.</p>
@@ -162,6 +170,12 @@ export default function DashboardPage() {
                             <FileText className="mr-2 h-4 w-4" />
                             Générer un rapport
                         </Button>
+                        {activeView === 'overview' && (
+                           <Button variant="outline" onClick={handlePrintOverview}>
+                                <Printer className="mr-2 h-4 w-4" />
+                                Imprimer l'aperçu
+                           </Button>
+                        )}
                         <Button variant="outline" onClick={handleReset}>Nouveau fichier</Button>
                       </>
                     )}
@@ -170,7 +184,9 @@ export default function DashboardPage() {
                     </Button>
                 </div>
             </header>
-            {renderContent()}
+            <main id="main-content">
+              {renderContent()}
+            </main>
         </div>
       </SidebarInset>
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
