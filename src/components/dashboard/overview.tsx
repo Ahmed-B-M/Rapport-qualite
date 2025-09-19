@@ -36,6 +36,7 @@ const formatValue = (value: number, metric: RankingMetric, unit: string) => {
 };
 
 const getRecurrence = (item: RankingEntity, metric: RankingMetric, isFlop: boolean) => {
+    if (!item) return '';
     switch (metric) {
         case 'successRate':
             return isFlop ? `${item.failedDeliveries} échecs` : `${item.successfulDeliveries} succès`;
