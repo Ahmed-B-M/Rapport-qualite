@@ -108,6 +108,10 @@
     top: 0;
     width: 100%;
   }
+  
+  #main-content [data-state="inactive"] {
+    display: block !important;
+  }
 
   .grid {
     display: block !important;
