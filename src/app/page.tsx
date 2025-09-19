@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { type Delivery } from "@/lib/definitions";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+
 
 export type Objectives = {
     averageRating: number;
@@ -39,6 +41,7 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState("overview");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [excludeMagasin, setExcludeMagasin] = useState(false);
   const [objectives, setObjectives] = useState<Objectives>({
     averageRating: 4.8,
     punctualityRate: 95,
@@ -78,6 +81,14 @@ export default function DashboardPage() {
     setIsSettingsOpen(false);
   };
 
+  const filteredData = useMemo(() => {
+    if (!data) return null;
+    if (excludeMagasin) {
+      return data.filter(d => d.depot !== 'Magasin');
+    }
+    return data;
+  }, [data, excludeMagasin]);
+
   const renderContent = () => {
     if (loading) {
       return (
@@ -98,25 +109,25 @@ export default function DashboardPage() {
       );
     }
 
-    if (!data) {
+    if (!filteredData) {
       return <FileUploader onDataUploaded={handleDataUploaded} setLoading={setLoading} />;
     }
 
     switch (activeView) {
       case "overview":
-        return <Overview data={data} objectives={objectives} />;
+        return <Overview data={filteredData} objectives={objectives} />;
       case "depots":
-        return <DepotAnalytics data={data} />;
+        return <DepotAnalytics data={filteredData} />;
       case "warehouses":
-        return <WarehouseAnalytics data={data} />;
+        return <WarehouseAnalytics data={filteredData} />;
       case "carriers":
-        return <CarrierAnalytics data={data} />;
+        return <CarrierAnalytics data={filteredData} />;
       case "drivers":
-        return <DriverAnalytics data={data} />;
+        return <DriverAnalytics data={filteredData} />;
       case "satisfaction":
-        return <CustomerSatisfaction data={data} />;
+        return <CustomerSatisfaction data={filteredData} />;
       default:
-        return <Overview data={data} objectives={objectives} />;
+        return <Overview data={filteredData} objectives={objectives} />;
     }
   };
 
@@ -130,9 +141,15 @@ export default function DashboardPage() {
                     <h1 className="text-3xl font-bold font-headline text-primary">Tableau de Bord Carrefour</h1>
                     <p className="text-muted-foreground">Téléchargez et analysez les données sur les performances de vos livraisons.</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-4">
                     {data && (
-                        <Button variant="outline" onClick={handleReset}>Télécharger un nouveau fichier</Button>
+                      <>
+                        <div className="flex items-center space-x-2">
+                          <Switch id="exclude-magasin" checked={excludeMagasin} onCheckedChange={setExcludeMagasin} />
+                          <Label htmlFor="exclude-magasin">Exclure Magasin</Label>
+                        </div>
+                        <Button variant="outline" onClick={handleReset}>Nouveau fichier</Button>
+                      </>
                     )}
                      <Button variant="ghost" size="icon" onClick={() => setIsSettingsOpen(true)}>
                         <Settings />
