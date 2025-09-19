@@ -7,7 +7,7 @@ import { type Objectives } from '@/app/page';
 import { getOverallStats, aggregateStats, getRankings, type Ranking, type RankingMetric } from '@/lib/data-processing';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { AlertCircle, Star, Timer, Ban, Globe, Target, PenSquare, PackageSearch, Building2, Truck, User, Warehouse as WarehouseIcon, TrendingDown, TrendingUp, ChevronsRight } from 'lucide-react';
+import { AlertCircle, Star, Timer, Ban, Globe, Target, PenSquare, PackageSearch, Building2, Truck, User, Warehouse as WarehouseIcon, TrendingDown, TrendingUp, ChevronsRight, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 
@@ -53,16 +53,12 @@ const getRecurrence = (item: RankingEntity, metric: RankingMetric, isFlop: boole
     }
 };
 
-const RankingChart = ({ title, icon, rankings, metric, unit, isFlop, onDrillDown }: {
-    title: string;
-    icon: React.ElementType;
+const RankingChart = ({ rankings, metric, unit, isFlop }: {
     rankings: RankingEntity[];
     metric: RankingMetric;
     unit: string;
     isFlop: boolean;
-    onDrillDown?: (entityType: string) => void;
 }) => {
-    const Icon = icon;
     const chartData = useMemo(() => rankings.map(item => ({
         name: item.name,
         value: metric === 'successRate' ? 100 - item.successRate : item[metric],
@@ -70,49 +66,35 @@ const RankingChart = ({ title, icon, rankings, metric, unit, isFlop, onDrillDown
     })), [rankings, metric]);
 
     return (
-        <Card>
-            <CardHeader>
-                <div className="flex justify-between items-center">
-                    <CardTitle className="flex items-center gap-2 text-md">
-                        <Icon /> {title}
-                    </CardTitle>
-                    {onDrillDown && (
-                        <button onClick={() => onDrillDown(title.toLowerCase().replace(/s$/, ''))} className="text-xs text-primary hover:underline flex items-center gap-1">
-                            Voir plus <ChevronsRight className="h-3 w-3"/>
-                        </button>
-                    )}
+        <div>
+            {chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={160}>
+                    <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 45, left: 10, bottom: 0 }}>
+                        <XAxis type="number" dataKey="value" hide />
+                        <YAxis 
+                            type="category" 
+                            dataKey="name" 
+                            stroke="hsl(var(--muted-foreground))"
+                            fontSize={11}
+                            tickLine={false}
+                            axisLine={false}
+                            width={80}
+                            tickFormatter={(value) => value.length > 12 ? `${value.substring(0, 12)}...` : value}
+                        />
+                        <Tooltip content={<CustomTooltip metric={metric} unit={unit} isFlop={isFlop} />} cursor={{fill: 'hsl(var(--muted))'}} />
+                        <Bar dataKey="value" barSize={16}>
+                             {chartData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={isFlop ? "hsl(var(--destructive))" : "hsl(var(--primary))"} radius={[0, 4, 4, 0]} />
+                            ))}
+                        </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
+            ) : (
+                <div className="flex items-center justify-center h-40 text-sm text-muted-foreground">
+                    Pas de données à afficher
                 </div>
-            </CardHeader>
-            <CardContent>
-                {chartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={160}>
-                        <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
-                            <XAxis type="number" dataKey="value" hide />
-                            <YAxis 
-                                type="category" 
-                                dataKey="name" 
-                                stroke="hsl(var(--muted-foreground))"
-                                fontSize={11}
-                                tickLine={false}
-                                axisLine={false}
-                                width={80}
-                                tickFormatter={(value) => value.length > 12 ? `${value.substring(0, 12)}...` : value}
-                            />
-                            <Tooltip content={<CustomTooltip metric={metric} unit={unit} isFlop={isFlop} />} cursor={{fill: 'hsl(var(--muted))'}} />
-                            <Bar dataKey="value" barSize={20}>
-                                 {chartData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={isFlop ? "hsl(var(--destructive))" : "hsl(var(--primary))"} radius={[0, 4, 4, 0]} />
-                                ))}
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
-                ) : (
-                    <div className="flex items-center justify-center h-40 text-sm text-muted-foreground">
-                        Pas de données à afficher
-                    </div>
-                )}
-            </CardContent>
-        </Card>
+            )}
+        </div>
     );
 };
 
@@ -123,93 +105,58 @@ const ThematicRankingSection = ({ data, metric, unit, title, onDrillDown }: {
     unit: string;
     title: string;
     onDrillDown: (view: string) => void;
-}) => (
-    <div className="space-y-6">
-        <div className="print-section">
+}) => {
+    const entityTypes = [
+        { id: 'depots', name: 'Dépôts', icon: Building2 },
+        { id: 'warehouses', name: 'Entrepôts', icon: WarehouseIcon },
+        { id: 'carriers', name: 'Transporteurs', icon: Truck },
+        { id: 'drivers', name: 'Livreurs', icon: User },
+    ];
+    
+    return (
+        <div className="space-y-6">
             <h3 className="text-xl font-bold font-headline mb-4 print-title">{title}</h3>
-            <h4 className="flex items-center gap-2 font-semibold text-green-600 mb-3"><TrendingUp /> Top 5</h4>
-            <div className="grid gap-4 md:grid-cols-2">
-                <RankingChart
-                    title="Dépôts"
-                    icon={Building2}
-                    rankings={data.depots[metric].top}
-                    metric={metric}
-                    unit={unit}
-                    isFlop={false}
-                    onDrillDown={onDrillDown}
-                />
-                <RankingChart
-                    title="Entrepôts"
-                    icon={WarehouseIcon}
-                    rankings={data.warehouses[metric].top}
-                    metric={metric}
-                    unit={unit}
-                    isFlop={false}
-                    onDrillDown={onDrillDown}
-                />
-                <RankingChart
-                    title="Transporteurs"
-                    icon={Truck}
-                    rankings={data.carriers[metric].top}
-                    metric={metric}
-                    unit={unit}
-                    isFlop={false}
-                    onDrillDown={onDrillDown}
-                />
-                <RankingChart
-                    title="Livreurs"
-                    icon={User}
-                    rankings={data.drivers[metric].top}
-                    metric={metric}
-                    unit={unit}
-                    isFlop={false}
-                    onDrillDown={onDrillDown}
-                />
+            <div className="grid gap-6 md:grid-cols-2">
+                {entityTypes.map(entity => (
+                    <Card key={entity.id} className="print-section">
+                        <CardHeader>
+                             <div className="flex justify-between items-center">
+                                <CardTitle className="flex items-center gap-2 text-md">
+                                    <entity.icon /> {entity.name}
+                                </CardTitle>
+                                {onDrillDown && (
+                                    <button onClick={() => onDrillDown(entity.id)} className="text-xs text-primary hover:underline flex items-center gap-1 no-print">
+                                        Voir plus <ChevronsRight className="h-3 w-3"/>
+                                    </button>
+                                )}
+                            </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div>
+                                <h4 className="flex items-center gap-2 font-semibold text-green-600 mb-2"><ThumbsUp /> Top 5</h4>
+                                <RankingChart
+                                    rankings={data[entity.id][metric].top}
+                                    metric={metric}
+                                    unit={unit}
+                                    isFlop={false}
+                                />
+                            </div>
+                            <div>
+                                <h4 className="flex items-center gap-2 font-semibold text-red-600 mb-2"><ThumbsDown /> Flop 5</h4>
+                                <RankingChart
+                                    rankings={data[entity.id][metric].flop}
+                                    metric={metric}
+                                    unit={unit}
+                                    isFlop={true}
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
             </div>
         </div>
-         <div className="print-section">
-            <h4 className="flex items-center gap-2 font-semibold text-red-600 mb-3"><TrendingDown /> Flop 5</h4>
-            <div className="grid gap-4 md:grid-cols-2">
-                <RankingChart
-                    title="Dépôts"
-                    icon={Building2}
-                    rankings={data.depots[metric].flop}
-                    metric={metric}
-                    unit={unit}
-                    isFlop={true}
-                    onDrillDown={onDrillDown}
-                />
-                <RankingChart
-                    title="Entrepôts"
-                    icon={WarehouseIcon}
-                    rankings={data.warehouses[metric].flop}
-                    metric={metric}
-                    unit={unit}
-                    isFlop={true}
-                    onDrillDown={onDrillDown}
-                />
-                <RankingChart
-                    title="Transporteurs"
-                    icon={Truck}
-                    rankings={data.carriers[metric].flop}
-                    metric={metric}
-                    unit={unit}
-                    isFlop={true}
-                    onDrillDown={onDrillDown}
-                />
-                <RankingChart
-                    title="Livreurs"
-                    icon={User}
-                    rankings={data.drivers[metric].flop}
-                    metric={metric}
-                    unit={unit}
-                    isFlop={true}
-                    onDrillDown={onDrillDown}
-                />
-            </div>
-        </div>
-    </div>
-);
+    );
+};
 
 
 export function Overview({ data, objectives, setActiveView }: { data: Delivery[], objectives: Objectives, setActiveView?: (view: string) => void }) {
@@ -219,11 +166,7 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
         const depotStats = Object.entries(aggregateStats(data, 'depot')).map(([name, stat]) => ({ name, ...stat }));
         const warehouseStats = Object.entries(aggregateStats(data, 'warehouse')).map(([name, stat]) => ({ name, ...stat }));
         const carrierStats = Object.entries(aggregateStats(data, 'carrier')).map(([name, stat]) => ({ name, ...stat }));
-        const driverStats = Object.entries(aggregateStats(data, 'driver')).map(([name, stat]) => {
-            const depot = data.find(d => d.driver === name)?.depot || '';
-            const driverName = name.replace(` (${depot})`,'')
-            return { ...stat, name: driverName ? `${driverName} (${depot})` : name };
-        });
+        const driverStats = Object.entries(aggregateStats(data, 'driver')).map(([name, stat]) => ({ name, ...stat }));
 
         const metrics: RankingMetric[] = ['averageRating', 'punctualityRate', 'successRate', 'forcedOnSiteRate', 'forcedNoContactRate', 'webCompletionRate'];
 
@@ -346,7 +289,7 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
                         metric={section.metric}
                         unit={section.unit}
                         data={aggregatedData}
-                        onDrillDown={() => {}}
+                        onDrillDown={() => {}} // No drill-down in print view
                     />
                 ))}
             </div>
@@ -354,3 +297,5 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
         </div>
     );
 }
+
+    
