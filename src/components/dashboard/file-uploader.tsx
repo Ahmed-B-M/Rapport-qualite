@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useDropzone } from "react-dropzone-legacy";
+import { useDropzone } from "react-dropzone";
 import { UploadCloud, FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
 import { processRawData } from "@/lib/data-processing";
