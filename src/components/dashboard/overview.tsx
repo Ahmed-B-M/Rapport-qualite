@@ -5,13 +5,14 @@ import { type Delivery } from '@/lib/definitions';
 import { type Objectives } from '@/app/page';
 import { getOverallStats, aggregateStats } from '@/lib/data-processing';
 import { StatCard } from '@/components/dashboard/stat-card';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { AlertCircle, Star, Timer, Ban, Globe, Target, PenSquare } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { Bar, Pie, Cell, PieChart, BarChart as RechartsBarChart, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 export function Overview({ data, objectives }: { data: Delivery[], objectives: Objectives }) {
     const overallStats = useMemo(() => getOverallStats(data), [data]);
+    
     const statsByDay = useMemo(() => {
         const grouped = data.reduce((acc, curr) => {
             const day = new Date(curr.date).toLocaleDateString('en-CA');
@@ -35,6 +36,22 @@ export function Overview({ data, objectives }: { data: Delivery[], objectives: O
         }));
     }, [data]);
 
+    const carrierPerformance = useMemo(() => {
+        const stats = aggregateStats(data, 'carrier');
+        return Object.entries(stats).map(([name, stat]) => ({
+            name,
+            failureRate: 100 - stat.successRate,
+        })).sort((a, b) => b.failureRate - a.failureRate).slice(0, 5);
+    }, [data]);
+
+    const topFailureReasons = useMemo(() => {
+        const reasons = getOverallStats(data).failureReasons;
+        return Object.entries(reasons)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a,b) => b.value - a.value)
+            .slice(0, 5);
+    }, [data]);
+
     const pieColors = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))"];
 
     return (
@@ -49,8 +66,8 @@ export function Overview({ data, objectives }: { data: Delivery[], objectives: O
                 <StatCard title="Validation Web" value={`${overallStats.webCompletionRate.toFixed(2)}%`} icon={Globe} />
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                <Card className="lg:col-span-4">
+            <div className="grid gap-4 lg:grid-cols-2">
+                 <Card>
                     <CardHeader>
                         <CardTitle>Livraisons au fil du temps</CardTitle>
                     </CardHeader>
@@ -67,11 +84,44 @@ export function Overview({ data, objectives }: { data: Delivery[], objectives: O
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
-                <Card className="lg:col-span-3">
+                <div className="grid gap-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Taux d'échec par transporteur</CardTitle>
+                            <CardDescription>Top 5 des transporteurs avec le taux d'échec le plus élevé.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ResponsiveContainer width="100%" height={150}>
+                                <RechartsBarChart data={carrierPerformance} layout="vertical">
+                                    <XAxis type="number" dataKey="failureRate" unit="%" hide />
+                                    <YAxis type="category" dataKey="name" width={80} tick={{fontSize: 12}} />
+                                    <Tooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }} formatter={(value) => `${(value as number).toFixed(2)}%`} />
+                                    <Bar dataKey="failureRate" fill="hsl(var(--destructive))" name="Taux d'échec" radius={[0, 4, 4, 0]} />
+                                </RechartsBarChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Top 5 des raisons d'échec</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                             <ResponsiveContainer width="100%" height={150}>
+                                <RechartsBarChart data={topFailureReasons} layout="vertical">
+                                    <XAxis type="number" dataKey="value" hide />
+                                    <YAxis type="category" dataKey="name" width={200} tick={{fontSize: 12}} />
+                                    <Tooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }} />
+                                    <Bar dataKey="value" fill="hsl(var(--chart-2))" name="Nombre d'échecs" radius={[0, 4, 4, 0]} />
+                                </RechartsBarChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+                </div>
+                 <Card className="lg:col-span-2">
                     <CardHeader>
                         <CardTitle>Méthode de complétion</CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="flex justify-center">
                         <ChartContainer config={{}} className="mx-auto aspect-square h-[300px]">
                             <PieChart>
                                 <Tooltip content={<ChartTooltipContent hideLabel />} />
