@@ -20,13 +20,6 @@ export function WarehouseAnalytics({ data }: { data: Delivery[] }) {
         return warehouseStats.filter(stat => stat.name.toLowerCase().includes(filter.toLowerCase()));
     }, [warehouseStats, filter]);
 
-    const formatDelay = (seconds: number) => {
-        const minutes = Math.floor(Math.abs(seconds) / 60);
-        const secs = Math.abs(seconds) % 60;
-        const sign = seconds < 0 ? "-" : "";
-        return `${sign}${minutes}m ${secs.toFixed(0)}s`;
-    };
-
     return (
         <Card>
             <CardHeader>
@@ -48,7 +41,6 @@ export function WarehouseAnalytics({ data }: { data: Delivery[] }) {
                             <TableHead className="text-right">Dépôt</TableHead>
                             <TableHead className="text-right">Livraisons totales</TableHead>
                             <TableHead className="text-right">Taux de réussite</TableHead>
-                            <TableHead className="text-right">Retard moy.</TableHead>
                             <TableHead className="text-right">Note moy.</TableHead>
                             <TableHead className="text-right">Sans contact forcé</TableHead>
                             <TableHead className="text-right">Validation Web</TableHead>
@@ -61,9 +53,6 @@ export function WarehouseAnalytics({ data }: { data: Delivery[] }) {
                                 <TableCell className="text-right text-muted-foreground">{data.find(d => d.warehouse === stat.name)?.depot}</TableCell>
                                 <TableCell className="text-right">{stat.totalDeliveries}</TableCell>
                                 <TableCell className="text-right">{stat.successRate.toFixed(1)}%</TableCell>
-                                <TableCell className="text-right" style={{color: stat.averageDelay > 0 ? "hsl(var(--destructive))" : "hsl(var(--primary))"}}>
-                                    {formatDelay(stat.averageDelay)}
-                                </TableCell>
                                 <TableCell className="text-right">{stat.averageRating > 0 ? stat.averageRating.toFixed(2) : 'N/A'}</TableCell>
                                 <TableCell className="text-right">{stat.forcedNoContactRate.toFixed(1)}%</TableCell>
                                 <TableCell className="text-right">{stat.webCompletionRate.toFixed(1)}%</TableCell>

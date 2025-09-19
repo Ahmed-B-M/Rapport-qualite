@@ -28,8 +28,6 @@ export type AggregatedStats = {
   successfulDeliveries: number;
   failedDeliveries: number;
   successRate: number;
-  totalDelay: number;
-  averageDelay: number;
   failureReasons: Record<string, number>;
   totalRating: number;
   ratedDeliveries: number;

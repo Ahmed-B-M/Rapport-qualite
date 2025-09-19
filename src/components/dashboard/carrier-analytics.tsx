@@ -59,11 +59,6 @@ export function CarrierAnalytics({ data }: { data: Delivery[] }) {
         }
     }, [carrierStats, data]);
 
-    const formatDelay = (seconds: number) => {
-        const minutes = Math.floor(Math.abs(seconds) / 60);
-        return `${seconds < 0 ? '-' : ''}${minutes}m`;
-    };
-
     return (
         <div className="space-y-4">
             <h2 className="text-2xl font-bold font-headline">Performance par transporteur</h2>
@@ -76,9 +71,6 @@ export function CarrierAnalytics({ data }: { data: Delivery[] }) {
                                 <div className="flex items-center gap-4 text-sm">
                                     <span>{carrier.totalDeliveries} livraisons</span>
                                     <Badge variant={carrier.successRate > 95 ? "default" : "secondary"}>{carrier.successRate.toFixed(1)}% succès</Badge>
-                                    <span style={{color: carrier.averageDelay > 0 ? "hsl(var(--destructive))" : "hsl(var(--primary))"}}>
-                                        Retard moyen: {formatDelay(carrier.averageDelay)}
-                                    </span>
                                 </div>
                             </div>
                         </AccordionTrigger>

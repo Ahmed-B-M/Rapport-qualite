@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ArrowUpDown } from 'lucide-react';
 
-type SortKey = 'name' | 'totalDeliveries' | 'successRate' | 'averageDelay' | 'averageRating' | 'forcedNoContactRate' | 'webCompletionRate';
+type SortKey = 'name' | 'totalDeliveries' | 'successRate' | 'averageRating' | 'forcedNoContactRate' | 'webCompletionRate';
 
 export function DriverAnalytics({ data }: { data: Delivery[] }) {
     const [filter, setFilter] = useState('');
@@ -26,11 +26,6 @@ export function DriverAnalytics({ data }: { data: Delivery[] }) {
         sortableItems.sort((a, b) => {
             const valA = a[sortConfig.key];
             const valB = b[sortConfig.key];
-
-            // Handle sorting for 'averageDelay' where lower is better
-            if (sortConfig.key === 'averageDelay') {
-                return sortConfig.direction === 'asc' ? valA - valB : valB - valA;
-            }
 
             if (valA < valB) {
                 return sortConfig.direction === 'asc' ? -1 : 1;
@@ -59,12 +54,6 @@ export function DriverAnalytics({ data }: { data: Delivery[] }) {
         return sortConfig.direction === 'asc' ? '▲' : '▼';
     }
 
-    const formatDelay = (seconds: number) => {
-        const minutes = Math.floor(Math.abs(seconds) / 60);
-        const sign = seconds < 0 ? "-" : "";
-        return `${sign}${minutes}m`;
-    };
-
     return (
         <Card>
             <CardHeader>
@@ -86,7 +75,6 @@ export function DriverAnalytics({ data }: { data: Delivery[] }) {
                             <TableHead>Transporteur</TableHead>
                             <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('totalDeliveries')}>Total {getSortIcon('totalDeliveries')}</Button></TableHead>
                             <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('successRate')}>Succès % {getSortIcon('successRate')}</Button></TableHead>
-                            <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('averageDelay')}>Retard moy. {getSortIcon('averageDelay')}</Button></TableHead>
                             <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('averageRating')}>Note moy. {getSortIcon('averageRating')}</Button></TableHead>
                             <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('forcedNoContactRate')}>S. contact {getSortIcon('forcedNoContactRate')}</Button></TableHead>
                             <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('webCompletionRate')}>Val. Web {getSortIcon('webCompletionRate')}</Button></TableHead>
@@ -99,9 +87,6 @@ export function DriverAnalytics({ data }: { data: Delivery[] }) {
                                 <TableCell className="text-muted-foreground">{stat.carrier}</TableCell>
                                 <TableCell className="text-right">{stat.totalDeliveries}</TableCell>
                                 <TableCell className="text-right">{stat.successRate.toFixed(1)}%</TableCell>
-                                <TableCell className="text-right" style={{color: stat.averageDelay > 0 ? "hsl(var(--destructive))" : "hsl(var(--primary))"}}>
-                                    {formatDelay(stat.averageDelay)}
-                                </TableCell>
                                 <TableCell className="text-right">{stat.averageRating > 0 ? stat.averageRating.toFixed(2) : 'N/A'}</TableCell>
                                 <TableCell className="text-right">{stat.forcedNoContactRate.toFixed(1)}%</TableCell>
                                 <TableCell className="text-right">{stat.webCompletionRate.toFixed(1)}%</TableCell>

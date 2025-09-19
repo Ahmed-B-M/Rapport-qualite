@@ -5,7 +5,7 @@ import { type Delivery } from '@/lib/definitions';
 import { getOverallStats, aggregateStats } from '@/lib/data-processing';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Clock, Percent, AlertCircle, Truck, PackageCheck, PackageX, Star, Timer, Globe, Smartphone, Ban, CheckCircle } from 'lucide-react';
+import { Clock, Percent, AlertCircle, Truck, PackageCheck, PackageX, Star, Timer, Globe, Smartphone, Ban, CheckCircle } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { Bar, Pie, Cell, PieChart, BarChart as RechartsBarChart, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -37,20 +37,12 @@ export function Overview({ data }: { data: Delivery[] }) {
     const pieColors = ["hsl(var(--chart-1))", "hsl(var(--chart-2))"];
     const statusColors = ["hsl(var(--chart-1))", "hsl(var(--chart-4))"];
 
-    const formatDelay = (seconds: number) => {
-        const minutes = Math.floor(Math.abs(seconds) / 60);
-        const secs = Math.abs(seconds) % 60;
-        const sign = seconds < 0 ? "-" : "";
-        return `${sign}${minutes}m ${secs.toFixed(0)}s`;
-    }
-
     return (
         <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 <StatCard title="Livraisons totales" value={overallStats.totalDeliveries.toLocaleString()} icon={Truck} />
                 <StatCard title="Taux de réussite" value={`${overallStats.successRate.toFixed(1)}%`} icon={CheckCircle} description={`${overallStats.successfulDeliveries.toLocaleString()} livrées`} />
                 <StatCard title="Livraisons échouées" value={overallStats.failedDeliveries.toLocaleString()} icon={AlertCircle} description={`${(100 - overallStats.successRate).toFixed(1)}% échouées`} />
-                <StatCard title="Retard moyen" value={formatDelay(overallStats.averageDelay)} icon={Clock} description={overallStats.averageDelay > 0 ? "En retard en moyenne" : "En avance en moyenne"} />
                 <StatCard title="Taux de ponctualité" value={`${overallStats.punctualityRate.toFixed(1)}%`} icon={Timer} description={`${overallStats.onTimeDeliveries.toLocaleString()} à l'heure`} />
                 <StatCard title="Note moyenne" value={`${overallStats.averageRating.toFixed(2)} / 5`} icon={Star} description={`Basé sur ${overallStats.ratedDeliveries.toLocaleString()} avis`} />
                 <StatCard title="Sans contact forcé" value={`${overallStats.forcedNoContactRate.toFixed(1)}%`} icon={Ban} />

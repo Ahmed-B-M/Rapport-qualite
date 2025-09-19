@@ -106,8 +106,6 @@ const createInitialStats = (): AggregatedStats => ({
     successfulDeliveries: 0,
     failedDeliveries: 0,
     successRate: 0,
-    totalDelay: 0,
-    averageDelay: 0,
     failureReasons: {},
     totalRating: 0,
     ratedDeliveries: 0,
@@ -133,7 +131,6 @@ const updateStats = (stats: AggregatedStats, delivery: Delivery) => {
             stats.failureReasons[reason] = (stats.failureReasons[reason] || 0) + 1;
         }
     }
-    stats.totalDelay += delivery.delaySeconds;
 
     if (delivery.delaySeconds <= 0) {
         stats.onTimeDeliveries++;
@@ -158,7 +155,6 @@ const updateStats = (stats: AggregatedStats, delivery: Delivery) => {
 const finalizeStats = (stats: AggregatedStats) => {
     if (stats.totalDeliveries > 0) {
         stats.successRate = (stats.successfulDeliveries / stats.totalDeliveries) * 100;
-        stats.averageDelay = stats.totalDelay / stats.totalDeliveries;
         stats.punctualityRate = (stats.onTimeDeliveries / stats.totalDeliveries) * 100;
         stats.forcedNoContactRate = (stats.forcedNoContactCount / stats.totalDeliveries) * 100;
         stats.forcedOnSiteRate = (stats.forcedOnSiteCount / stats.totalDeliveries) * 100;
@@ -192,7 +188,7 @@ export const getOverallStats = (data: Delivery[]): AggregatedStats => {
     return overallStats;
 }
 
-export type RankingMetric = 'averageRating' | 'punctualityRate' | 'successRate' | 'averageDelay';
+export type RankingMetric = 'averageRating' | 'punctualityRate' | 'successRate';
 export type Ranking<T> = {
     top: T[],
     flop: T[]
@@ -204,10 +200,6 @@ export function getRankings<T extends {name: string} & AggregatedStats>(
     take: number = 3
 ): Ranking<T> {
     const sorted = [...stats].sort((a, b) => {
-        // For averageDelay, lower is better. For all others, higher is better.
-        if (metric === 'averageDelay') {
-            return a[metric] - b[metric];
-        }
         return b[metric] - a[metric];
     });
 
