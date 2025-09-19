@@ -83,8 +83,8 @@ export function DriverAnalytics({ data }: { data: Delivery[] }) {
                             <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('punctualityRate')}>Ponctualité {getSortIcon('punctualityRate')}</Button></TableHead>
                             <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('failureRate')}>Échec % {getSortIcon('failureRate')}</Button></TableHead>
                             <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('forcedOnSiteRate')}>S.P. forcé {getSortIcon('forcedOnSiteRate')}</Button></TableHead>
-                            <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('forcedNoContactRate')}>S. contact {getSortIcon('forcedNoContactRate')}</Button></TableHead>
-                            <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('webCompletionRate')}>Web Val. {getSortIcon('webCompletionRate')}</Button></TableHead>
+                            <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('forcedNoContactRate')}>S.C. forcé {getSortIcon('forcedNoContactRate')}</Button></TableHead>
+                            <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('webCompletionRate')}>Val. Web {getSortIcon('webCompletionRate')}</Button></TableHead>
                             <TableHead className="text-right"><Button variant="ghost" onClick={() => requestSort('ratingRate')}>Noté % {getSortIcon('ratingRate')}</Button></TableHead>
                         </TableRow>
                     </TableHeader>

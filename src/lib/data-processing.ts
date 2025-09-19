@@ -20,7 +20,7 @@ const HEADER_MAPPING: Record<string, keyof Delivery> = {
 };
 
 const getCarrierFromDriver = (driverName: string): string => {
-    if (!driverName) return 'Unknown';
+    if (!driverName) return 'Inconnu';
 
     const name = driverName.trim();
     
@@ -77,8 +77,8 @@ export const processRawData = (rawData: any[]): Delivery[] => {
       }
     }
     
-    const warehouse = (delivery.warehouse || 'Unknown').trim();
-    const depot = WAREHOUSE_DEPOT_MAP[warehouse] || 'Unknown Depot';
+    const warehouse = (delivery.warehouse || 'Inconnu').trim();
+    const depot = WAREHOUSE_DEPOT_MAP[warehouse] || 'Dépôt Inconnu';
     const carrier = getCarrierFromDriver(delivery.driver || '');
 
     return {
@@ -87,7 +87,7 @@ export const processRawData = (rawData: any[]): Delivery[] => {
       status: delivery.status === 'Livré' ? 'Livré' : 'Non livré',
       taskId: String(delivery.taskId || 'N/A'),
       warehouse: warehouse,
-      driver: (delivery.driver || 'Unknown Driver').trim(),
+      driver: (delivery.driver || 'Livreur Inconnu').trim(),
       tourId: String(delivery.tourId || 'N/A'),
       sequence: Number(delivery.sequence) || 0,
       delaySeconds: Number(delivery.delaySeconds) || 0,
@@ -173,7 +173,7 @@ export const aggregateStats = (data: Delivery[], groupBy: keyof Delivery): Stats
   const statsByEntity: StatsByEntity = {};
 
   data.forEach((delivery) => {
-    const entityName = delivery[groupBy] as string || 'Unknown';
+    const entityName = delivery[groupBy] as string || 'Inconnu';
     if (!statsByEntity[entityName]) {
       statsByEntity[entityName] = createInitialStats();
     }

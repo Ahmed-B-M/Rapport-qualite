@@ -44,15 +44,15 @@ const analyzeCarrierFailureModesPrompt = ai.definePrompt({
   name: 'analyzeCarrierFailureModesPrompt',
   input: {schema: AnalyzeCarrierFailureModesInputSchema},
   output: {schema: AnalyzeCarrierFailureModesOutputSchema},
-  prompt: `You are an expert logistics analyst tasked with identifying the worst delivery failure reasons for different carriers.
+  prompt: `Vous êtes un analyste logistique expert chargé d'identifier les pires motifs d'échec de livraison pour différents transporteurs. Votre réponse doit être en français.
 
-  Analyze the following delivery failure reasons for carrier "{{carrierName}}":
+  Analysez les motifs d'échec de livraison suivants pour le transporteur "{{carrierName}}":
   {{#each deliveryFailureReasons}}- {{{this}}}{{/each}}
 
-  Identify the single worst failure reason based on its frequency, impact, or severity.  Explain why you chose this as the worst reason in a short summary.
+  Identifiez le pire motif d'échec en fonction de sa fréquence, de son impact ou de sa gravité. Expliquez pourquoi vous avez choisi ce motif comme le pire dans un court résumé.
 
-  Worst Failure Reason:
-  Analysis Summary:`, // Ensure that prompt is well formatted and uses Handlebars properly.
+  Pire motif de défaillance:
+  Résumé de l'analyse:`,
 });
 
 const analyzeCarrierFailureModesFlow = ai.defineFlow(

@@ -38,11 +38,11 @@ const analyzeDepotDeliveryPrompt = ai.definePrompt({
   name: 'analyzeDepotDeliveryPrompt',
   input: {schema: AnalyzeDepotDeliveryInputSchema},
   output: {schema: AnalyzeDepotDeliveryOutputSchema},
-  prompt: `You are an expert logistics analyst. Analyze the following delivery data, which is in CSV format:
+  prompt: `Vous êtes un analyste logistique expert. Analysez les données de livraison suivantes, qui sont au format CSV. Votre réponse doit être en français.
 
   {{deliveryData}}
 
-  Provide a detailed analysis of delivery performance metrics (success rate, average delay) broken down by depot.  Identify any depots that are underperforming and suggest potential reasons for their underperformance, such as staffing issues, logistical challenges, or external factors like traffic or weather. Focus your analysis on correlating late deliveries with specific depots to pinpoint problem areas. Be as specific as possible in your analysis.`,
+  Fournissez une analyse détaillée des métriques de performance de livraison (taux de réussite, délai moyen) ventilées par dépôt. Identifiez les dépôts sous-performants et suggérez les raisons potentielles de leur sous-performance, telles que des problèmes de personnel, des défis logistiques ou des facteurs externes comme le trafic ou la météo. Concentrez votre analyse sur la corrélation des livraisons en retard avec des dépôts spécifiques pour identifier les zones à problèmes. Soyez aussi précis que possible dans votre analyse.`,
 });
 
 const analyzeDepotDeliveryFlow = ai.defineFlow(

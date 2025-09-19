@@ -29,12 +29,12 @@ export function Overview({ data }: { data: Delivery[] }) {
     const completionStats = useMemo(() => {
         const stats = aggregateStats(data, 'completedBy');
         return Object.entries(stats).map(([name, stat]) => ({
-            name: name.charAt(0).toUpperCase() + name.slice(1),
+            name: name === 'web' ? 'Web' : name === 'mobile' ? 'Mobile' : 'Inconnu',
             value: stat.totalDeliveries
         }));
     }, [data]);
 
-    const pieColors = ["hsl(var(--chart-1))", "hsl(var(--chart-2))"];
+    const pieColors = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))"];
 
     return (
         <div className="space-y-6">
