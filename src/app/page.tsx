@@ -12,14 +12,40 @@ import { CarrierAnalytics } from "@/components/dashboard/carrier-analytics";
 import { DriverAnalytics } from "@/components/dashboard/driver-analytics";
 import { CustomerSatisfaction } from "@/components/dashboard/customer-satisfaction";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2, AlertTriangle, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+
+export type Objectives = {
+    averageRating: number;
+    punctualityRate: number;
+    failureRate: number;
+    forcedOnSiteRate: number;
+    forcedNoContactRate: number;
+};
 
 export default function DashboardPage() {
   const [data, setData] = useState<Delivery[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState("overview");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [objectives, setObjectives] = useState<Objectives>({
+    averageRating: 4.8,
+    punctualityRate: 95,
+    failureRate: 1,
+    forcedOnSiteRate: 10,
+    forcedNoContactRate: 10,
+  });
 
   const handleDataUploaded = (processedData: Delivery[], error?: string) => {
     if (error) {
@@ -36,6 +62,20 @@ export default function DashboardPage() {
     setData(null);
     setError(null);
     setActiveView("overview");
+  };
+
+  const handleSaveSettings = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const newObjectives = {
+        averageRating: parseFloat(formData.get("averageRating") as string),
+        punctualityRate: parseFloat(formData.get("punctualityRate") as string),
+        failureRate: parseFloat(formData.get("failureRate") as string),
+        forcedOnSiteRate: parseFloat(formData.get("forcedOnSiteRate") as string),
+        forcedNoContactRate: parseFloat(formData.get("forcedNoContactRate") as string),
+    };
+    setObjectives(newObjectives);
+    setIsSettingsOpen(false);
   };
 
   const renderContent = () => {
@@ -64,7 +104,7 @@ export default function DashboardPage() {
 
     switch (activeView) {
       case "overview":
-        return <Overview data={data} />;
+        return <Overview data={data} objectives={objectives} />;
       case "depots":
         return <DepotAnalytics data={data} />;
       case "warehouses":
@@ -76,7 +116,7 @@ export default function DashboardPage() {
       case "satisfaction":
         return <CustomerSatisfaction data={data} />;
       default:
-        return <Overview data={data} />;
+        return <Overview data={data} objectives={objectives} />;
     }
   };
 
@@ -90,13 +130,56 @@ export default function DashboardPage() {
                     <h1 className="text-3xl font-bold font-headline text-primary">Tableau de Bord Carrefour</h1>
                     <p className="text-muted-foreground">Téléchargez et analysez les données sur les performances de vos livraisons.</p>
                 </div>
-                {data && (
-                    <Button variant="outline" onClick={handleReset}>Télécharger un nouveau fichier</Button>
-                )}
+                <div className="flex items-center gap-2">
+                    {data && (
+                        <Button variant="outline" onClick={handleReset}>Télécharger un nouveau fichier</Button>
+                    )}
+                     <Button variant="ghost" size="icon" onClick={() => setIsSettingsOpen(true)}>
+                        <Settings />
+                    </Button>
+                </div>
             </header>
             {renderContent()}
         </div>
       </SidebarInset>
+      <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+          <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>Définir les objectifs</DialogTitle>
+                  <DialogDescription>
+                      Ajustez les objectifs pour les métriques clés. Ces valeurs seront utilisées pour l'analyse des performances.
+                  </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSaveSettings}>
+                  <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="averageRating" className="text-right">Note moyenne</Label>
+                          <Input id="averageRating" name="averageRating" type="number" step="0.1" defaultValue={objectives.averageRating} className="col-span-3" />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="punctualityRate" className="text-right">Ponctualité (%)</Label>
+                          <Input id="punctualityRate" name="punctualityRate" type="number" step="1" defaultValue={objectives.punctualityRate} className="col-span-3" />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="failureRate" className="text-right">Taux d'échec (% max)</Label>
+                          <Input id="failureRate" name="failureRate" type="number" step="0.5" defaultValue={objectives.failureRate} className="col-span-3" />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="forcedOnSiteRate" className="text-right">Sur place forcé (% max)</Label>
+                          <Input id="forcedOnSiteRate" name="forcedOnSiteRate" type="number" step="1" defaultValue={objectives.forcedOnSiteRate} className="col-span-3" />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="forcedNoContactRate" className="text-right">Sans contact forcé (% max)</Label>
+                          <Input id="forcedNoContactRate" name="forcedNoContactRate" type="number" step="1" defaultValue={objectives.forcedNoContactRate} className="col-span-3" />
+                      </div>
+                  </div>
+                  <DialogFooter>
+                      <Button type="button" variant="secondary" onClick={() => setIsSettingsOpen(false)}>Annuler</Button>
+                      <Button type="submit">Sauvegarder</Button>
+                  </DialogFooter>
+              </form>
+          </DialogContent>
+      </Dialog>
     </SidebarProvider>
   );
 }

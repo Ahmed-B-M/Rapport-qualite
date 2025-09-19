@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { type Delivery } from '@/lib/definitions';
+import { type Objectives } from '@/app/page';
 import { getOverallStats, aggregateStats } from '@/lib/data-processing';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +10,7 @@ import { AlertCircle, Star, Timer, Ban, Globe, Target, PenSquare } from 'lucide-
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { Bar, Pie, Cell, PieChart, BarChart as RechartsBarChart, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
-export function Overview({ data }: { data: Delivery[] }) {
+export function Overview({ data, objectives }: { data: Delivery[], objectives: Objectives }) {
     const overallStats = useMemo(() => getOverallStats(data), [data]);
     const statsByDay = useMemo(() => {
         const grouped = data.reduce((acc, curr) => {
@@ -39,12 +40,12 @@ export function Overview({ data }: { data: Delivery[] }) {
     return (
         <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                <StatCard title="Note moyenne" value={`${overallStats.averageRating.toFixed(2)} / 5`} icon={Star} description={`Objectif: 4.80`} />
-                <StatCard title="Taux de ponctualité" value={`${overallStats.punctualityRate.toFixed(2)}%`} icon={Timer} description={`Objectif: 95%`} />
-                <StatCard title="Taux d'échec" value={`${(100 - overallStats.successRate).toFixed(2)}%`} icon={AlertCircle} description={`Objectif: 1% max`} />
+                <StatCard title="Note moyenne" value={`${overallStats.averageRating.toFixed(2)} / 5`} icon={Star} description={`Objectif: ${objectives.averageRating.toFixed(2)}`} />
+                <StatCard title="Taux de ponctualité" value={`${overallStats.punctualityRate.toFixed(2)}%`} icon={Timer} description={`Objectif: ${objectives.punctualityRate}%`} />
+                <StatCard title="Taux d'échec" value={`${(100 - overallStats.successRate).toFixed(2)}%`} icon={AlertCircle} description={`Objectif: ${objectives.failureRate}% max`} />
                 <StatCard title="Taux de notation" value={`${overallStats.ratingRate.toFixed(2)}%`} icon={PenSquare} />
-                <StatCard title="Sur place forcé" value={`${overallStats.forcedOnSiteRate.toFixed(2)}%`} icon={Target} description={`Objectif: 10% max`} />
-                <StatCard title="Sans contact forcé" value={`${overallStats.forcedNoContactRate.toFixed(2)}%`} icon={Ban} description={`Objectif: 10% max`} />
+                <StatCard title="Sur place forcé" value={`${overallStats.forcedOnSiteRate.toFixed(2)}%`} icon={Target} description={`Objectif: ${objectives.forcedOnSiteRate}% max`} />
+                <StatCard title="Sans contact forcé" value={`${overallStats.forcedNoContactRate.toFixed(2)}%`} icon={Ban} description={`Objectif: ${objectives.forcedNoContactRate}% max`} />
                 <StatCard title="Validation Web" value={`${overallStats.webCompletionRate.toFixed(2)}%`} icon={Globe} />
             </div>
 
