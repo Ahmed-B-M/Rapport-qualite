@@ -36,6 +36,13 @@ export type AggregatedStats = {
   averageRating: number;
   onTimeDeliveries: number;
   punctualityRate: number;
+  // New rates
+  forcedNoContactCount: number;
+  forcedNoContactRate: number;
+  forcedOnSiteCount: number;
+  forcedOnSiteRate: number;
+  webCompletionCount: number;
+  webCompletionRate: number;
 };
 
 export type StatsByEntity = {

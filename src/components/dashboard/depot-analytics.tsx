@@ -1,23 +1,32 @@
 "use client"
 
 import { useMemo, useState, useEffect } from 'react';
-import { type Delivery, type StatsByEntity } from '@/lib/definitions';
-import { aggregateStats } from '@/lib/data-processing';
+import { type Delivery, type AggregatedStats } from '@/lib/definitions';
+import { aggregateStats, getRankings, type Ranking } from '@/lib/data-processing';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { analyzeDepotDelivery } from '@/ai/flows/depot-delivery-analysis';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Bot, Loader2 } from 'lucide-react';
+import { Bot, Loader2, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+
+type DepotStat = { name: string } & AggregatedStats;
 
 export function DepotAnalytics({ data }: { data: Delivery[] }) {
     const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
     const [loadingAi, setLoadingAi] = useState(true);
 
-    const depotStats = useMemo(() => {
+    const depotStats: DepotStat[] = useMemo(() => {
         const stats = aggregateStats(data, 'depot');
         return Object.entries(stats).map(([name, stat]) => ({ name, ...stat }));
     }, [data]);
+    
+    const rankings = useMemo(() => ({
+        successRate: getRankings(depotStats, 'successRate'),
+        averageDelay: getRankings(depotStats, 'averageDelay'),
+        averageRating: getRankings(depotStats, 'averageRating'),
+    }), [depotStats]);
 
     useEffect(() => {
         const generateAnalysis = async () => {
@@ -49,39 +58,38 @@ export function DepotAnalytics({ data }: { data: Delivery[] }) {
         return `${seconds < 0 ? '-' : ''}${minutes}m`;
     };
 
+    const RankingList = ({ title, ranking, metric }: { title: string, ranking: Ranking<DepotStat>, metric: 'successRate' | 'averageDelay' | 'averageRating' }) => (
+        <Card>
+            <CardHeader>
+                <CardTitle>{title}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div>
+                    <h4 className="flex items-center gap-2 font-semibold text-green-600"><ThumbsUp /> Top 3</h4>
+                    <ul className="list-disc pl-5 text-sm space-y-1 mt-2">
+                        {ranking.top.map(d => (
+                            <li key={d.name}>{d.name} <Badge variant="secondary">{metric === 'averageDelay' ? formatDelay(d.averageDelay) : d[metric].toFixed(1) + (metric === 'averageRating' ? '/5' : '%')}</Badge></li>
+                        ))}
+                    </ul>
+                </div>
+                <div>
+                    <h4 className="flex items-center gap-2 font-semibold text-red-600"><ThumbsDown /> Flop 3</h4>
+                    <ul className="list-disc pl-5 text-sm space-y-1 mt-2">
+                         {ranking.flop.map(d => (
+                            <li key={d.name}>{d.name} <Badge variant="destructive">{metric === 'averageDelay' ? formatDelay(d.averageDelay) : d[metric].toFixed(1) + (metric === 'averageRating' ? ' /5' : '%')}</Badge></li>
+                        ))}
+                    </ul>
+                </div>
+            </CardContent>
+        </Card>
+    )
+
     return (
         <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Taux de réussite par dépôt</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={depotStats}>
-                                <XAxis dataKey="name" />
-                                <YAxis unit="%" domain={[0, 100]} />
-                                <Tooltip formatter={(value) => `${Number(value).toFixed(1)}%`} contentStyle={{ background: "hsl(var(--background))" }} />
-                                <Bar dataKey="successRate" fill="hsl(var(--chart-1))" name="Taux de réussite" />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Retard moyen par dépôt</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={depotStats}>
-                                <XAxis dataKey="name" />
-                                <YAxis unit="m" formatter={val => Math.floor(val/60).toString()} />
-                                <Tooltip formatter={(value) => formatDelay(Number(value))} contentStyle={{ background: "hsl(var(--background))" }}/>
-                                <Bar dataKey="averageDelay" fill="hsl(var(--chart-2))" name="Retard moy." />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <RankingList title="Classement par Taux de Réussite" ranking={rankings.successRate} metric="successRate" />
+                <RankingList title="Classement par Retard Moyen" ranking={rankings.averageDelay} metric="averageDelay" />
+                <RankingList title="Classement par Note Moyenne" ranking={rankings.averageRating} metric="averageRating" />
             </div>
              <Card>
                 <CardHeader>
@@ -120,6 +128,9 @@ export function DepotAnalytics({ data }: { data: Delivery[] }) {
                                 <TableHead className="text-right">Total</TableHead>
                                 <TableHead className="text-right">Taux de réussite</TableHead>
                                 <TableHead className="text-right">Retard moy.</TableHead>
+                                <TableHead className="text-right">Note moy.</TableHead>
+                                <TableHead className="text-right">Sans contact forcé</TableHead>
+                                <TableHead className="text-right">Validation Web</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -129,6 +140,9 @@ export function DepotAnalytics({ data }: { data: Delivery[] }) {
                                     <TableCell className="text-right">{stat.totalDeliveries}</TableCell>
                                     <TableCell className="text-right">{stat.successRate.toFixed(1)}%</TableCell>
                                     <TableCell className="text-right">{formatDelay(stat.averageDelay)}</TableCell>
+                                    <TableCell className="text-right">{stat.averageRating > 0 ? stat.averageRating.toFixed(2) : 'N/A'}</TableCell>
+                                    <TableCell className="text-right">{stat.forcedNoContactRate.toFixed(1)}%</TableCell>
+                                    <TableCell className="text-right">{stat.webCompletionRate.toFixed(1)}%</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>

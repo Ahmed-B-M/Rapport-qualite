@@ -114,6 +114,12 @@ const createInitialStats = (): AggregatedStats => ({
     averageRating: 0,
     onTimeDeliveries: 0,
     punctualityRate: 0,
+    forcedNoContactCount: 0,
+    forcedNoContactRate: 0,
+    forcedOnSiteCount: 0,
+    forcedOnSiteRate: 0,
+    webCompletionCount: 0,
+    webCompletionRate: 0,
 });
 
 const updateStats = (stats: AggregatedStats, delivery: Delivery) => {
@@ -137,6 +143,16 @@ const updateStats = (stats: AggregatedStats, delivery: Delivery) => {
         stats.ratedDeliveries++;
         stats.totalRating += delivery.deliveryRating;
     }
+    
+    if (delivery.forcedNoContact) {
+        stats.forcedNoContactCount++;
+    }
+    if (delivery.forcedOnSite === 'Yes') {
+        stats.forcedOnSiteCount++;
+    }
+    if (delivery.completedBy === 'web') {
+        stats.webCompletionCount++;
+    }
 };
 
 const finalizeStats = (stats: AggregatedStats) => {
@@ -144,6 +160,9 @@ const finalizeStats = (stats: AggregatedStats) => {
         stats.successRate = (stats.successfulDeliveries / stats.totalDeliveries) * 100;
         stats.averageDelay = stats.totalDelay / stats.totalDeliveries;
         stats.punctualityRate = (stats.onTimeDeliveries / stats.totalDeliveries) * 100;
+        stats.forcedNoContactRate = (stats.forcedNoContactCount / stats.totalDeliveries) * 100;
+        stats.forcedOnSiteRate = (stats.forcedOnSiteCount / stats.totalDeliveries) * 100;
+        stats.webCompletionRate = (stats.webCompletionCount / stats.totalDeliveries) * 100;
     }
     if (stats.ratedDeliveries > 0) {
         stats.averageRating = stats.totalRating / stats.ratedDeliveries;
@@ -171,4 +190,29 @@ export const getOverallStats = (data: Delivery[]): AggregatedStats => {
     data.forEach(delivery => updateStats(overallStats, delivery));
     finalizeStats(overallStats);
     return overallStats;
+}
+
+export type RankingMetric = 'averageRating' | 'punctualityRate' | 'successRate' | 'averageDelay';
+export type Ranking<T> = {
+    top: T[],
+    flop: T[]
+}
+
+export function getRankings<T extends {name: string} & AggregatedStats>(
+    stats: T[],
+    metric: RankingMetric,
+    take: number = 3
+): Ranking<T> {
+    const sorted = [...stats].sort((a, b) => {
+        // For averageDelay, lower is better. For all others, higher is better.
+        if (metric === 'averageDelay') {
+            return a[metric] - b[metric];
+        }
+        return b[metric] - a[metric];
+    });
+
+    const top = sorted.slice(0, take);
+    const flop = sorted.slice(-take).reverse();
+
+    return { top, flop };
 }

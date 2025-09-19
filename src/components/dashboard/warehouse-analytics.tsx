@@ -49,6 +49,9 @@ export function WarehouseAnalytics({ data }: { data: Delivery[] }) {
                             <TableHead className="text-right">Livraisons totales</TableHead>
                             <TableHead className="text-right">Taux de réussite</TableHead>
                             <TableHead className="text-right">Retard moy.</TableHead>
+                            <TableHead className="text-right">Note moy.</TableHead>
+                            <TableHead className="text-right">Sans contact forcé</TableHead>
+                            <TableHead className="text-right">Validation Web</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -61,10 +64,13 @@ export function WarehouseAnalytics({ data }: { data: Delivery[] }) {
                                 <TableCell className="text-right" style={{color: stat.averageDelay > 0 ? "hsl(var(--destructive))" : "hsl(var(--primary))"}}>
                                     {formatDelay(stat.averageDelay)}
                                 </TableCell>
+                                <TableCell className="text-right">{stat.averageRating > 0 ? stat.averageRating.toFixed(2) : 'N/A'}</TableCell>
+                                <TableCell className="text-right">{stat.forcedNoContactRate.toFixed(1)}%</TableCell>
+                                <TableCell className="text-right">{stat.webCompletionRate.toFixed(1)}%</TableCell>
                             </TableRow>
                         )) : (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center h-24">
+                                <TableCell colSpan={8} className="text-center h-24">
                                     Aucun entrepôt ne correspond à votre filtre.
                                 </TableCell>
                             </TableRow>
