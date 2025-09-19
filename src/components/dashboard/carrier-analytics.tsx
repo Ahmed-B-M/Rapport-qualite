@@ -7,11 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { analyzeCarrierFailureModes } from '@/ai/flows/carrier-failure-mode-analysis';
 import { Badge } from '@/components/ui/badge';
-import { Bot, Loader2 } from 'lucide-react';
+import { Bot, Loader2, Lightbulb } from 'lucide-react';
 
 type CarrierAIAnalysis = {
     worstFailureReason: string;
     analysisSummary: string;
+    correctiveAction: string;
 }
 
 export function CarrierAnalytics({ data }: { data: Delivery[] }) {
@@ -35,7 +36,7 @@ export function CarrierAnalytics({ data }: { data: Delivery[] }) {
                     .map(d => d.failureReason!);
                 
                 if (failureReasons.length === 0) {
-                    return { [carrier.name]: { worstFailureReason: "Aucun échec enregistré.", analysisSummary: "Ce transporteur a un historique de livraison parfait dans cet ensemble de données." } };
+                    return { [carrier.name]: { worstFailureReason: "Aucun échec enregistré.", analysisSummary: "Ce transporteur a un historique de livraison parfait dans cet ensemble de données.", correctiveAction: "Aucune action nécessaire." } };
                 }
 
                 try {
@@ -43,7 +44,7 @@ export function CarrierAnalytics({ data }: { data: Delivery[] }) {
                     return { [carrier.name]: result };
                 } catch (error) {
                     console.error(`L'analyse IA a échoué pour ${carrier.name}:`, error);
-                    return { [carrier.name]: { worstFailureReason: "Erreur", analysisSummary: "Impossible de générer l'analyse IA." } };
+                    return { [carrier.name]: { worstFailureReason: "Erreur", analysisSummary: "Impossible de générer l'analyse IA.", correctiveAction: "Impossible de générer une suggestion." } };
                 }
             }));
             
@@ -86,11 +87,19 @@ export function CarrierAnalytics({ data }: { data: Delivery[] }) {
                                             <span>Analyse des modes de défaillance...</span>
                                         </div>
                                     ) : (
-                                        <div className="space-y-2">
-                                            <h4 className="font-semibold">Pire motif de défaillance :</h4>
-                                            <Badge variant="destructive">{aiAnalysis[carrier.name]?.worstFailureReason}</Badge>
-                                            <h4 className="font-semibold pt-2">Résumé :</h4>
-                                            <p className="text-sm text-muted-foreground">{aiAnalysis[carrier.name]?.analysisSummary}</p>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <h4 className="font-semibold">Pire motif de défaillance :</h4>
+                                                <Badge variant="destructive">{aiAnalysis[carrier.name]?.worstFailureReason}</Badge>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-semibold">Résumé :</h4>
+                                                <p className="text-sm text-muted-foreground">{aiAnalysis[carrier.name]?.analysisSummary}</p>
+                                            </div>
+                                            <div className="p-3 rounded-md bg-accent/20 border border-accent/50">
+                                                <h4 className="font-semibold flex items-center gap-2"><Lightbulb className="text-accent" /> Action Suggérée :</h4>
+                                                <p className="text-sm text-muted-foreground pl-6">{aiAnalysis[carrier.name]?.correctiveAction}</p>
+                                            </div>
                                         </div>
                                     )}
                                 </CardContent>

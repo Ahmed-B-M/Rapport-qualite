@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview Analyzes delivery failure modes by carrier and flags the worst reasons.
+ * @fileOverview Analyzes delivery failure modes by carrier and suggests corrective actions.
  *
  * - analyzeCarrierFailureModes - Analyzes delivery failure modes for a given carrier.
  * - AnalyzeCarrierFailureModesInput - The input type for the analyzeCarrierFailureModes function.
@@ -29,6 +29,9 @@ const AnalyzeCarrierFailureModesOutputSchema = z.object({
   analysisSummary: z
     .string()
     .describe('A summary of the analysis of delivery failure modes for the carrier.'),
+  correctiveAction: z
+    .string()
+    .describe('A suggested corrective action to address the worst failure reason.'),
 });
 export type AnalyzeCarrierFailureModesOutput = z.infer<
   typeof AnalyzeCarrierFailureModesOutputSchema
@@ -44,15 +47,14 @@ const analyzeCarrierFailureModesPrompt = ai.definePrompt({
   name: 'analyzeCarrierFailureModesPrompt',
   input: {schema: AnalyzeCarrierFailureModesInputSchema},
   output: {schema: AnalyzeCarrierFailureModesOutputSchema},
-  prompt: `Vous êtes un analyste logistique expert chargé d'identifier les pires motifs d'échec de livraison pour différents transporteurs. Votre réponse doit être en français.
+  prompt: `Vous êtes un analyste logistique expert chargé d'identifier les pires motifs d'échec de livraison et de suggérer des actions correctives. Votre réponse doit être en français.
 
   Analysez les motifs d'échec de livraison suivants pour le transporteur "{{carrierName}}":
   {{#each deliveryFailureReasons}}- {{{this}}}{{/each}}
 
-  Identifiez le pire motif d'échec en fonction de sa fréquence, de son impact ou de sa gravité. Expliquez pourquoi vous avez choisi ce motif comme le pire dans un court résumé.
-
-  Pire motif de défaillance:
-  Résumé de l'analyse:`,
+  1.  Identifiez le pire motif d'échec en fonction de sa fréquence et de son impact.
+  2.  Rédigez un court résumé expliquant pourquoi c'est le pire motif.
+  3.  Suggérez une action corrective concrète et réalisable pour réduire ce type d'échec à l'avenir.`,
 });
 
 const analyzeCarrierFailureModesFlow = ai.defineFlow(
