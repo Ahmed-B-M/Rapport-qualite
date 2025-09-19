@@ -44,7 +44,7 @@ export const WAREHOUSE_DEPOT_MAP: Record<string, string> = {
     'Villeneuve-la-Garenne Après Midi': 'VLG',
     'Villeneuve-la-Garenne J pour J': 'VLG',
     'Villeneuve-la-Garenne Matin': 'VLG',
-    'Villeneuve-la-Garenne Soir': 'VLG',
+    'Villeneuve_la-Garenne Soir': 'VLG',
     'Vitry Banlieue Matin': 'Vitry',
     'Vitry J pour J': 'Vitry',
     'Vitry Paris Après-Midi': 'Vitry',
@@ -61,5 +61,6 @@ export const CARRIERS = [
     { name: 'RK', suffixes: ['6'] },
     { name: 'Express', suffixes: ['2'] },
     { name: 'MLG', suffixes: ['5'] },
-    { name: 'ID LOGISTICS', suffixes: [''] },
+    { name: 'ID LOGISTICS', suffixes: [] },
+    { name: 'Sous traitants', suffixes: [] },
 ];

@@ -23,6 +23,15 @@ const getCarrierFromDriver = (driverName: string): string => {
     if (!driverName || driverName.trim() === '') return 'Inconnu';
 
     const name = driverName.trim();
+    const lowerCaseName = name.toLowerCase();
+
+    if (lowerCaseName.includes('id log')) {
+        return 'ID LOGISTICS';
+    }
+
+    if (name.startsWith('. SST')) {
+        return 'Sous traitants';
+    }
     
     // Check for carriers with numeric suffixes first
     for (const carrier of CARRIERS) {
