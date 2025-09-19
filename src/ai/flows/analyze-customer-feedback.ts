@@ -30,11 +30,18 @@ const FeedbackCategorySchema = z.enum([
 ]);
 
 const AnalyzeCustomerFeedbackOutputSchema = z.object({
-  categoryCounts: z.record(FeedbackCategorySchema, z.number())
-    .describe('A count of comments for each predefined category.'),
-  analysisSummary: z
-    .string()
-    .describe('A brief summary in French of the main issues identified in the comments.'),
+    categoryCounts: z.object({
+        "Attitude du livreur": z.number().optional(),
+        "Problème de communication": z.number().optional(),
+        "Retard de livraison": z.number().optional(),
+        "Non-respect des instructions": z.number().optional(),
+        "Colis endommagé": z.number().optional(),
+        "Problème d'adresse": z.number().optional(),
+        "Autre": z.number().optional()
+    }).describe('A count of comments for each predefined category.'),
+    analysisSummary: z
+        .string()
+        .describe('A brief summary in French of the main issues identified in the comments.'),
 });
 export type AnalyzeCustomerFeedbackOutput = z.infer<
   typeof AnalyzeCustomerFeedbackOutputSchema
