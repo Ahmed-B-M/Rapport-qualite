@@ -66,7 +66,7 @@ export const processRawData = (rawData: any[]): Delivery[] => {
   });
 };
 
-const_createInitialStats = (): AggregatedStats => ({
+const createInitialStats = (): AggregatedStats => ({
     totalDeliveries: 0,
     successfulDeliveries: 0,
     failedDeliveries: 0,
@@ -76,7 +76,7 @@ const_createInitialStats = (): AggregatedStats => ({
     failureReasons: {},
 });
 
-const_updateStats = (stats: AggregatedStats, delivery: Delivery) => {
+const updateStats = (stats: AggregatedStats, delivery: Delivery) => {
     stats.totalDeliveries++;
     if (delivery.status === 'Livré') {
         stats.successfulDeliveries++;
@@ -90,7 +90,7 @@ const_updateStats = (stats: AggregatedStats, delivery: Delivery) => {
     stats.totalDelay += delivery.delaySeconds;
 };
 
-const_finalizeStats = (stats: AggregatedStats) => {
+const finalizeStats = (stats: AggregatedStats) => {
     if (stats.totalDeliveries > 0) {
         stats.successRate = (stats.successfulDeliveries / stats.totalDeliveries) * 100;
         stats.averageDelay = stats.totalDelay / stats.totalDeliveries;
@@ -103,19 +103,19 @@ export const aggregateStats = (data: Delivery[], groupBy: keyof Delivery): Stats
   data.forEach((delivery) => {
     const entityName = delivery[groupBy] as string || 'Unknown';
     if (!statsByEntity[entityName]) {
-      statsByEntity[entityName] = const_createInitialStats();
+      statsByEntity[entityName] = createInitialStats();
     }
-    const_updateStats(statsByEntity[entityName], delivery);
+    updateStats(statsByEntity[entityName], delivery);
   });
   
-  Object.values(statsByEntity).forEach(const_finalizeStats);
+  Object.values(statsByEntity).forEach(finalizeStats);
 
   return statsByEntity;
 };
 
 export const getOverallStats = (data: Delivery[]): AggregatedStats => {
-    const overallStats = const_createInitialStats();
-    data.forEach(delivery => const_updateStats(overallStats, delivery));
-    const_finalizeStats(overallStats);
+    const overallStats = createInitialStats();
+    data.forEach(delivery => updateStats(overallStats, delivery));
+    finalizeStats(overallStats);
     return overallStats;
 }
