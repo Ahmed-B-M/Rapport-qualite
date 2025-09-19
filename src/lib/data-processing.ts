@@ -81,10 +81,15 @@ export const processRawData = (rawData: any[]): Delivery[] => {
     const depot = WAREHOUSE_DEPOT_MAP[warehouse] || 'Dépôt Inconnu';
     const carrier = getCarrierFromDriver(delivery.driver || '');
 
+    // If status is 'Livré', force failureReason to be undefined.
+    const status = delivery.status === 'Livré' ? 'Livré' : 'Non livré';
+    const failureReason = status === 'Livré' ? undefined : delivery.failureReason;
+
     return {
       ...delivery,
       date: delivery.date || 'N/A',
-      status: delivery.status === 'Livré' ? 'Livré' : 'Non livré',
+      status: status,
+      failureReason: failureReason,
       taskId: String(delivery.taskId || 'N/A'),
       warehouse: warehouse,
       driver: (delivery.driver || 'Livreur Inconnu').trim(),
