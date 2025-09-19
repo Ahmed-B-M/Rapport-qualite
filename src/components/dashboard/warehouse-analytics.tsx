@@ -38,24 +38,26 @@ export function WarehouseAnalytics({ data }: { data: Delivery[] }) {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Entrepôt</TableHead>
-                            <TableHead className="text-right">Dépôt</TableHead>
-                            <TableHead className="text-right">Livraisons totales</TableHead>
-                            <TableHead className="text-right">Taux de réussite</TableHead>
+                            <TableHead>Dépôt</TableHead>
+                            <TableHead className="text-right">Total</TableHead>
                             <TableHead className="text-right">Note moy.</TableHead>
+                            <TableHead className="text-right">Ponctualité</TableHead>
+                            <TableHead className="text-right">Taux d'échec</TableHead>
+                            <TableHead className="text-right">Sur place forcé</TableHead>
                             <TableHead className="text-right">Sans contact forcé</TableHead>
-                            <TableHead className="text-right">Validation Web</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredStats.length > 0 ? filteredStats.map((stat) => (
                             <TableRow key={stat.name}>
                                 <TableCell className="font-medium">{stat.name}</TableCell>
-                                <TableCell className="text-right text-muted-foreground">{data.find(d => d.warehouse === stat.name)?.depot}</TableCell>
+                                <TableCell className="text-muted-foreground">{data.find(d => d.warehouse === stat.name)?.depot}</TableCell>
                                 <TableCell className="text-right">{stat.totalDeliveries}</TableCell>
-                                <TableCell className="text-right">{stat.successRate.toFixed(1)}%</TableCell>
                                 <TableCell className="text-right">{stat.averageRating > 0 ? stat.averageRating.toFixed(2) : 'N/A'}</TableCell>
+                                <TableCell className="text-right">{stat.punctualityRate.toFixed(1)}%</TableCell>
+                                <TableCell className="text-right">{(100 - stat.successRate).toFixed(1)}%</TableCell>
+                                <TableCell className="text-right">{stat.forcedOnSiteRate.toFixed(1)}%</TableCell>
                                 <TableCell className="text-right">{stat.forcedNoContactRate.toFixed(1)}%</TableCell>
-                                <TableCell className="text-right">{stat.webCompletionRate.toFixed(1)}%</TableCell>
                             </TableRow>
                         )) : (
                             <TableRow>

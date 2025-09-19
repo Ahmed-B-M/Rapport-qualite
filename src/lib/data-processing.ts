@@ -132,7 +132,8 @@ const updateStats = (stats: AggregatedStats, delivery: Delivery) => {
         }
     }
 
-    if (delivery.delaySeconds <= 0) {
+    // Punctuality is now between -15 and +15 minutes
+    if (delivery.delaySeconds >= -900 && delivery.delaySeconds <= 900) {
         stats.onTimeDeliveries++;
     }
 
@@ -188,7 +189,7 @@ export const getOverallStats = (data: Delivery[]): AggregatedStats => {
     return overallStats;
 }
 
-export type RankingMetric = 'averageRating' | 'punctualityRate' | 'successRate';
+export type RankingMetric = 'averageRating' | 'punctualityRate' | 'successRate' | 'forcedOnSiteRate' | 'forcedNoContactRate';
 export type Ranking<T> = {
     top: T[],
     flop: T[]
@@ -197,10 +198,15 @@ export type Ranking<T> = {
 export function getRankings<T extends {name: string} & AggregatedStats>(
     stats: T[],
     metric: RankingMetric,
-    take: number = 3
+    take: number = 3,
+    direction: 'asc' | 'desc' = 'desc'
 ): Ranking<T> {
     const sorted = [...stats].sort((a, b) => {
-        return b[metric] - a[metric];
+        if (direction === 'desc') {
+            return b[metric] - a[metric];
+        } else {
+            return a[metric] - b[metric];
+        }
     });
 
     const top = sorted.slice(0, take);

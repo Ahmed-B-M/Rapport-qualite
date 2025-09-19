@@ -5,7 +5,7 @@ import { type Delivery } from '@/lib/definitions';
 import { getOverallStats, aggregateStats } from '@/lib/data-processing';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock, Percent, AlertCircle, Truck, PackageCheck, PackageX, Star, Timer, Globe, Smartphone, Ban, CheckCircle } from 'lucide-react';
+import { AlertCircle, Star, Timer, Ban, Globe, Target } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { Bar, Pie, Cell, PieChart, BarChart as RechartsBarChart, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -35,17 +35,15 @@ export function Overview({ data }: { data: Delivery[] }) {
     }, [data]);
 
     const pieColors = ["hsl(var(--chart-1))", "hsl(var(--chart-2))"];
-    const statusColors = ["hsl(var(--chart-1))", "hsl(var(--chart-4))"];
 
     return (
         <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                <StatCard title="Livraisons totales" value={overallStats.totalDeliveries.toLocaleString()} icon={Truck} />
-                <StatCard title="Taux de réussite" value={`${overallStats.successRate.toFixed(1)}%`} icon={CheckCircle} description={`${overallStats.successfulDeliveries.toLocaleString()} livrées`} />
-                <StatCard title="Livraisons échouées" value={overallStats.failedDeliveries.toLocaleString()} icon={AlertCircle} description={`${(100 - overallStats.successRate).toFixed(1)}% échouées`} />
-                <StatCard title="Taux de ponctualité" value={`${overallStats.punctualityRate.toFixed(1)}%`} icon={Timer} description={`${overallStats.onTimeDeliveries.toLocaleString()} à l'heure`} />
-                <StatCard title="Note moyenne" value={`${overallStats.averageRating.toFixed(2)} / 5`} icon={Star} description={`Basé sur ${overallStats.ratedDeliveries.toLocaleString()} avis`} />
-                <StatCard title="Sans contact forcé" value={`${overallStats.forcedNoContactRate.toFixed(1)}%`} icon={Ban} />
+                <StatCard title="Note moyenne" value={`${overallStats.averageRating.toFixed(2)} / 5`} icon={Star} description={`Objectif: 4.80`} />
+                <StatCard title="Taux de ponctualité" value={`${overallStats.punctualityRate.toFixed(1)}%`} icon={Timer} description={`Objectif: 95%`} />
+                <StatCard title="Taux d'échec" value={`${(100 - overallStats.successRate).toFixed(1)}%`} icon={AlertCircle} description={`Objectif: 1% max`} />
+                <StatCard title="Sur place forcé" value={`${overallStats.forcedOnSiteRate.toFixed(1)}%`} icon={Target} description={`Objectif: 10% max`} />
+                <StatCard title="Sans contact forcé" value={`${overallStats.forcedNoContactRate.toFixed(1)}%`} icon={Ban} description={`Objectif: 10% max`} />
                 <StatCard title="Validation Web" value={`${overallStats.webCompletionRate.toFixed(1)}%`} icon={Globe} />
             </div>
 
