@@ -7,10 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ArrowUpDown, ArrowLeft, User, Star, ThumbsDown, MessageSquareQuote } from 'lucide-react';
+import { ArrowUpDown, ArrowLeft, User, Star, ThumbsDown, MessageSquareQuote, Download } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import * as XLSX from 'xlsx';
 
 type DriverStat = {
     name: string;
@@ -139,6 +140,26 @@ export function DriverAnalytics({ data }: { data: Delivery[] }) {
         if (sortConfig.key !== key) return <ArrowUpDown className="ml-2 h-4 w-4 opacity-30" />;
         return sortConfig.direction === 'asc' ? '▲' : '▼';
     }
+    
+    const handleExport = () => {
+        const dataToExport = sortedAndFilteredStats.map(stat => ({
+            "Livreur": stat.name,
+            "Transporteur": stat.carrier,
+            "Total Livraisons": stat.totalDeliveries,
+            "Note Moyenne": stat.averageRating > 0 ? stat.averageRating.toFixed(2) : 'N/A',
+            "Ponctualité (%)": stat.punctualityRate.toFixed(2),
+            "Taux d'échec (%)": stat.failureRate.toFixed(2),
+            "Sur place forcé (%)": stat.forcedOnSiteRate.toFixed(2),
+            "Sans contact forcé (%)": stat.forcedNoContactRate.toFixed(2),
+            "Validation Web (%)": stat.webCompletionRate.toFixed(2),
+            "Taux de notation (%)": stat.ratingRate.toFixed(2),
+        }));
+        
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Performance Livreurs');
+        XLSX.writeFile(workbook, 'performance_livreurs.xlsx');
+    };
 
     if (selectedDriver) {
         return (
@@ -154,13 +175,19 @@ export function DriverAnalytics({ data }: { data: Delivery[] }) {
         <Card>
             <CardHeader>
                 <div className="flex justify-between items-center">
-                    <CardTitle>Performance des livreurs</CardTitle>
-                    <Input 
-                        placeholder="Filtrer les livreurs..." 
-                        className="max-w-sm"
-                        value={filter}
-                        onChange={(e) => setFilter(e.target.value)}
-                    />
+                    <div>
+                        <CardTitle>Performance des livreurs</CardTitle>
+                        <CardDescription>{sortedAndFilteredStats.length} livreurs trouvés.</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Input 
+                            placeholder="Filtrer les livreurs..." 
+                            className="max-w-xs"
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value)}
+                        />
+                        <Button variant="outline" size="sm" onClick={handleExport}><Download className="mr-2 h-4 w-4" /> Exporter en CSV</Button>
+                    </div>
                 </div>
             </CardHeader>
             <CardContent>

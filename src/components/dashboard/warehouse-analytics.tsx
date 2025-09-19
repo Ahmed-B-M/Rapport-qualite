@@ -6,6 +6,9 @@ import { aggregateStats } from '@/lib/data-processing';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 export function WarehouseAnalytics({ data }: { data: Delivery[] }) {
     const [filter, setFilter] = useState('');
@@ -19,18 +22,41 @@ export function WarehouseAnalytics({ data }: { data: Delivery[] }) {
     const filteredStats = useMemo(() => {
         return warehouseStats.filter(stat => stat.name.toLowerCase().includes(filter.toLowerCase()));
     }, [warehouseStats, filter]);
+    
+    const handleExport = () => {
+        const dataToExport = filteredStats.map(stat => ({
+            "Entrepôt": stat.name,
+            "Dépôt": data.find(d => d.warehouse === stat.name)?.depot,
+            "Total Livraisons": stat.totalDeliveries,
+            "Note Moyenne": stat.averageRating > 0 ? stat.averageRating.toFixed(2) : 'N/A',
+            "Ponctualité (%)": stat.punctualityRate.toFixed(2),
+            "Taux d'échec (%)": (100 - stat.successRate).toFixed(2),
+            "Sur place forcé (%)": stat.forcedOnSiteRate.toFixed(2),
+            "Sans contact forcé (%)": stat.forcedNoContactRate.toFixed(2),
+            "Validation Web (%)": stat.webCompletionRate.toFixed(2),
+            "Taux de notation (%)": stat.ratingRate.toFixed(2),
+        }));
+        
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Performance Entrepôts');
+        XLSX.writeFile(workbook, 'performance_entrepots.xlsx');
+    };
 
     return (
         <Card>
             <CardHeader>
                 <div className="flex justify-between items-center">
                     <CardTitle>Performance des entrepôts</CardTitle>
-                    <Input 
-                        placeholder="Filtrer les entrepôts..." 
-                        className="max-w-sm"
-                        value={filter}
-                        onChange={(e) => setFilter(e.target.value)}
-                    />
+                    <div className="flex items-center gap-2">
+                        <Input 
+                            placeholder="Filtrer les entrepôts..." 
+                            className="max-w-sm"
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value)}
+                        />
+                        <Button variant="outline" size="sm" onClick={handleExport}><Download className="mr-2 h-4 w-4" /> Exporter en CSV</Button>
+                    </div>
                 </div>
             </CardHeader>
             <CardContent>

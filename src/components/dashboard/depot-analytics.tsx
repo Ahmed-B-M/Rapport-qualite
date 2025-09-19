@@ -7,8 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { analyzeDepotDelivery } from '@/ai/flows/depot-delivery-analysis';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Bot, Loader2, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Bot, Loader2, ThumbsUp, ThumbsDown, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import * as XLSX from 'xlsx';
 
 type DepotStat = { name: string } & AggregatedStats;
 
@@ -54,6 +56,25 @@ export function DepotAnalytics({ data }: { data: Delivery[] }) {
         };
         generateAnalysis();
     }, [data]);
+    
+    const handleExport = () => {
+        const dataToExport = depotStats.map(stat => ({
+            "Dépôt": stat.name,
+            "Total Livraisons": stat.totalDeliveries,
+            "Note Moyenne": stat.averageRating > 0 ? stat.averageRating.toFixed(2) : 'N/A',
+            "Ponctualité (%)": stat.punctualityRate.toFixed(2),
+            "Taux d'échec (%)": (100 - stat.successRate).toFixed(2),
+            "Sur place forcé (%)": stat.forcedOnSiteRate.toFixed(2),
+            "Sans contact forcé (%)": stat.forcedNoContactRate.toFixed(2),
+            "Validation Web (%)": stat.webCompletionRate.toFixed(2),
+            "Taux de notation (%)": stat.ratingRate.toFixed(2),
+        }));
+        
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Performance Dépôts');
+        XLSX.writeFile(workbook, 'performance_depots.xlsx');
+    };
 
     const RankingList = ({ title, ranking, metric, unit, higherIsBetter }: { title: string, ranking: Ranking<DepotStat>, metric: RankingMetric, unit: string, higherIsBetter: boolean }) => {
         const formatValue = (value: number) => {
@@ -133,7 +154,10 @@ export function DepotAnalytics({ data }: { data: Delivery[] }) {
             </Card>
             <Card>
                 <CardHeader>
-                    <CardTitle>Données sur la performance des dépôts</CardTitle>
+                    <div className="flex justify-between items-center">
+                        <CardTitle>Données sur la performance des dépôts</CardTitle>
+                        <Button variant="outline" size="sm" onClick={handleExport}><Download className="mr-2 h-4 w-4" /> Exporter en CSV</Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <Table>
