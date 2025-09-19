@@ -103,7 +103,7 @@ const CommentsList = ({ title, comments, icon }: { title: string; comments: Comm
             </CardHeader>
             <CardContent>
                 {comments.length > 0 ? (
-                    <ScrollArea className="h-64">
+                    <ScrollArea className="h-auto max-h-80">
                         <div className="space-y-4 pr-4">
                         {comments.map((c, i) => (
                             <div key={i} className="p-3 border rounded-lg bg-muted/20">
@@ -123,7 +123,7 @@ const CommentsList = ({ title, comments, icon }: { title: string; comments: Comm
                 ) : (
                     <div className="flex h-64 flex-col items-center justify-center text-center text-muted-foreground">
                         <MessageSquareQuote className="h-10 w-10 mb-4" />
-                        <p className="font-semibold">Aucun {title.toLowerCase()} trouvé.</p>
+                        <p className="font-semibold">Aucun {title.toLowerCase()}.</p>
                     </div>
                 )}
             </CardContent>
