@@ -36,7 +36,7 @@ export function DepotAnalytics({ data, objectives }: { data: Delivery[], objecti
         failureRate: getRankings(depotStats, 'successRate', 3, 'desc'), // Now using successRate and descending to get the worst
         forcedOnSiteRate: getRankings(depotStats, 'forcedOnSiteRate', 3, 'desc'),
         forcedNoContactRate: getRankings(depotStats, 'forcedNoContactRate', 3, 'desc'),
-        webCompletionRate: getRankings(depotStats, 'webCompletionRate', 3, 'desc'),
+        webCompletionRate: getRankings(depotStats, 'webCompletionRate'),
     }), [depotStats]);
 
     useEffect(() => {
@@ -83,9 +83,9 @@ export function DepotAnalytics({ data, objectives }: { data: Delivery[], objecti
         XLSX.writeFile(workbook, 'performance_depots.xlsx');
     };
 
-    const ObjectiveIndicator = ({ value, objective, higherIsBetter, tooltipLabel }: { value: number, objective: number, higherIsBetter: boolean, tooltipLabel: string }) => {
+    const ObjectiveIndicator = ({ value, objective, higherIsBetter, tooltipLabel, unit = '' }: { value: number, objective: number, higherIsBetter: boolean, tooltipLabel: string, unit?: string }) => {
         const isBelowObjective = higherIsBetter ? value < objective : value > objective;
-        if (!isBelowObjective) return null;
+        if (!isBelowObjective || value <= 0) return null;
 
         return (
             <TooltipProvider>
@@ -94,7 +94,7 @@ export function DepotAnalytics({ data, objectives }: { data: Delivery[], objecti
                         <AlertTriangle className="h-4 w-4 text-destructive" />
                     </TooltipTrigger>
                     <TooltipContent>
-                        <p>{tooltipLabel}: {value.toFixed(2)}% (Objectif: {higherIsBetter ? '>' : '<'} {objective}%)</p>
+                        <p>{tooltipLabel}: {value.toFixed(2)}{unit} (Objectif: {higherIsBetter ? '>' : '<'} {objective}{unit})</p>
                     </TooltipContent>
                 </Tooltip>
             </TooltipProvider>
@@ -204,34 +204,24 @@ export function DepotAnalytics({ data, objectives }: { data: Delivery[], objecti
                                 <TableRow key={stat.name}>
                                     <TableCell className="font-medium">{stat.name}</TableCell>
                                     <TableCell className="text-right">{stat.totalDeliveries}</TableCell>
-                                    <TableCell className="text-right flex items-center justify-end gap-2">
-                                        {stat.averageRating > 0 && stat.averageRating < objectives.averageRating && 
-                                            <ObjectiveIndicator value={stat.averageRating} objective={objectives.averageRating} higherIsBetter={true} tooltipLabel="Note moyenne" />
-                                        }
+                                    <TableCell className="text-right flex items-center justify-end gap-1">
+                                        <ObjectiveIndicator value={stat.averageRating} objective={objectives.averageRating} higherIsBetter={true} tooltipLabel="Note moyenne" />
                                         {stat.averageRating > 0 ? stat.averageRating.toFixed(2) : 'N/A'}
                                     </TableCell>
-                                    <TableCell className="text-right flex items-center justify-end gap-2">
-                                        {stat.punctualityRate < objectives.punctualityRate && 
-                                             <ObjectiveIndicator value={stat.punctualityRate} objective={objectives.punctualityRate} higherIsBetter={true} tooltipLabel="Ponctualité" />
-                                        }
+                                    <TableCell className="text-right flex items-center justify-end gap-1">
+                                        <ObjectiveIndicator value={stat.punctualityRate} objective={objectives.punctualityRate} higherIsBetter={true} tooltipLabel="Ponctualité" unit="%" />
                                         {stat.punctualityRate.toFixed(2)}%
                                     </TableCell>
-                                    <TableCell className="text-right flex items-center justify-end gap-2">
-                                        {(100 - stat.successRate) > objectives.failureRate &&
-                                            <ObjectiveIndicator value={(100 - stat.successRate)} objective={objectives.failureRate} higherIsBetter={false} tooltipLabel="Taux d'échec" />
-                                        }
+                                    <TableCell className="text-right flex items-center justify-end gap-1">
+                                        <ObjectiveIndicator value={(100 - stat.successRate)} objective={objectives.failureRate} higherIsBetter={false} tooltipLabel="Taux d'échec" unit="%" />
                                         {(100 - stat.successRate).toFixed(2)}%
                                     </TableCell>
-                                    <TableCell className="text-right flex items-center justify-end gap-2">
-                                        {stat.forcedOnSiteRate > objectives.forcedOnSiteRate &&
-                                            <ObjectiveIndicator value={stat.forcedOnSiteRate} objective={objectives.forcedOnSiteRate} higherIsBetter={false} tooltipLabel="Sur place forcé" />
-                                        }
+                                    <TableCell className="text-right flex items-center justify-end gap-1">
+                                        <ObjectiveIndicator value={stat.forcedOnSiteRate} objective={objectives.forcedOnSiteRate} higherIsBetter={false} tooltipLabel="Sur place forcé" unit="%" />
                                         {stat.forcedOnSiteRate.toFixed(2)}%
                                     </TableCell>
-                                    <TableCell className="text-right flex items-center justify-end gap-2">
-                                        {stat.forcedNoContactRate > objectives.forcedNoContactRate &&
-                                            <ObjectiveIndicator value={stat.forcedNoContactRate} objective={objectives.forcedNoContactRate} higherIsBetter={false} tooltipLabel="Sans contact forcé" />
-                                        }
+                                    <TableCell className="text-right flex items-center justify-end gap-1">
+                                        <ObjectiveIndicator value={stat.forcedNoContactRate} objective={objectives.forcedNoContactRate} higherIsBetter={false} tooltipLabel="Sans contact forcé" unit="%" />
                                         {stat.forcedNoContactRate.toFixed(2)}%
                                     </TableCell>
                                     <TableCell className="text-right">{stat.webCompletionRate.toFixed(2)}%</TableCell>

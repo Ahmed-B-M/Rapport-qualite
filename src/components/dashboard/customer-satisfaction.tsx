@@ -76,12 +76,12 @@ const RatingChart = ({ data }: { data: RatingData[] }) => (
     <ResponsiveContainer width="100%" height={150}>
         <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
             <XAxis type="number" hide />
-            <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} />
+            <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12}} />
             <Tooltip
                 cursor={{ fill: 'hsl(var(--muted))' }}
                 contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
             />
-            <Bar dataKey="count" barSize={20} radius={[4, 4, 0, 0]}>
+            <Bar dataKey="count" name="Nombre" barSize={20} radius={[4, 4, 0, 0]}>
                 {data.map((entry, index) => {
                     const rating = parseInt(entry.name.charAt(0));
                     const color = rating <= 3 ? "hsl(var(--destructive))" : (rating === 4 ? "hsl(var(--primary))" : "hsl(var(--chart-1))");
@@ -183,11 +183,11 @@ const NegativeFeedbackAIAnalysis = ({ comments }: { comments: Comment[] }) => {
                             <h4 className="font-semibold mb-2">Catégories de problèmes</h4>
                             {analysisData.length > 0 ? (
                                 <ResponsiveContainer width="100%" height={150}>
-                                    <BarChart data={analysisData} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 5 }}>
+                                    <BarChart data={analysisData} layout="vertical" margin={{ top: 5, right: 20, left: 100, bottom: 5 }}>
                                         <XAxis type="number" hide />
-                                        <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} width={80} tick={{fontSize: 12}} />
+                                        <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} width={100} tick={{fontSize: 11}} />
                                         <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }} />
-                                        <Bar dataKey="count" fill="hsl(var(--destructive))" barSize={20} radius={[0, 4, 4, 0]} />
+                                        <Bar dataKey="count" name="Nombre" fill="hsl(var(--destructive))" barSize={20} radius={[0, 4, 4, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             ) : (
@@ -266,7 +266,7 @@ export function CustomerSatisfaction({ data, objectives }: { data: Delivery[], o
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as GroupingKey)}>
             <TabsList className="grid w-full grid-cols-4">
                 {tabs.map(tab => (
-                    <TabsTrigger key={tab.id} value={tab.id}><tab.icon className="mr-2" />{tab.label}</TabsTrigger>
+                    <TabsTrigger key={tab.id} value={tab.id}><tab.icon className="mr-2 h-4 w-4" />{tab.label}</TabsTrigger>
                 ))}
             </TabsList>
             <TabsContent value="depot">

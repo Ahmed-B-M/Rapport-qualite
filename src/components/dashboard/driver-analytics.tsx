@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ArrowUpDown, ArrowLeft, User, Star, ThumbsDown, MessageSquareQuote, Download, AlertTriangle } from 'lucide-react';
+import { ArrowUpDown, ArrowLeft, User, Star, ThumbsDown, MessageSquareQuote, Download, AlertTriangle, Timer, Ban, Globe, Target, PenSquare, PackageSearch, AlertCircle } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -78,18 +78,47 @@ const DriverDetailView = ({ driver, driverData, onBack, objectives }: { driver: 
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-3"><User className="h-8 w-8" /> {driver.name}</CardTitle>
-                    <CardDescription>Transporteur : {driver.carrier}</CardDescription>
+                    <CardDescription>Transporteur : {driver.carrier} &bull; {stats.totalDeliveries} livraisons</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                        <StatCard title="Total Livraisons" value={`${stats.totalDeliveries}`} icon={User} />
-                        <StatCard title="Note moyenne" value={`${stats.averageRating.toFixed(2)} / 5`} icon={Star} description={`Objectif: > ${objectives.averageRating}`} isBelowObjective={stats.averageRating < objectives.averageRating} />
-                        <StatCard title="Taux de ponctualité" value={`${stats.punctualityRate.toFixed(2)}%`} icon={Star} description={`Objectif: > ${objectives.punctualityRate}%`} isBelowObjective={stats.punctualityRate < objectives.punctualityRate} />
-                        <StatCard title="Taux d'échec" value={`${(100 - stats.successRate).toFixed(2)}%`} icon={Star} description={`Objectif: < ${objectives.failureRate}%`} isBelowObjective={(100-stats.successRate) > objectives.failureRate} />
-                        <StatCard title="Taux de notation" value={`${stats.ratingRate.toFixed(2)}%`} icon={Star} />
-                        <StatCard title="Sur place forcé" value={`${stats.forcedOnSiteRate.toFixed(2)}%`} icon={Star} description={`Objectif: < ${objectives.forcedOnSiteRate}%`} isBelowObjective={stats.forcedOnSiteRate > objectives.forcedOnSiteRate} />
-                        <StatCard title="Sans contact forcé" value={`${stats.forcedNoContactRate.toFixed(2)}%`} icon={Star} description={`Objectif: < ${objectives.forcedNoContactRate}%`} isBelowObjective={stats.forcedNoContactRate > objectives.forcedNoContactRate} />
-                        <StatCard title="Validation Web" value={`${stats.webCompletionRate.toFixed(2)}%`} icon={Star} />
+                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        <StatCard 
+                            title="Note moyenne" 
+                            value={stats.averageRating > 0 ? `${stats.averageRating.toFixed(2)} / 5` : 'N/A'} 
+                            icon={Star} 
+                            description={`Objectif: > ${objectives.averageRating.toFixed(2)}`} 
+                            isBelowObjective={stats.averageRating > 0 && stats.averageRating < objectives.averageRating}
+                        />
+                        <StatCard 
+                            title="Taux de ponctualité" 
+                            value={`${stats.punctualityRate.toFixed(2)}%`} 
+                            icon={Timer} 
+                            description={`Objectif: > ${objectives.punctualityRate}%`}
+                            isBelowObjective={stats.punctualityRate < objectives.punctualityRate}
+                        />
+                         <StatCard 
+                            title="Taux d'échec" 
+                            value={`${(100 - stats.successRate).toFixed(2)}%`} 
+                            icon={AlertCircle} 
+                            description={`Objectif: < ${objectives.failureRate}%`} 
+                            isBelowObjective={(100 - stats.successRate) > objectives.failureRate}
+                        />
+                        <StatCard title="Taux de notation" value={`${stats.ratingRate.toFixed(2)}%`} icon={PenSquare} />
+                        <StatCard 
+                            title="Sur place forcé" 
+                            value={`${stats.forcedOnSiteRate.toFixed(2)}%`} 
+                            icon={Target} 
+                            description={`Objectif: < ${objectives.forcedOnSiteRate}%`}
+                            isBelowObjective={stats.forcedOnSiteRate > objectives.forcedOnSiteRate}
+                        />
+                        <StatCard 
+                            title="Sans contact forcé" 
+                            value={`${stats.forcedNoContactRate.toFixed(2)}%`} 
+                            icon={Ban} 
+                            description={`Objectif: < ${objectives.forcedNoContactRate}%`}
+                            isBelowObjective={stats.forcedNoContactRate > objectives.forcedNoContactRate}
+                        />
+                        <StatCard title="Validation Web" value={`${stats.webCompletionRate.toFixed(2)}%`} icon={Globe} />
                     </div>
                 </CardContent>
             </Card>
@@ -148,7 +177,7 @@ export function DriverAnalytics({ data, objectives }: { data: Delivery[], object
         return sortConfig.direction === 'asc' ? '▲' : '▼';
     }
 
-    const ObjectiveIndicator = ({ value, objective, higherIsBetter, tooltipLabel }: { value: number, objective: number, higherIsBetter: boolean, tooltipLabel: string }) => {
+    const ObjectiveIndicator = ({ value, objective, higherIsBetter, tooltipLabel, unit = '' }: { value: number, objective: number, higherIsBetter: boolean, tooltipLabel: string, unit?: string }) => {
         const isBelowObjective = higherIsBetter ? value < objective : value > objective;
         if (!isBelowObjective || value <= 0) return null;
 
@@ -159,7 +188,7 @@ export function DriverAnalytics({ data, objectives }: { data: Delivery[], object
                         <AlertTriangle className="h-4 w-4 text-destructive" />
                     </TooltipTrigger>
                     <TooltipContent>
-                        <p>{tooltipLabel}: {value.toFixed(2)} (Objectif: {higherIsBetter ? '> ' : '< '}{objective})</p>
+                        <p>{tooltipLabel}: {value.toFixed(2)}{unit} (Objectif: {higherIsBetter ? '>' : '<'} {objective}{unit})</p>
                     </TooltipContent>
                 </Tooltip>
             </TooltipProvider>
@@ -243,19 +272,19 @@ export function DriverAnalytics({ data, objectives }: { data: Delivery[], object
                                     {stat.averageRating > 0 ? stat.averageRating.toFixed(2) : 'N/A'}
                                 </TableCell>
                                 <TableCell className="text-right flex items-center justify-end gap-1">
-                                    <ObjectiveIndicator value={stat.punctualityRate} objective={objectives.punctualityRate} higherIsBetter={true} tooltipLabel="Ponctualité" />
+                                    <ObjectiveIndicator value={stat.punctualityRate} objective={objectives.punctualityRate} higherIsBetter={true} tooltipLabel="Ponctualité" unit="%" />
                                     {stat.punctualityRate.toFixed(2)}%
                                 </TableCell>
                                 <TableCell className="text-right flex items-center justify-end gap-1">
-                                     <ObjectiveIndicator value={stat.failureRate} objective={objectives.failureRate} higherIsBetter={false} tooltipLabel="Taux d'échec" />
+                                     <ObjectiveIndicator value={stat.failureRate} objective={objectives.failureRate} higherIsBetter={false} tooltipLabel="Taux d'échec" unit="%" />
                                     {stat.failureRate.toFixed(2)}%
                                 </TableCell>
                                 <TableCell className="text-right flex items-center justify-end gap-1">
-                                    <ObjectiveIndicator value={stat.forcedOnSiteRate} objective={objectives.forcedOnSiteRate} higherIsBetter={false} tooltipLabel="Sur place forcé" />
+                                    <ObjectiveIndicator value={stat.forcedOnSiteRate} objective={objectives.forcedOnSiteRate} higherIsBetter={false} tooltipLabel="Sur place forcé" unit="%" />
                                     {stat.forcedOnSiteRate.toFixed(2)}%
                                 </TableCell>
                                 <TableCell className="text-right flex items-center justify-end gap-1">
-                                    <ObjectiveIndicator value={stat.forcedNoContactRate} objective={objectives.forcedNoContactRate} higherIsBetter={false} tooltipLabel="Sans contact forcé" />
+                                    <ObjectiveIndicator value={stat.forcedNoContactRate} objective={objectives.forcedNoContactRate} higherIsBetter={false} tooltipLabel="Sans contact forcé" unit="%" />
                                     {stat.forcedNoContactRate.toFixed(2)}%
                                 </TableCell>
                                 <TableCell className="text-right">{stat.webCompletionRate.toFixed(2)}%</TableCell>
