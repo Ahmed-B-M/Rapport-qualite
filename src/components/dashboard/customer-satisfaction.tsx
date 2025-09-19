@@ -1,13 +1,14 @@
 "use client"
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { type Delivery } from '@/lib/definitions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Star, MessageSquareQuote, ThumbsDown, User, Building, Truck, Warehouse as WarehouseIcon } from 'lucide-react';
+import { Star, MessageSquareQuote, ThumbsDown, User, Building, Truck, Warehouse as WarehouseIcon, Bot, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { analyzeCustomerFeedback, type AnalyzeCustomerFeedbackOutput } from '@/ai/flows/analyze-customer-feedback';
 
 type GroupingKey = "depot" | "warehouse" | "carrier" | "driver";
 
@@ -128,6 +129,77 @@ const CommentsList = ({ title, comments, icon }: { title: string; comments: Comm
     )
 };
 
+const NegativeFeedbackAIAnalysis = ({ comments }: { comments: Comment[] }) => {
+    const [analysis, setAnalysis] = useState<AnalyzeCustomerFeedbackOutput | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const performAnalysis = async () => {
+            setLoading(true);
+            try {
+                const commentTexts = comments.map(c => c.comment);
+                const result = await analyzeCustomerFeedback({ comments: commentTexts });
+                setAnalysis(result);
+            } catch (error) {
+                console.error("AI feedback analysis failed:", error);
+                setAnalysis({ categoryCounts: {}, analysisSummary: "L'analyse par IA a échoué." });
+            }
+            setLoading(false);
+        };
+        performAnalysis();
+    }, [comments]);
+    
+    const analysisData = useMemo(() => (
+        analysis ? Object.entries(analysis.categoryCounts)
+            .map(([name, count]) => ({ name, count }))
+            .filter(item => item.count > 0)
+            .sort((a,b) => b.count - a.count) 
+        : []
+    ), [analysis]);
+
+    if (comments.length === 0) {
+        return null; // Don't show the card if there are no negative comments
+    }
+
+    return (
+        <Card className="mt-6 col-span-full">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Bot /> Analyse IA des retours négatifs</CardTitle>
+            </CardHeader>
+            <CardContent>
+                {loading ? (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                        <Loader2 className="animate-spin h-4 w-4" />
+                        <span>Analyse des commentaires en cours...</span>
+                    </div>
+                ) : analysis && (
+                    <div className="grid gap-6 md:grid-cols-2">
+                        <div>
+                             <h4 className="font-semibold mb-2">Résumé de l'analyse</h4>
+                             <p className="text-sm text-muted-foreground">{analysis.analysisSummary}</p>
+                        </div>
+                        <div>
+                            <h4 className="font-semibold mb-2">Catégories de problèmes</h4>
+                            {analysisData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height={150}>
+                                    <BarChart data={analysisData} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 5 }}>
+                                        <XAxis type="number" hide />
+                                        <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} width={80} tick={{fontSize: 12}} />
+                                        <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }} />
+                                        <Bar dataKey="count" fill="hsl(var(--destructive))" barSize={20} radius={[0, 4, 4, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">Aucune catégorie spécifique n'a été identifiée.</p>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+};
+
 
 const EntitySatisfactionView = ({ stats }: { stats: EntitySatisfactionStats[] }) => {
     if (stats.length === 0) {
@@ -156,7 +228,8 @@ const EntitySatisfactionView = ({ stats }: { stats: EntitySatisfactionStats[] })
                              <h4 className="font-semibold mb-2 text-center">Distribution des notes</h4>
                              <RatingChart data={entity.ratingDistribution} />
                         </div>
-                       <CommentsList title="Commentaires Négatifs (<= 3★)" comments={entity.negativeComments} icon={ThumbsDown} />
+                       <CommentsList title="Commentaires Négatifs (≤ 3★)" comments={entity.negativeComments} icon={ThumbsDown} />
+                       <NegativeFeedbackAIAnalysis comments={entity.negativeComments} />
                     </CardContent>
                 </Card>
             ))}
