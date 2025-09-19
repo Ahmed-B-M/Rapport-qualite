@@ -46,25 +46,9 @@ const getCarrierFromDriver = (driverName: string): string => {
         }
     }
     
-    // Handle cases where there is no suffix or it's not a recognized numeric suffix
-    // ID LOGISTICS has an empty suffix and would have been matched if the name was just the name without suffix.
-    if (CARRIERS.find(c => c.name === 'ID LOGISTICS')?.suffixes.includes('')) {
-        const idLogisticsCarrier = CARRIERS.find(c => c.name === 'ID LOGISTICS');
-        if (idLogisticsCarrier) {
-             // Check if it's not another carrier by checking if the last part is not a number suffix of another carrier
-            let isOtherCarrier = false;
-            for (const c of CARRIERS) {
-                if (c.suffixes.some(s => s && name.endsWith(s))) {
-                    isOtherCarrier = true;
-                    break;
-                }
-            }
-            if (!isOtherCarrier) return idLogisticsCarrier.name;
-        }
-    }
-    
-    // Default to ID LOGISTICS if no other carrier matches.
-    return 'ID LOGISTICS';
+    // If no specific suffix matches, mark as 'Inconnu' for review.
+    // This avoids incorrect assignment to a default carrier.
+    return 'Inconnu';
 };
 
 export const processRawData = (rawData: any[]): Delivery[] => {
