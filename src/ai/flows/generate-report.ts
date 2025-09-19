@@ -14,7 +14,8 @@ const GeneratePerformanceReportInputSchema = z.object({
   overallStats: z.string().describe("A JSON string of the overall performance statistics (KPIs)."),
   rankings: z.string().describe("A JSON string of the top and flop rankings for all entities and metrics."),
   warehouseStats: z.string().describe("A JSON string of the statistics aggregated by warehouse."),
-  customerComments: z.array(z.string()).describe("A list of all customer feedback comments.")
+  customerComments: z.array(z.string()).describe("A list of all customer feedback comments."),
+  storesExcluded: z.boolean().describe("A boolean indicating if the stores (Magasin) are excluded from the data.")
 });
 export type GeneratePerformanceReportInput = z.infer<typeof GeneratePerformanceReportInputSchema>;
 
@@ -36,6 +37,9 @@ const prompt = ai.definePrompt({
 **Structure du Rapport :**
 
 1.  **Titre :** "# Rapport de Performance des Livraisons"
+    {{#if storesExcluded}}
+    > *Note : Les données des magasins sont exclues de ce rapport.*
+    {{/if}}
 
 2.  **Analyse Globale des KPIs :**
     *   Créez un sous-titre "## Analyse Globale des Indicateurs Clés".

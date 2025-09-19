@@ -120,7 +120,7 @@ export default function DashboardPage() {
     }
 
     if (isReportOpen) {
-        return <ReportDisplay data={filteredData} onBack={() => setIsReportOpen(false)} />;
+        return <ReportDisplay data={filteredData} onBack={() => setIsReportOpen(false)} storesExcluded={excludeMagasin} />;
     }
 
     switch (activeView) {

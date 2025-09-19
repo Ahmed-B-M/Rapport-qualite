@@ -10,7 +10,7 @@ import { Loader2, ArrowLeft, Printer, AlertTriangle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-export function ReportDisplay({ data, onBack }: { data: Delivery[], onBack: () => void }) {
+export function ReportDisplay({ data, onBack, storesExcluded }: { data: Delivery[], onBack: () => void, storesExcluded: boolean }) {
     const [report, setReport] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -55,7 +55,8 @@ export function ReportDisplay({ data, onBack }: { data: Delivery[], onBack: () =
                     overallStats: JSON.stringify(overallStats),
                     rankings: JSON.stringify(aggregatedData),
                     warehouseStats: JSON.stringify(warehouseStats),
-                    customerComments: customerComments
+                    customerComments: customerComments,
+                    storesExcluded: storesExcluded,
                 });
 
                 setReport(result.reportMarkdown);
@@ -68,7 +69,7 @@ export function ReportDisplay({ data, onBack }: { data: Delivery[], onBack: () =
         };
 
         fetchReport();
-    }, [data, aggregatedData]);
+    }, [data, aggregatedData, storesExcluded]);
 
     const handlePrint = () => {
         const printContent = printRef.current;
