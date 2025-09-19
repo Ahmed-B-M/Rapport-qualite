@@ -302,8 +302,8 @@ export function CustomerSatisfaction({ data, objectives }: { data: Delivery[], o
         driver: getSatisfactionStats(data, "driver"),
     }), [data]);
 
-    const allNegativeComments = useMemo(() => {
-        return data.filter(d => d.deliveryRating && d.deliveryRating <= 3 && d.feedbackComment)
+    const allComments = useMemo(() => {
+        return data.filter(d => d.feedbackComment)
             .map(d => ({
                 comment: d.feedbackComment!,
                 rating: d.deliveryRating!,
@@ -313,6 +313,9 @@ export function CustomerSatisfaction({ data, objectives }: { data: Delivery[], o
                 carrier: d.carrier
             }));
     }, [data]);
+    
+    const allNegativeComments = useMemo(() => allComments.filter(c => c.rating <= 3), [allComments]);
+    const allPositiveComments = useMemo(() => allComments.filter(c => c.rating > 3), [allComments]);
     
     const tabs : {id: GroupingKey, label: string, icon: React.ElementType}[] = [
         { id: "depot", label: "Par Dépôt", icon: Building },
@@ -330,7 +333,7 @@ export function CustomerSatisfaction({ data, objectives }: { data: Delivery[], o
         }
     };
 
-    const handleExcelExport = () => {
+    const handleExcelExport = async () => {
         const wb = XLSX.utils.book_new();
 
         // Sheet 1: Rankings
@@ -398,6 +401,51 @@ export function CustomerSatisfaction({ data, objectives }: { data: Delivery[], o
         const carrierSheet = XLSX.utils.json_to_sheet(carrierData);
         XLSX.utils.book_append_sheet(wb, carrierSheet, "Détail par Transporteur");
         
+        // Sheet 4: Analyse des commentaires
+        try {
+            const negativeCommentTexts = allNegativeComments.map(c => c.comment);
+            const analysisResult = await analyzeCustomerFeedback({ comments: negativeCommentTexts });
+            
+            const categoryData = Object.entries(analysisResult.categoryCounts)
+                .map(([name, count]) => ({ "Catégorie": name, "Nombre de commentaires": count }))
+                .sort((a, b) => b["Nombre de commentaires"] - a["Nombre de commentaires"]);
+
+            const negativeCommentExport = allNegativeComments.map(c => ({
+                "Note": c.rating,
+                "Commentaire": c.comment,
+                "Livreur": c.driver,
+                "Dépôt": c.depot,
+            }));
+            
+            const positiveCommentExport = allPositiveComments.map(c => ({
+                "Note": c.rating,
+                "Commentaire": c.comment,
+                "Livreur": c.driver,
+                "Dépôt": c.depot,
+            }));
+
+            const analysisSheetData : any[] = [
+                {"Analyse des Commentaires": "Classement des catégories (commentaires négatifs)"},
+                ...categoryData,
+                {},
+                {"Analyse des Commentaires": `Liste des Commentaires Négatifs (${allNegativeComments.length})`},
+                ...negativeCommentExport,
+                {},
+                {"Analyse des Commentaires": `Liste des Commentaires Positifs (${allPositiveComments.length})`},
+                ...positiveCommentExport
+            ];
+
+            const analysisSheet = XLSX.utils.json_to_sheet(analysisSheetData, {skipHeader: false});
+            XLSX.utils.book_append_sheet(wb, analysisSheet, "Analyse Commentaires");
+
+        } catch (e) {
+            console.error("Failed to generate AI analysis for Excel export:", e);
+            // Optionally add a sheet indicating the failure
+            const errorSheet = XLSX.utils.json_to_sheet([{ Error: "L'analyse IA des commentaires a échoué et n'a pas pu être incluse." }]);
+            XLSX.utils.book_append_sheet(wb, errorSheet, "Erreur Analyse IA");
+        }
+
+
         XLSX.writeFile(wb, "rapport_satisfaction.xlsx");
     };
 
@@ -440,7 +488,7 @@ export function CustomerSatisfaction({ data, objectives }: { data: Delivery[], o
              <div className="print-only print-satisfaction-content">
                 <div className="print-satisfaction-page">
                     <h1 className="text-2xl font-bold mb-4">Rapport de Satisfaction Client - Global</h1>
-                    <CommentsList title="Commentaires Négatifs (≤ 3★) - Tous les dépôts" comments={allNegativeComments} icon={ThumbsDown} />
+                    <CommentsList title={`Commentaires Négatifs (≤ 3★) - Tous les dépôts`} comments={allNegativeComments} icon={ThumbsDown} />
                     <NegativeFeedbackAIAnalysis comments={allNegativeComments} title="Analyse Globale des Retours Négatifs" />
                 </div>
                 {satisfactionStats.depot.map(depotStat => (
