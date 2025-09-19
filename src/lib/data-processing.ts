@@ -72,7 +72,7 @@ export const processRawData = (rawData: any[]): Delivery[] => {
     const warehouse = (delivery.warehouse || 'Inconnu').trim();
     const depot = WAREHOUSE_DEPOT_MAP[warehouse] || 'Dépôt Inconnu';
     const driverName = (delivery.driver || '').trim();
-    const driver = driverName ? `${driverName} (${depot})` : 'Livreur Inconnu';
+    const driver = driverName ? `${driverName} (${depot})` : `Livreur Inconnu (${depot})`;
     const carrier = getCarrierFromDriver(driverName || '');
 
     let status = delivery.status;
@@ -92,7 +92,7 @@ export const processRawData = (rawData: any[]): Delivery[] => {
       failureReason: failureReason,
       taskId: String(delivery.taskId || 'N/A'),
       warehouse: warehouse,
-      driver: driver || 'Livreur Inconnu',
+      driver: driver,
       tourId: String(delivery.tourId || 'N/A'),
       sequence: Number(delivery.sequence) || 0,
       delaySeconds: Number(delivery.delaySeconds) || 0,
@@ -183,11 +183,10 @@ export const aggregateStats = (data: Delivery[], groupBy: keyof Delivery): Stats
   const statsByEntity: StatsByEntity = {};
   
   data.forEach((delivery) => {
-    let entityName: string;
-    if (groupBy === 'driver') {
-        entityName = delivery[groupBy] as string || 'Livreur Inconnu';
-    } else {
-        entityName = delivery[groupBy] as string || 'Inconnu';
+    let entityName: string = delivery[groupBy] as string || 'Inconnu';
+    
+    if (groupBy === 'driver' && entityName.startsWith('Livreur Inconnu')) {
+        entityName = `Livreur Inconnu (${delivery.depot})`
     }
 
     if (!statsByEntity[entityName]) {
@@ -227,12 +226,9 @@ export function getRankings<T extends {name: string} & AggregatedStats>(
         return s.totalDeliveries > 0;
     });
 
-    // For flop, a higher value is worse. For top, a higher value is better.
-    // The 'order' param dictates the sorting for the "Top" list. 'asc' means higher is better.
-    // 'desc' means lower is better (e.g., for failure rates).
     const higherIsBetter = order === 'asc';
     
-    const sorted = [...validStats].sort((a, b) => {
+    const sortedForTop = [...validStats].sort((a, b) => {
         const valA = metric === 'successRate' ? 100 - a.successRate : a[metric];
         const valB = metric === 'successRate' ? 100 - b.successRate : b[metric];
 
@@ -242,25 +238,8 @@ export function getRankings<T extends {name: string} & AggregatedStats>(
         
         return b.totalDeliveries - a.totalDeliveries;
     });
-
-    if (sorted.length < 10) {
-        const top = sorted.slice(0, take);
-        const flopData = sorted.slice(take);
-        // For flop list, we want to show the absolute worst, so we reverse the secondary sort logic
-        const flop = flopData.sort((a, b) => {
-             const valA = metric === 'successRate' ? 100 - a.successRate : a[metric];
-             const valB = metric === 'successRate' ? 100 - b.successRate : b[metric];
-             if (valA !== valB) {
-                return higherIsBetter ? valA - valB : valB - valA;
-             }
-             return b.totalDeliveries - a.totalDeliveries;
-        });
-
-        return { top, flop };
-    }
-
-    const top = sorted.slice(0, take);
-    const flopSorted = [...validStats].sort((a,b) => {
+    
+    const sortedForFlop = [...validStats].sort((a, b) => {
         const valA = metric === 'successRate' ? 100 - a.successRate : a[metric];
         const valB = metric === 'successRate' ? 100 - b.successRate : b[metric];
 
@@ -270,8 +249,16 @@ export function getRankings<T extends {name: string} & AggregatedStats>(
 
         return b.totalDeliveries - a.totalDeliveries;
     });
+    
+    const top = sortedForTop.slice(0, take);
 
-    const flop = flopSorted.slice(0, take);
+    if (validStats.length < (take * 2)) {
+        const topNames = new Set(top.map(t => t.name));
+        const flop = sortedForFlop.filter(item => !topNames.has(item.name)).slice(0, take);
+        return { top, flop };
+    }
+
+    const flop = sortedForFlop.slice(0, take);
 
 
     return { top, flop };

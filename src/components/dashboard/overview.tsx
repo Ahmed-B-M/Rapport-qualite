@@ -9,7 +9,7 @@ import { StatCard } from '@/components/dashboard/stat-card';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { AlertCircle, Star, Timer, Ban, Globe, Target, PenSquare, PackageSearch, Building2, Truck, User, Warehouse as WarehouseIcon, TrendingDown, TrendingUp, ChevronsRight, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList } from 'recharts';
 
 type RankingEntity = { name: string } & AggregatedStats;
 
@@ -65,11 +65,28 @@ const RankingChart = ({ rankings, metric, unit, isFlop }: {
         ...item
     })), [rankings, metric]);
 
+    const renderCustomizedLabel = (props: any) => {
+        const { x, y, width, height, value, payload } = props;
+        const recurrence = getRecurrence(payload, metric, isFlop);
+        const formattedValue = formatValue(value, metric, unit);
+
+        return (
+            <g>
+                <text x={x + width + 5} y={y + height / 2} fill="hsl(var(--foreground))" textAnchor="start" dominantBaseline="middle" className="text-xs font-semibold">
+                    {formattedValue}
+                </text>
+                 <text x={x + width + 50} y={y + height / 2} fill="hsl(var(--muted-foreground))" textAnchor="start" dominantBaseline="middle" className="text-xs">
+                    ({recurrence})
+                </text>
+            </g>
+        );
+    };
+
     return (
         <div>
             {chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={160}>
-                    <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 45, left: 10, bottom: 0 }}>
+                    <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 100, left: 10, bottom: 0 }}>
                         <XAxis type="number" dataKey="value" hide />
                         <YAxis 
                             type="category" 
@@ -86,6 +103,7 @@ const RankingChart = ({ rankings, metric, unit, isFlop }: {
                              {chartData.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={isFlop ? "hsl(var(--destructive))" : "hsl(var(--primary))"} radius={[0, 4, 4, 0]} />
                             ))}
+                            <LabelList dataKey="value" content={renderCustomizedLabel} position="right" />
                         </Bar>
                     </BarChart>
                 </ResponsiveContainer>
@@ -114,11 +132,11 @@ const ThematicRankingSection = ({ data, metric, unit, title, onDrillDown }: {
     ];
     
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 print-section">
             <h3 className="text-xl font-bold font-headline mb-4 print-title">{title}</h3>
             <div className="grid gap-6 md:grid-cols-2">
                 {entityTypes.map(entity => (
-                    <Card key={entity.id} className="print-section">
+                    <Card key={entity.id}>
                         <CardHeader>
                              <div className="flex justify-between items-center">
                                 <CardTitle className="flex items-center gap-2 text-md">
@@ -166,7 +184,7 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
         const depotStats = Object.entries(aggregateStats(data, 'depot')).map(([name, stat]) => ({ name, ...stat }));
         const warehouseStats = Object.entries(aggregateStats(data, 'warehouse')).map(([name, stat]) => ({ name, ...stat }));
         const carrierStats = Object.entries(aggregateStats(data, 'carrier')).map(([name, stat]) => ({ name, ...stat }));
-        const driverStats = Object.entries(aggregateStats(data, 'driver')).map(([name, stat]) => ({ name, ...stat }));
+        const driverStats = Object.entries(aggregateStats(data, 'driver')).map(([name, stat]) => ({ name, ...stat, driver: name }));
 
         const metrics: RankingMetric[] = ['averageRating', 'punctualityRate', 'successRate', 'forcedOnSiteRate', 'forcedNoContactRate', 'webCompletionRate'];
 
@@ -280,7 +298,7 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
                 </Tabs>
             </div>
             
-            <div id="print-view" className="print-only space-y-12">
+            <div className="print-only space-y-12">
                 <h2 className="text-2xl font-bold font-headline mb-6">Classements de Performance par Thématique</h2>
                 {rankingSections.map((section) => (
                      <ThematicRankingSection
