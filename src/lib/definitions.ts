@@ -1,4 +1,4 @@
-export type DeliveryStatus = 'Livré' | 'Non livré';
+export type DeliveryStatus = 'Livré' | 'Non livré' | 'En attente';
 export type CompletedBy = 'mobile' | 'web' | 'unknown';
 export type ForcedOnSite = 'No' | 'Yes';
 
@@ -27,6 +27,7 @@ export type AggregatedStats = {
   totalDeliveries: number;
   successfulDeliveries: number;
   failedDeliveries: number;
+  pendingDeliveries: number;
   successRate: number;
   failureReasons: Record<string, number>;
   totalRating: number;

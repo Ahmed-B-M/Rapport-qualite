@@ -20,7 +20,7 @@ const HEADER_MAPPING: Record<string, keyof Delivery> = {
 };
 
 const getCarrierFromDriver = (driverName: string): string => {
-    if (!driverName) return 'Inconnu';
+    if (!driverName || driverName.trim() === '') return 'Inconnu';
 
     const name = driverName.trim();
     
@@ -79,10 +79,17 @@ export const processRawData = (rawData: any[]): Delivery[] => {
     
     const warehouse = (delivery.warehouse || 'Inconnu').trim();
     const depot = WAREHOUSE_DEPOT_MAP[warehouse] || 'Dépôt Inconnu';
-    const carrier = getCarrierFromDriver(delivery.driver || '');
+    const driver = (delivery.driver || '').trim();
+    const carrier = getCarrierFromDriver(driver);
 
-    // If status is 'Livré', force failureReason to be undefined.
-    const status = delivery.status === 'Livré' ? 'Livré' : 'Non livré';
+    let status = delivery.status;
+    if (status === 'Livré') {
+        status = 'Livré';
+    } else if (status === 'En attente') {
+        status = 'En attente';
+    } else {
+        status = 'Non livré';
+    }
     const failureReason = status === 'Livré' ? undefined : delivery.failureReason;
 
     return {
@@ -92,7 +99,7 @@ export const processRawData = (rawData: any[]): Delivery[] => {
       failureReason: failureReason,
       taskId: String(delivery.taskId || 'N/A'),
       warehouse: warehouse,
-      driver: (delivery.driver || 'Livreur Inconnu').trim(),
+      driver: driver || 'Livreur Inconnu',
       tourId: String(delivery.tourId || 'N/A'),
       sequence: Number(delivery.sequence) || 0,
       delaySeconds: Number(delivery.delaySeconds) || 0,
@@ -111,6 +118,7 @@ const createInitialStats = (): AggregatedStats => ({
     totalDeliveries: 0,
     successfulDeliveries: 0,
     failedDeliveries: 0,
+    pendingDeliveries: 0,
     successRate: 0,
     failureReasons: {},
     totalRating: 0,
@@ -128,6 +136,11 @@ const createInitialStats = (): AggregatedStats => ({
 });
 
 const updateStats = (stats: AggregatedStats, delivery: Delivery) => {
+    if (delivery.status === 'En attente') {
+        stats.pendingDeliveries++;
+        return;
+    }
+    
     stats.totalDeliveries++;
     if (delivery.status === 'Livré') {
         stats.successfulDeliveries++;
@@ -176,8 +189,9 @@ const finalizeStats = (stats: AggregatedStats) => {
 
 export const aggregateStats = (data: Delivery[], groupBy: keyof Delivery): StatsByEntity => {
   const statsByEntity: StatsByEntity = {};
+  const dataForStats = data.filter(d => d.status !== 'En attente');
 
-  data.forEach((delivery) => {
+  dataForStats.forEach((delivery) => {
     const entityName = delivery[groupBy] as string || 'Inconnu';
     if (!statsByEntity[entityName]) {
       statsByEntity[entityName] = createInitialStats();

@@ -6,7 +6,7 @@ import { type Objectives } from '@/app/page';
 import { getOverallStats, aggregateStats } from '@/lib/data-processing';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { AlertCircle, Star, Timer, Ban, Globe, Target, PenSquare } from 'lucide-react';
+import { AlertCircle, Star, Timer, Ban, Globe, Target, PenSquare, PackageSearch } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { Bar, Pie, Cell, PieChart, BarChart as RechartsBarChart, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -48,6 +48,7 @@ export function Overview({ data, objectives }: { data: Delivery[], objectives: O
                 <StatCard title="Note moyenne" value={`${overallStats.averageRating.toFixed(2)} / 5`} icon={Star} description={`Objectif: ${objectives.averageRating.toFixed(2)}`} />
                 <StatCard title="Taux de ponctualité" value={`${overallStats.punctualityRate.toFixed(2)}%`} icon={Timer} description={`Objectif: ${objectives.punctualityRate}%`} />
                 <StatCard title="Taux de notation" value={`${overallStats.ratingRate.toFixed(2)}%`} icon={PenSquare} />
+                <StatCard title="Commandes 'En attente'" value={`${overallStats.pendingDeliveries}`} icon={PackageSearch} />
                 <StatCard title="Taux d'échec" value={`${(100 - overallStats.successRate).toFixed(2)}%`} icon={AlertCircle} description={`Objectif: ${objectives.failureRate}% max`} />
                 <StatCard title="Sur place forcé" value={`${overallStats.forcedOnSiteRate.toFixed(2)}%`} icon={Target} description={`Objectif: ${objectives.forcedOnSiteRate}% max`} />
                 <StatCard title="Sans contact forcé" value={`${overallStats.forcedNoContactRate.toFixed(2)}%`} icon={Ban} description={`Objectif: ${objectives.forcedNoContactRate}% max`} />
