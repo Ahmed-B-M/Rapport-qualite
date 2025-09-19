@@ -96,8 +96,7 @@ const RankingChart = ({ rankings, metric, unit, isFlop }: {
                             fontSize={11}
                             tickLine={false}
                             axisLine={false}
-                            width={80}
-                            tickFormatter={(value) => value.length > 12 ? `${value.substring(0, 12)}...` : value}
+                            width={120}
                         />
                         <Tooltip content={<CustomTooltip metric={metric} unit={unit} isFlop={isFlop} />} cursor={{fill: 'hsl(var(--muted))'}} />
                         <Bar dataKey="value" barSize={16}>
@@ -316,5 +315,3 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
         </div>
     );
 }
-
-    
