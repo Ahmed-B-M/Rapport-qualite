@@ -26,11 +26,11 @@ interface DashboardSidebarProps {
 
 const menuItems = [
   { id: "overview", label: "Aperçu", icon: LayoutDashboard },
+  { id: "satisfaction", label: "Satisfaction Clients", icon: Smile },
   { id: "depots", label: "Dépôts", icon: Building2 },
   { id: "warehouses", label: "Entrepôts", icon: Warehouse },
   { id: "carriers", label: "Transporteurs", icon: Truck },
   { id: "drivers", label: "Livreurs", icon: Users },
-  { id: "satisfaction", label: "Satisfaction Clients", icon: Smile },
 ];
 
 const CarrefourIcon = () => (
