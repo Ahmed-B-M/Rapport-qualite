@@ -1,3 +1,4 @@
+
 import { type Delivery, type StatsByEntity, type AggregatedStats, type DeliveryStatus } from './definitions';
 import { WAREHOUSE_DEPOT_MAP, CARRIERS } from './constants';
 
@@ -22,35 +23,21 @@ const HEADER_MAPPING: Record<string, keyof Delivery> = {
 const getCarrierFromDriver = (driverName: string): string => {
     if (!driverName || driverName.trim() === '') return 'Inconnu';
 
-    const name = driverName.trim();
+    const name = driverName.trim().toUpperCase();
 
-    if (name.toUpperCase().endsWith('ID LOG')) {
+    if (name.endsWith('ID LOG')) {
         return 'ID LOGISTICS';
     }
 
-    if (name.toUpperCase().startsWith('STT')) {
+    if (name.startsWith('STT')) {
         return 'Sous traitants';
     }
     
-    // Check for carriers with numeric suffixes first
     for (const carrier of CARRIERS) {
         for (const suffix of carrier.suffixes) {
             if (suffix && name.endsWith(suffix)) {
-                // Check if the character before the suffix is not a space, if so, it's attached
-                const suffixIndex = name.lastIndexOf(suffix);
-                if (suffixIndex > 0) {
-                     return carrier.name;
-                }
+                return carrier.name;
             }
-        }
-    }
-
-    const driverParts = name.split(' ');
-    const driverSuffix = driverParts.pop() || '';
-
-    for (const carrier of CARRIERS) {
-        if (carrier.suffixes.includes(driverSuffix)) {
-            return carrier.name;
         }
     }
     
@@ -74,10 +61,21 @@ export const processRawData = (rawData: any[]): Delivery[] => {
 
     const driver = driverName ? `${driverName} (${depot})` : `Livreur Inconnu (${depot})`;
     
-    let status: DeliveryStatus = 'En attente';
-    if (delivery.status === 'Livré') status = 'Livré';
-    if (delivery.status === 'Partiellement livré') status = 'Partiellement livré';
-    if (delivery.status === 'Non livré') status = 'Non livré';
+    let status: DeliveryStatus;
+    switch(row['Statut']) {
+        case 'Livré':
+            status = 'Livré';
+            break;
+        case 'Non livré':
+            status = 'Non livré';
+            break;
+        case 'Partiellement livré':
+            status = 'Partiellement livré';
+            break;
+        default:
+            status = 'En attente';
+            break;
+    }
 
 
     let failureReason = delivery.failureReason;
@@ -203,14 +201,16 @@ export const aggregateStats = (data: Delivery[], groupBy: keyof Delivery): Stats
 
 export const getOverallStats = (data: Delivery[]): AggregatedStats => {
     const overallStats = createInitialStats();
-    data.forEach(delivery => {
-      if (delivery.status === 'En attente') {
-        overallStats.pendingDeliveries++;
-      } else {
+    
+    const relevantDeliveries = data.filter(d => d.status === 'Livré' || d.status === 'Non livré' || d.status === 'Partiellement livré');
+    const pendingCount = data.length - relevantDeliveries.length;
+
+    relevantDeliveries.forEach(delivery => {
         updateStats(overallStats, delivery);
-      }
     });
+
     finalizeStats(overallStats);
+    overallStats.pendingDeliveries = pendingCount;
     return overallStats;
 }
 
@@ -233,40 +233,21 @@ export function getRankings<T extends {name: string} & AggregatedStats>(
         return s.totalDeliveries > 0;
     });
 
-    const higherIsBetter = order === 'asc';
+    const metricsWhereLowerIsBetter: RankingMetric[] = ['successRate', 'forcedOnSiteRate', 'forcedNoContactRate', 'webCompletionRate'];
+    const higherIsBetter = !metricsWhereLowerIsBetter.includes(metric);
     
-    // The logic for 'top' ranking remains the same.
-    const sortedForTop = [...validStats].sort((a, b) => {
+    const sorted = [...validStats].sort((a, b) => {
         const valA = a[metric];
         const valB = b[metric];
 
         if (valA !== valB) {
             return higherIsBetter ? valB - valA : valA - valB;
         }
-        return b.totalDeliveries - a.totalDeliveries;
+        return b.totalDeliveries - a.totalDeliveries; // Secondary sort by volume
     });
     
-    // The logic for 'flop' ranking is adjusted to consider volume.
-    const sortedForFlop = [...validStats].sort((a, b) => {
-        const valA = a[metric];
-        const valB = b[metric];
-
-        if (valA !== valB) {
-            // For flop, the primary sort is the reverse of top.
-            return higherIsBetter ? valA - valB : valB - a[metric];
-        }
-        
-        // Secondary sort: for flops, higher volume is worse.
-        return b.totalDeliveries - a.totalDeliveries;
-    });
-    
-    const top = sortedForTop.slice(0, take);
-
-    const topNames = new Set(top.map(t => t.name));
-    
-    // Flops should not include items that are already in the top list
-    const flop = sortedForFlop.filter(item => !topNames.has(item.name)).slice(0, take);
-
+    const top = sorted.slice(0, take);
+    const flop = sorted.slice(-take).reverse();
 
     return { top, flop };
 }
