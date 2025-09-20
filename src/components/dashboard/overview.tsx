@@ -66,7 +66,8 @@ const RankingChart = ({ rankings, metric, unit, isFlop, onBarClick }: {
     metric: RankingMetric;
     unit: string;
     isFlop: boolean;
-    onBarClick?: (entity: RankingEntity) => void;
+    onBarClick?: (entity: RankingEntity, entityType: string) => void;
+    entityType: string;
 }) => {
     const chartData = useMemo(() => rankings.map(item => ({
         name: item.name,
@@ -91,9 +92,15 @@ const RankingChart = ({ rankings, metric, unit, isFlop, onBarClick }: {
                             interval={0}
                         />
                         <Tooltip content={<CustomTooltip metric={metric} unit={unit} isFlop={isFlop} />} cursor={{fill: 'hsl(var(--muted))'}} />
-                        <Bar dataKey="value" barSize={16} onClick={onBarClick}>
+                        <Bar dataKey="value" barSize={16} >
                              {chartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={isFlop ? "hsl(var(--destructive))" : "hsl(var(--primary))"} radius={[0, 4, 4, 0]} className={onBarClick ? 'cursor-pointer' : ''} />
+                                <Cell 
+                                  key={`cell-${index}`} 
+                                  fill={isFlop ? "hsl(var(--destructive))" : "hsl(var(--primary))"} 
+                                  radius={[0, 4, 4, 0]} 
+                                  className={onBarClick ? 'cursor-pointer' : ''}
+                                  onClick={onBarClick ? () => onBarClick(entry, entityType) : undefined}
+                                 />
                             ))}
                         </Bar>
                     </BarChart>
@@ -162,7 +169,8 @@ const ThematicRankingSection = ({ data, metric, unit, title, onDrillDown, icon: 
                                     metric={metric}
                                     unit={unit}
                                     isFlop={false}
-                                    onBarClick={(item) => handleBarClick(item, entity.id)}
+                                    onBarClick={handleBarClick}
+                                    entityType={entity.id}
                                 />
                             </div>
                             <div>
@@ -172,7 +180,8 @@ const ThematicRankingSection = ({ data, metric, unit, title, onDrillDown, icon: 
                                     metric={metric}
                                     unit={unit}
                                     isFlop={true}
-                                    onBarClick={(item) => handleBarClick(item, entity.id)}
+                                    onBarClick={handleBarClick}
+                                    entityType={entity.id}
                                 />
                             </div>
                         </CardContent>
@@ -326,7 +335,7 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
               onClick={() => setActiveView('satisfaction')}
             />
 
-            <div className="space-y-12">
+            <div className="space-y-6">
                 <h2 className="text-2xl font-bold font-headline mb-6">Classements de Performance par Thématique</h2>
                 {rankingSections.map((section) => (
                      <ThematicRankingSection

@@ -43,11 +43,13 @@ export function StatCard({ title, value, icon: Icon, description, isBelowObjecti
             </TooltipProvider>
           )}
         </CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center gap-2">
+            {isBelowObjective && <AlertTriangle className="h-4 w-4 text-destructive" />}
+            <Icon className="h-4 w-4 text-muted-foreground" />
+        </div>
       </CardHeader>
       <CardContent>
         <div className={cn("text-2xl font-bold flex items-center gap-2", isBelowObjective && "text-destructive")}>
-            {isBelowObjective && <AlertTriangle className="h-6 w-6" />}
             {value}
         </div>
         {description && <p className="text-xs text-muted-foreground">{description}</p>}
