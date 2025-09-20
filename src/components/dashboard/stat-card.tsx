@@ -43,7 +43,7 @@ export const StatCard: React.FC<StatCardProps> = ({ title, value, icon, descript
         {icon}
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+        <div className="text-4xl font-bold">{value}</div>
         <div className="flex justify-between items-center">
           <p className="text-xs text-muted-foreground">{description}</p>
           {previousValue !== undefined && trendDirection && (
