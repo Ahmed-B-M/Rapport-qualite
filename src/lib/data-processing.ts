@@ -1,4 +1,5 @@
 
+
 import { type Delivery, type StatsByEntity, type AggregatedStats, type DeliveryStatus } from './definitions';
 import { WAREHOUSE_DEPOT_MAP, CARRIERS } from './constants';
 
@@ -24,7 +25,7 @@ const getCarrierFromDriver = (driverName: string): string => {
     if (!driverName || driverName.trim() === '') return 'Inconnu';
 
     const name = driverName.trim().toUpperCase();
-
+    
     if (name.endsWith('ID LOG')) {
         return 'ID LOGISTICS';
     }
@@ -160,17 +161,19 @@ const updateStats = (stats: AggregatedStats, delivery: Delivery) => {
 };
 
 const finalizeStats = (stats: AggregatedStats) => {
-    if (stats.totalDeliveries > 0) {
-        stats.successRate = (stats.successfulDeliveries / stats.totalDeliveries) * 100;
-        stats.punctualityRate = (stats.onTimeDeliveries / stats.totalDeliveries) * 100;
-        stats.forcedNoContactRate = (stats.forcedNoContactCount / stats.totalDeliveries) * 100;
-        stats.forcedOnSiteRate = (stats.forcedOnSiteCount / stats.totalDeliveries) * 100;
-        stats.webCompletionRate = (stats.webCompletionCount / stats.totalDeliveries) * 100;
-        stats.ratingRate = (stats.ratedDeliveries / stats.totalDeliveries) * 100;
+    const relevantTotal = stats.successfulDeliveries + stats.failedDeliveries;
+    if (relevantTotal > 0) {
+        stats.successRate = (stats.successfulDeliveries / relevantTotal) * 100;
+        stats.punctualityRate = (stats.onTimeDeliveries / relevantTotal) * 100;
+        stats.forcedNoContactRate = (stats.forcedNoContactCount / relevantTotal) * 100;
+        stats.forcedOnSiteRate = (stats.forcedOnSiteCount / relevantTotal) * 100;
+        stats.webCompletionRate = (stats.webCompletionCount / relevantTotal) * 100;
+        stats.ratingRate = (stats.ratedDeliveries / relevantTotal) * 100;
     }
     if (stats.ratedDeliveries > 0) {
         stats.averageRating = stats.totalRating / stats.ratedDeliveries;
     }
+    stats.totalDeliveries = relevantTotal;
 };
 
 export const aggregateStats = (data: Delivery[], groupBy: keyof Delivery): StatsByEntity => {
@@ -202,7 +205,7 @@ export const aggregateStats = (data: Delivery[], groupBy: keyof Delivery): Stats
 export const getOverallStats = (data: Delivery[]): AggregatedStats => {
     const overallStats = createInitialStats();
     
-    const relevantDeliveries = data.filter(d => d.status === 'Livré' || d.status === 'Non livré' || d.status === 'Partiellement livré');
+    const relevantDeliveries = data.filter(d => d.status !== 'En attente');
     const pendingCount = data.length - relevantDeliveries.length;
 
     relevantDeliveries.forEach(delivery => {
@@ -237,8 +240,16 @@ export function getRankings<T extends {name: string} & AggregatedStats>(
     const higherIsBetter = !metricsWhereLowerIsBetter.includes(metric);
     
     const sorted = [...validStats].sort((a, b) => {
-        const valA = a[metric];
-        const valB = b[metric];
+        let valA: number, valB: number;
+        
+        if (metric === 'successRate') {
+            // For successRate, we want to rank by failure rate. Lower is better.
+            valA = 100 - a.successRate;
+            valB = 100 - b.successRate;
+        } else {
+            valA = a[metric];
+            valB = b[metric];
+        }
 
         if (valA !== valB) {
             return higherIsBetter ? valB - valA : valA - valB;
@@ -246,8 +257,16 @@ export function getRankings<T extends {name: string} & AggregatedStats>(
         return b.totalDeliveries - a.totalDeliveries; // Secondary sort by volume
     });
     
-    const top = sorted.slice(0, take);
-    const flop = sorted.slice(-take).reverse();
+    let top, flop;
+
+    if (higherIsBetter) {
+        top = sorted.slice(0, take);
+        flop = sorted.slice(-take).reverse();
+    } else {
+        // If lower is better, the "top" are those with the lowest values, and "flop" has the highest.
+        top = sorted.slice(0, take);
+        flop = sorted.slice(-take).reverse();
+    }
 
     return { top, flop };
 }
