@@ -48,7 +48,7 @@ export default function DashboardPage() {
   const [objectives, setObjectives] = useState<Objectives>({
     averageRating: 4.8,
     punctualityRate: 95,
-    failureRate: 1,
+    failureRate: 2,
     forcedOnSiteRate: 10,
     forcedNoContactRate: 10,
     webCompletionRate: 1,

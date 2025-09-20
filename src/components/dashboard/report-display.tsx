@@ -74,8 +74,6 @@ export function ReportDisplay({ data, onBack, storesExcluded }: { data: Delivery
     const handlePrint = () => {
         const printContent = printRef.current;
         if (printContent) {
-            const originalContents = document.body.innerHTML;
-            const printHtml = printContent.innerHTML;
             
             // Create a new window to print
             const printWindow = window.open('', '_blank');
@@ -87,28 +85,38 @@ export function ReportDisplay({ data, onBack, storesExcluded }: { data: Delivery
                             <style>
                                 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
                                 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap');
-                                body { font-family: 'Inter', sans-serif; line-height: 1.6; color: #333; }
+                                body { font-family: 'Inter', sans-serif; line-height: 1.6; color: #333; margin: 2cm; }
                                 h1, h2, h3, h4 { font-family: 'Space Grotesk', sans-serif; color: #1a202c; }
-                                h1 { font-size: 2em; }
-                                h2 { font-size: 1.5em; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.3em; margin-top: 1.5em; }
-                                h3 { font-size: 1.2em; margin-top: 1em; }
+                                h1 { font-size: 2em; margin-bottom: 1em;}
+                                h2 { font-size: 1.5em; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.3em; margin-top: 1.5em; page-break-after: avoid; }
+                                h3 { font-size: 1.2em; margin-top: 1em; page-break-after: avoid; }
                                 code { background-color: #f1f1f1; padding: 2px 4px; border-radius: 4px; font-family: monospace; }
-                                blockquote { border-left: 4px solid #ccc; padding-left: 1em; margin-left: 0; font-style: italic; }
+                                blockquote { border-left: 4px solid #ccc; padding-left: 1em; margin-left: 0; font-style: italic; color: #555; }
                                 ul, ol { padding-left: 1.5em; }
+                                p { margin-bottom: 0.5em; }
+                                table { width: 100%; border-collapse: collapse; margin-top: 1em; page-break-inside: avoid; }
+                                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                                th { background-color: #f2f2f2; }
                                 @media print {
-                                    body { -webkit-print-color-adjust: exact; }
+                                    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                                    h2, h3 { page-break-after: avoid; }
+                                    .page-break { page-break-before: always; }
                                 }
                             </style>
                         </head>
                         <body>
-                            ${printHtml}
+                            ${printContent.innerHTML}
                         </body>
                     </html>
                 `);
                 printWindow.document.close();
                 printWindow.focus();
-                printWindow.print();
-                printWindow.close();
+                
+                // Use a timeout to ensure content is loaded before printing
+                setTimeout(() => {
+                    printWindow.print();
+                    printWindow.close();
+                }, 500);
             }
         }
     };
