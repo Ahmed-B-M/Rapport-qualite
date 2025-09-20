@@ -105,12 +105,13 @@ const RankingChart = ({ rankings, metric, unit, isFlop }: {
 };
 
 
-const ThematicRankingSection = ({ data, metric, unit, title, onDrillDown }: {
+const ThematicRankingSection = ({ data, metric, unit, title, onDrillDown, icon: Icon }: {
     data: any;
     metric: RankingMetric;
     unit: string;
     title: string;
     onDrillDown: (view: string) => void;
+    icon: React.ElementType;
 }) => {
     const entityTypes = [
         { id: 'depots', name: 'Dépôts', icon: Building2 },
@@ -121,7 +122,7 @@ const ThematicRankingSection = ({ data, metric, unit, title, onDrillDown }: {
     
     return (
         <div className="space-y-6 print-section">
-            <h3 className="text-xl font-bold font-headline mb-4 print-title">{title}</h3>
+            <h3 className="text-xl font-bold font-headline mb-4 print-title flex items-center gap-3"><Icon className="h-6 w-6" /> {title}</h3>
             <div className="grid gap-6 md:grid-cols-2">
                 {entityTypes.map(entity => (
                     <Card key={entity.id}>
@@ -301,6 +302,7 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
                         unit={section.unit}
                         data={aggregatedData}
                         onDrillDown={handleDrillDown}
+                        icon={section.icon}
                     />
                 ))}
             </div>
