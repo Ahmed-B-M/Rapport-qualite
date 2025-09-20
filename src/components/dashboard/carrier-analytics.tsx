@@ -2,7 +2,7 @@
 "use client"
 
 import { useMemo, useState } from 'react';
-import { type Delivery } from '@/lib/definitions';
+import { type Delivery, type AggregatedStats } from '@/lib/definitions';
 import { type Objectives, type AICache } from '@/app/page';
 import { aggregateStats } from '@/lib/data-processing';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { analyzeCarrierFailureModes } from '@/ai/flows/carrier-failure-mode-analysis';
 import { Badge } from '@/components/ui/badge';
-import { Bot, Loader2, Lightbulb, User, ArrowLeft, AlertTriangle, Info } from 'lucide-react';
+import { Bot, Loader2, Lightbulb, User, ArrowLeft, AlertTriangle, Info, Building } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
@@ -27,6 +27,9 @@ type CarrierAIAnalysis = {
     analysisSummary: string;
     correctiveAction: string;
 }
+
+type DepotStat = { name: string } & AggregatedStats;
+
 
 const PerformanceBar = ({ value, objective, higherIsBetter }: { value: number, objective: number, higherIsBetter: boolean }) => {
     const isBelowObjective = higherIsBetter ? value < objective : value > objective;
@@ -117,42 +120,74 @@ const UnknownCarrierDetailView = ({ data, onBack }: { data: Delivery[], onBack: 
     );
 };
 
-const CarrierAnalysisModal = ({ carrier, analysis, isLoading, onClose }: {
+const CarrierAnalysisModal = ({ carrier, analysis, depotStats, isLoading, onClose }: {
     carrier: ReturnType<typeof aggregateStats>[string] & { name: string };
     analysis: CarrierAIAnalysis | null;
+    depotStats: DepotStat[];
     isLoading: boolean;
     onClose: () => void;
 }) => {
     return (
         <Dialog open={true} onOpenChange={onClose}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-4xl">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2"><Bot /> Analyse IA pour {carrier.name}</DialogTitle>
-                    <DialogDescription>Analyse approfondie des modes de défaillance de ce transporteur.</DialogDescription>
+                    <DialogDescription>Analyse approfondie des modes de défaillance et performance par dépôt.</DialogDescription>
                 </DialogHeader>
-                <div className="py-4">
+                <div className="grid md:grid-cols-2 gap-6 py-4 max-h-[70vh] overflow-y-auto">
                      {isLoading ? (
-                        <div className="flex h-48 items-center justify-center gap-2 text-muted-foreground">
+                        <div className="flex h-48 items-center justify-center gap-2 text-muted-foreground md:col-span-2">
                             <Loader2 className="animate-spin h-5 w-5" />
                             <span>Analyse des modes de défaillance...</span>
                         </div>
                     ) : analysis ? (
-                        <div className="space-y-6">
-                            <div>
-                                <h4 className="font-semibold text-lg">Pire motif de défaillance</h4>
-                                <Badge variant="destructive" className="mt-2 text-base">{analysis.worstFailureReason}</Badge>
+                        <>
+                            <div className="space-y-6">
+                                <div>
+                                    <h4 className="font-semibold text-lg">Pire motif de défaillance</h4>
+                                    <Badge variant="destructive" className="mt-2 text-base">{analysis.worstFailureReason}</Badge>
+                                </div>
+                                <div>
+                                    <h4 className="font-semibold text-lg">Résumé de l'analyse</h4>
+                                    <p className="text-sm text-muted-foreground mt-1 italic">"{analysis.analysisSummary}"</p>
+                                </div>
+                                <div className="p-4 rounded-lg bg-accent/20 border border-accent/50">
+                                    <h4 className="font-semibold flex items-center gap-2 text-lg"><Lightbulb className="text-accent" /> Action Suggérée</h4>
+                                    <p className="text-sm mt-1">{analysis.correctiveAction}</p>
+                                </div>
                             </div>
-                            <div>
-                                <h4 className="font-semibold text-lg">Résumé de l'analyse</h4>
-                                <p className="text-sm text-muted-foreground mt-1 italic">"{analysis.analysisSummary}"</p>
+                             <div>
+                                <h4 className="font-semibold text-lg flex items-center gap-2 mb-2"><Building /> Performance par Dépôt</h4>
+                                {depotStats.length > 0 ? (
+                                    <Card>
+                                        <CardContent className="p-0">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Dépôt</TableHead>
+                                                        <TableHead className="text-right">Échecs</TableHead>
+                                                        <TableHead className="text-right">Ponctualité</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {depotStats.map(stat => (
+                                                        <TableRow key={stat.name}>
+                                                            <TableCell className="font-medium">{stat.name}</TableCell>
+                                                            <TableCell className="text-right">{(100 - stat.successRate).toFixed(2)}%</TableCell>
+                                                            <TableCell className="text-right">{stat.punctualityRate.toFixed(2)}%</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </CardContent>
+                                    </Card>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">Données insuffisantes pour une analyse par dépôt.</p>
+                                )}
                             </div>
-                            <div className="p-4 rounded-lg bg-accent/20 border border-accent/50">
-                                <h4 className="font-semibold flex items-center gap-2 text-lg"><Lightbulb className="text-accent" /> Action Suggérée</h4>
-                                <p className="text-sm mt-1">{analysis.correctiveAction}</p>
-                            </div>
-                        </div>
+                        </>
                     ) : (
-                        <div className="flex h-48 items-center justify-center text-muted-foreground">
+                        <div className="flex h-48 items-center justify-center text-muted-foreground md:col-span-2">
                             <p>L'analyse n'a pas pu être chargée.</p>
                         </div>
                     )}
@@ -239,6 +274,7 @@ interface CarrierAnalyticsProps {
 export function CarrierAnalytics({ data, objectives, aiCache, setAiCache, loadingAi, setLoadingAi }: CarrierAnalyticsProps) {
     const [showUnknownDetail, setShowUnknownDetail] = useState(false);
     const [selectedCarrier, setSelectedCarrier] = useState<(ReturnType<typeof aggregateStats>[string] & { name: string }) | null>(null);
+    const [carrierDepotStats, setCarrierDepotStats] = useState<DepotStat[]>([]);
 
     const carrierStats = useMemo(() => {
         const stats = aggregateStats(data, 'carrier');
@@ -261,6 +297,11 @@ export function CarrierAnalytics({ data, objectives, aiCache, setAiCache, loadin
 
         setSelectedCarrier(carrier);
         
+        // Calculate depot stats for the selected carrier
+        const carrierData = data.filter(d => d.carrier === carrier.name);
+        const depotStatsForCarrier = aggregateStats(carrierData, 'depot');
+        setCarrierDepotStats(Object.entries(depotStatsForCarrier).map(([name, stat]) => ({ name, ...stat })));
+
         if (aiCache.carrierAnalysis[carrier.name] || loadingAi[carrier.name]) return;
 
         setLoadingAi(prev => ({...prev, [carrier.name]: true}));
@@ -299,6 +340,7 @@ export function CarrierAnalytics({ data, objectives, aiCache, setAiCache, loadin
                 <CarrierAnalysisModal 
                     carrier={selectedCarrier}
                     analysis={aiCache.carrierAnalysis[selectedCarrier.name]}
+                    depotStats={carrierDepotStats}
                     isLoading={!!loadingAi[selectedCarrier.name]}
                     onClose={() => setSelectedCarrier(null)}
                 />
@@ -376,3 +418,5 @@ export function CarrierAnalytics({ data, objectives, aiCache, setAiCache, loadin
         </>
     );
 }
+
+    
