@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useMemo, useState, useEffect } from 'react';
@@ -5,19 +6,43 @@ import { type Delivery } from '@/lib/definitions';
 import { type Objectives } from '@/app/page';
 import { aggregateStats } from '@/lib/data-processing';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { analyzeCarrierFailureModes } from '@/ai/flows/carrier-failure-mode-analysis';
 import { Badge } from '@/components/ui/badge';
-import { Bot, Loader2, Lightbulb, User, Building, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { Bot, Loader2, Lightbulb, User, ArrowLeft, AlertTriangle, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 type CarrierAIAnalysis = {
     worstFailureReason: string;
     analysisSummary: string;
     correctiveAction: string;
 }
+
+const ObjectiveIndicator = ({ value, objective, higherIsBetter, tooltipLabel, unit = '' }: { value: number, objective: number, higherIsBetter: boolean, tooltipLabel: string, unit?: string }) => {
+    const isBelowObjective = higherIsBetter ? value < objective : value > objective;
+    if (!isBelowObjective || (higherIsBetter && value <= 0)) return null;
+
+    return (
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger>
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p>{tooltipLabel}: {value.toFixed(2)}{unit} (Objectif: {higherIsBetter ? '>' : '<'} {objective}{unit})</p>
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+    );
+};
 
 const UnknownCarrierDetailView = ({ data, onBack }: { data: Delivery[], onBack: () => void }) => {
     const unknownDrivers = useMemo(() => {
@@ -72,120 +97,169 @@ const UnknownCarrierDetailView = ({ data, onBack }: { data: Delivery[], onBack: 
     );
 };
 
+const CarrierAnalysisModal = ({ carrier, analysis, isLoading, onClose }: {
+    carrier: ReturnType<typeof aggregateStats>[string] & { name: string };
+    analysis: CarrierAIAnalysis | null;
+    isLoading: boolean;
+    onClose: () => void;
+}) => {
+    return (
+        <Dialog open={true} onOpenChange={onClose}>
+            <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2"><Bot /> Analyse IA pour {carrier.name}</DialogTitle>
+                    <DialogDescription>Analyse approfondie des modes de défaillance de ce transporteur.</DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                     {isLoading ? (
+                        <div className="flex h-48 items-center justify-center gap-2 text-muted-foreground">
+                            <Loader2 className="animate-spin h-5 w-5" />
+                            <span>Analyse des modes de défaillance...</span>
+                        </div>
+                    ) : analysis ? (
+                        <div className="space-y-6">
+                            <div>
+                                <h4 className="font-semibold text-lg">Pire motif de défaillance</h4>
+                                <Badge variant="destructive" className="mt-2 text-base">{analysis.worstFailureReason}</Badge>
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-lg">Résumé de l'analyse</h4>
+                                <p className="text-sm text-muted-foreground mt-1 italic">"{analysis.analysisSummary}"</p>
+                            </div>
+                            <div className="p-4 rounded-lg bg-accent/20 border border-accent/50">
+                                <h4 className="font-semibold flex items-center gap-2 text-lg"><Lightbulb className="text-accent" /> Action Suggérée</h4>
+                                <p className="text-sm mt-1">{analysis.correctiveAction}</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex h-48 items-center justify-center text-muted-foreground">
+                            <p>L'analyse n'a pas pu être chargée.</p>
+                        </div>
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
 export function CarrierAnalytics({ data, objectives }: { data: Delivery[], objectives: Objectives }) {
-    const [aiAnalysis, setAiAnalysis] = useState<Record<string, CarrierAIAnalysis>>({});
+    const [aiAnalysisCache, setAiAnalysisCache] = useState<Record<string, CarrierAIAnalysis>>({});
     const [loadingAi, setLoadingAi] = useState<Record<string, boolean>>({});
     const [showUnknownDetail, setShowUnknownDetail] = useState(false);
+    const [selectedCarrier, setSelectedCarrier] = useState<(ReturnType<typeof aggregateStats>[string] & { name: string }) | null>(null);
 
     const carrierStats = useMemo(() => {
         const stats = aggregateStats(data, 'carrier');
         return Object.entries(stats).map(([name, stat]) => ({ name, ...stat }))
             .sort((a,b) => b.totalDeliveries - a.totalDeliveries);
     }, [data]);
-
-    useEffect(() => {
-        const carriersToAnalyze = carrierStats.filter(c => c.name !== 'Inconnu');
-
-        if (carriersToAnalyze.length > 0) {
-            const generateAnalysis = async () => {
-                const initialLoadingState = carriersToAnalyze.reduce((acc, curr) => ({...acc, [curr.name]: true}), {});
-                setLoadingAi(initialLoadingState);
-
-                const analyses = await Promise.all(carriersToAnalyze.map(async (carrier) => {
-                    const failureReasons = data
-                        .filter(d => d.carrier === carrier.name && d.status === 'Non livré' && d.failureReason)
-                        .map(d => d.failureReason!);
-                    
-                    if (failureReasons.length === 0) {
-                        return { [carrier.name]: { worstFailureReason: "Aucun échec enregistré.", analysisSummary: "Ce transporteur a un historique de livraison parfait dans cet ensemble de données.", correctiveAction: "Aucune action nécessaire." } };
-                    }
-
-                    try {
-                        const result = await analyzeCarrierFailureModes({ carrierName: carrier.name, deliveryFailureReasons: failureReasons });
-                        return { [carrier.name]: result };
-                    } catch (error) {
-                        console.error(`L'analyse IA a échoué pour ${carrier.name}:`, error);
-                        return { [carrier.name]: { worstFailureReason: "Erreur", analysisSummary: "Impossible de générer l'analyse IA.", correctiveAction: "Impossible de générer une suggestion." } };
-                    }
-                }));
-                
-                const finalAnalyses = analyses.reduce((acc, curr) => ({ ...acc, ...curr }), {});
-                setAiAnalysis(finalAnalyses);
-                
-                const finalLoadingState = carriersToAnalyze.reduce((acc, curr) => ({...acc, [curr.name]: false}), {});
-                setLoadingAi(finalLoadingState);
-            };
-            generateAnalysis();
-        }
-    }, [carrierStats, data]);
-
-    const handleCarrierClick = (carrierName: string) => {
-        if (carrierName === 'Inconnu') {
+    
+    const handleCarrierClick = async (carrier: ReturnType<typeof carrierStats>[0]) => {
+        if (carrier.name === 'Inconnu') {
             setShowUnknownDetail(true);
+            return;
+        }
+
+        setSelectedCarrier(carrier);
+        
+        // Return if analysis is already cached
+        if (aiAnalysisCache[carrier.name]) return;
+
+        setLoadingAi(prev => ({...prev, [carrier.name]: true}));
+        
+        const failureReasons = data
+            .filter(d => d.carrier === carrier.name && d.status === 'Non livré' && d.failureReason)
+            .map(d => d.failureReason!);
+        
+        if (failureReasons.length === 0) {
+            const noFailureResult = { worstFailureReason: "Aucun échec enregistré.", analysisSummary: "Ce transporteur a un historique de livraison parfait dans cet ensemble de données.", correctiveAction: "Aucune action nécessaire." };
+            setAiAnalysisCache(prev => ({ ...prev, [carrier.name]: noFailureResult }));
+            setLoadingAi(prev => ({...prev, [carrier.name]: false}));
+            return;
+        }
+
+        try {
+            const result = await analyzeCarrierFailureModes({ carrierName: carrier.name, deliveryFailureReasons: failureReasons });
+            setAiAnalysisCache(prev => ({ ...prev, [carrier.name]: result }));
+        } catch (error) {
+            console.error(`L'analyse IA a échoué pour ${carrier.name}:`, error);
+            const errorResult = { worstFailureReason: "Erreur", analysisSummary: "Impossible de générer l'analyse IA.", correctiveAction: "Impossible de générer une suggestion." };
+            setAiAnalysisCache(prev => ({ ...prev, [carrier.name]: errorResult }));
+        } finally {
+            setLoadingAi(prev => ({...prev, [carrier.name]: false}));
         }
     };
+
 
     if (showUnknownDetail) {
         return <UnknownCarrierDetailView data={data} onBack={() => setShowUnknownDetail(false)} />;
     }
 
     return (
-        <div className="space-y-4">
-            <h2 className="text-2xl font-bold font-headline">Performance par transporteur</h2>
-            <Accordion type="single" collapsible className="w-full">
-                {carrierStats.map((carrier) => (
-                    <AccordionItem value={carrier.name} key={carrier.name}>
-                        <AccordionTrigger
-                            onClick={() => handleCarrierClick(carrier.name)}
-                            className={carrier.name === 'Inconnu' ? 'cursor-pointer' : ''}
-                            {...(carrier.name === 'Inconnu' ? { onClick: (e) => { e.preventDefault(); handleCarrierClick(carrier.name); } } : {})}
-                        >
-                            <div className="flex items-center justify-between w-full pr-4">
-                                <span className="text-lg font-medium">{carrier.name}</span>
-                                <div className="flex items-center gap-4 text-sm">
-                                    <span>{carrier.totalDeliveries} livraisons</span>
-                                    <Badge variant={(100 - carrier.successRate) > objectives.failureRate ? "destructive" : "default"}>
-                                        {(100 - carrier.successRate).toFixed(2)}% échecs
-                                        {(100 - carrier.successRate) > objectives.failureRate && <AlertTriangle className="h-3 w-3 ml-1.5" />}
-                                    </Badge>
-                                </div>
-                            </div>
-                        </AccordionTrigger>
-                        {carrier.name !== 'Inconnu' && (
-                            <AccordionContent>
-                                <Card className="m-2">
-                                    <CardHeader>
-                                        <CardTitle className="flex items-center gap-2"><Bot /> Analyse IA des modes de défaillance</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        {loadingAi[carrier.name] ? (
-                                            <div className="flex items-center gap-2 text-muted-foreground">
-                                                <Loader2 className="animate-spin h-4 w-4" />
-                                                <span>Analyse des modes de défaillance...</span>
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-4">
-                                                <div>
-                                                    <h4 className="font-semibold">Pire motif de défaillance :</h4>
-                                                    <Badge variant="destructive">{aiAnalysis[carrier.name]?.worstFailureReason}</Badge>
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-semibold">Résumé :</h4>
-                                                    <p className="text-sm text-muted-foreground">{aiAnalysis[carrier.name]?.analysisSummary}</p>
-                                                </div>
-                                                <div className="p-3 rounded-md bg-accent/20 border border-accent/50">
-                                                    <h4 className="font-semibold flex items-center gap-2"><Lightbulb className="text-accent" /> Action Suggérée :</h4>
-                                                    <p className="text-sm text-muted-foreground pl-6">{aiAnalysis[carrier.name]?.correctiveAction}</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            </AccordionContent>
-                        )}
-                    </AccordionItem>
-                ))}
-            </Accordion>
-        </div>
+        <>
+            {selectedCarrier && (
+                <CarrierAnalysisModal 
+                    carrier={selectedCarrier}
+                    analysis={aiAnalysisCache[selectedCarrier.name]}
+                    isLoading={loadingAi[selectedCarrier.name]}
+                    onClose={() => setSelectedCarrier(null)}
+                />
+            )}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Performance par Transporteur</CardTitle>
+                    <CardDescription>
+                        Comparez les indicateurs clés de vos transporteurs. Cliquez sur une ligne pour une analyse IA détaillée.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                     <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Transporteur</TableHead>
+                                <TableHead className="text-right">Total Livraisons</TableHead>
+                                <TableHead className="text-right">Taux d'échec</TableHead>
+                                <TableHead className="text-right">Ponctualité</TableHead>
+                                <TableHead className="text-right">Note moyenne</TableHead>
+                                <TableHead className="text-center">Analyse IA</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {carrierStats.map((carrier) => (
+                                <TableRow key={carrier.name} className="cursor-pointer" onClick={() => handleCarrierClick(carrier)}>
+                                    <TableCell className="font-medium">{carrier.name}</TableCell>
+                                    <TableCell className="text-right">{carrier.totalDeliveries}</TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex items-center justify-end gap-1">
+                                            <ObjectiveIndicator value={(100 - carrier.successRate)} objective={objectives.failureRate} higherIsBetter={false} tooltipLabel="Taux d'échec" unit="%" />
+                                            {(100 - carrier.successRate).toFixed(2)}%
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex items-center justify-end gap-1">
+                                            <ObjectiveIndicator value={carrier.punctualityRate} objective={objectives.punctualityRate} higherIsBetter={true} tooltipLabel="Ponctualité" unit="%" />
+                                            {carrier.punctualityRate.toFixed(2)}%
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex items-center justify-end gap-1">
+                                            <ObjectiveIndicator value={carrier.averageRating} objective={objectives.averageRating} higherIsBetter={true} tooltipLabel="Note moyenne" />
+                                            {carrier.averageRating > 0 ? carrier.averageRating.toFixed(2) : 'N/A'}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                         <Button variant="ghost" size="icon">
+                                            {carrier.name === 'Inconnu' ? <Info className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </>
     );
 }
+
+    
