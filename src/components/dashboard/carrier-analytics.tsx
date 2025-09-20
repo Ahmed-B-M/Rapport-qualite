@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { type Delivery } from '@/lib/definitions';
 import { type Objectives } from '@/app/page';
 import { aggregateStats } from '@/lib/data-processing';
@@ -19,12 +19,32 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, Tooltip as RechartsTooltip } from 'recharts';
+import { cn } from '@/lib/utils';
 
 type CarrierAIAnalysis = {
     worstFailureReason: string;
     analysisSummary: string;
     correctiveAction: string;
 }
+
+const PerformanceBar = ({ value, objective, higherIsBetter }: { value: number, objective: number, higherIsBetter: boolean }) => {
+    const isBelowObjective = higherIsBetter ? value < objective : value > objective;
+    const percentage = higherIsBetter ? value : 100 - value;
+
+    return (
+        <div className="w-full bg-muted rounded-full h-2.5">
+            <div
+                className={cn(
+                    "h-2.5 rounded-full",
+                    isBelowObjective ? "bg-destructive" : "bg-primary"
+                )}
+                style={{ width: `${percentage}%` }}
+            ></div>
+        </div>
+    );
+};
+
 
 const ObjectiveIndicator = ({ value, objective, higherIsBetter, tooltipLabel, unit = '' }: { value: number, objective: number, higherIsBetter: boolean, tooltipLabel: string, unit?: string }) => {
     const isBelowObjective = higherIsBetter ? value < objective : value > objective;
@@ -142,6 +162,72 @@ const CarrierAnalysisModal = ({ carrier, analysis, isLoading, onClose }: {
     );
 };
 
+const CHART_COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1919'];
+
+const CarrierRadarChart = ({ stats }: { stats: (ReturnType<typeof aggregateStats>[string] & { name: string })[] }) => {
+    const radarData = useMemo(() => {
+        const subjects = [
+            { key: "failureRate", name: "Taux d'Échec", max: 0 },
+            { key: "forcedOnSiteRate", name: "Forcé Sur Place", max: 0 },
+            { key: "forcedNoContactRate", name: "Forcé Sans Contact", max: 0 },
+        ];
+
+        const dataBySubject = subjects.map(subject => ({
+            subject: subject.name,
+            ...stats.reduce((acc, carrier) => {
+                const value = subject.key === 'failureRate' ? 100 - carrier.successRate : carrier[subject.key as keyof typeof carrier];
+                if (typeof value === 'number') {
+                    acc[carrier.name] = value;
+                    if (value > subject.max) subject.max = value;
+                }
+                return acc;
+            }, {} as Record<string, number>),
+        }));
+        
+        // Normalize the data for better visualization
+        return dataBySubject.map(d => {
+            const subjectInfo = subjects.find(s => s.name === d.subject);
+            const maxVal = subjectInfo && subjectInfo.max > 0 ? subjectInfo.max : 1; // Avoid division by zero
+            const normalized = { ...d };
+            stats.forEach(carrier => {
+                if (typeof normalized[carrier.name] === 'number') {
+                    normalized[carrier.name] = (normalized[carrier.name] / maxVal) * 100;
+                }
+            });
+            return normalized;
+        });
+
+    }, [stats]);
+    
+    if (stats.length === 0) return null;
+
+    return (
+        <Card className="mb-6">
+            <CardHeader>
+                <CardTitle>Profil de Défaillance Comparatif des Transporteurs</CardTitle>
+                <CardDescription>
+                    Comparaison des principaux indicateurs de défaillance (normalisés à 100% pour la lisibilité). Plus la zone d'un transporteur est grande, plus ses taux de défaillance sont élevés.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="h-[350px]">
+                <ResponsiveContainer width="100%" height="100%">
+                     <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                        <PolarGrid />
+                        <PolarAngleAxis dataKey="subject" />
+                        <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                        <RechartsTooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }} formatter={(value: number, name: string) => [`${value.toFixed(2)}% (normalisé)`, name]} />
+                        <Legend />
+                        {stats.map((carrier, index) => (
+                           <Radar key={carrier.name} name={carrier.name} dataKey={carrier.name} stroke={CHART_COLORS[index % CHART_COLORS.length]} fill={CHART_COLORS[index % CHART_COLORS.length]} fillOpacity={0.6} />
+                        ))}
+                    </RadarChart>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
+    );
+};
+
+
 export function CarrierAnalytics({ data, objectives }: { data: Delivery[], objectives: Objectives }) {
     const [aiAnalysisCache, setAiAnalysisCache] = useState<Record<string, CarrierAIAnalysis>>({});
     const [loadingAi, setLoadingAi] = useState<Record<string, boolean>>({});
@@ -151,10 +237,17 @@ export function CarrierAnalytics({ data, objectives }: { data: Delivery[], objec
     const carrierStats = useMemo(() => {
         const stats = aggregateStats(data, 'carrier');
         return Object.entries(stats).map(([name, stat]) => ({ name, ...stat }))
+            .filter(carrier => carrier.name !== 'Inconnu') // Exclude 'Inconnu' from main stats
             .sort((a,b) => b.totalDeliveries - a.totalDeliveries);
     }, [data]);
     
-    const handleCarrierClick = async (carrier: ReturnType<typeof carrierStats>[0]) => {
+    const unknownCarrierStat = useMemo(() => {
+        const stats = aggregateStats(data, 'carrier');
+        return stats['Inconnu'] ? { name: 'Inconnu', ...stats['Inconnu'] } : null;
+    }, [data]);
+
+    const handleCarrierClick = async (carrier: ReturnType<typeof carrierStats>[0] | typeof unknownCarrierStat) => {
+        if (!carrier) return;
         if (carrier.name === 'Inconnu') {
             setShowUnknownDetail(true);
             return;
@@ -162,8 +255,7 @@ export function CarrierAnalytics({ data, objectives }: { data: Delivery[], objec
 
         setSelectedCarrier(carrier);
         
-        // Return if analysis is already cached
-        if (aiAnalysisCache[carrier.name]) return;
+        if (aiAnalysisCache[carrier.name] || loadingAi[carrier.name]) return;
 
         setLoadingAi(prev => ({...prev, [carrier.name]: true}));
         
@@ -201,15 +293,16 @@ export function CarrierAnalytics({ data, objectives }: { data: Delivery[], objec
                 <CarrierAnalysisModal 
                     carrier={selectedCarrier}
                     analysis={aiAnalysisCache[selectedCarrier.name]}
-                    isLoading={loadingAi[selectedCarrier.name]}
+                    isLoading={!!loadingAi[selectedCarrier.name]}
                     onClose={() => setSelectedCarrier(null)}
                 />
             )}
+            <CarrierRadarChart stats={carrierStats} />
             <Card>
                 <CardHeader>
                     <CardTitle>Performance par Transporteur</CardTitle>
                     <CardDescription>
-                        Comparez les indicateurs clés de vos transporteurs. Cliquez sur une ligne pour une analyse IA détaillée.
+                        Comparez les indicateurs clés de vos transporteurs. Cliquez sur l'icône <Bot className="inline h-4 w-4" /> pour une analyse IA détaillée.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -218,28 +311,30 @@ export function CarrierAnalytics({ data, objectives }: { data: Delivery[], objec
                             <TableRow>
                                 <TableHead>Transporteur</TableHead>
                                 <TableHead className="text-right">Total Livraisons</TableHead>
-                                <TableHead className="text-right">Taux d'échec</TableHead>
-                                <TableHead className="text-right">Ponctualité</TableHead>
+                                <TableHead className="w-[120px] text-right">Taux d'échec</TableHead>
+                                <TableHead className="w-[120px] text-right">Ponctualité</TableHead>
                                 <TableHead className="text-right">Note moyenne</TableHead>
                                 <TableHead className="text-center">Analyse IA</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {carrierStats.map((carrier) => (
-                                <TableRow key={carrier.name} className="cursor-pointer" onClick={() => handleCarrierClick(carrier)}>
+                                <TableRow key={carrier.name}>
                                     <TableCell className="font-medium">{carrier.name}</TableCell>
                                     <TableCell className="text-right">{carrier.totalDeliveries}</TableCell>
                                     <TableCell className="text-right">
-                                        <div className="flex items-center justify-end gap-1">
+                                        <div className="flex items-center justify-end gap-2">
+                                            <span>{(100 - carrier.successRate).toFixed(2)}%</span>
                                             <ObjectiveIndicator value={(100 - carrier.successRate)} objective={objectives.failureRate} higherIsBetter={false} tooltipLabel="Taux d'échec" unit="%" />
-                                            {(100 - carrier.successRate).toFixed(2)}%
                                         </div>
+                                         <PerformanceBar value={(100 - carrier.successRate)} objective={objectives.failureRate} higherIsBetter={false} />
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <div className="flex items-center justify-end gap-1">
+                                        <div className="flex items-center justify-end gap-2">
+                                            <span>{carrier.punctualityRate.toFixed(2)}%</span>
                                             <ObjectiveIndicator value={carrier.punctualityRate} objective={objectives.punctualityRate} higherIsBetter={true} tooltipLabel="Ponctualité" unit="%" />
-                                            {carrier.punctualityRate.toFixed(2)}%
                                         </div>
+                                         <PerformanceBar value={carrier.punctualityRate} objective={objectives.punctualityRate} higherIsBetter={true} />
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
@@ -248,12 +343,26 @@ export function CarrierAnalytics({ data, objectives }: { data: Delivery[], objec
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-center">
-                                         <Button variant="ghost" size="icon">
-                                            {carrier.name === 'Inconnu' ? <Info className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+                                         <Button variant="ghost" size="icon" onClick={() => handleCarrierClick(carrier)}>
+                                            <Bot className="h-4 w-4" />
                                         </Button>
                                     </TableCell>
                                 </TableRow>
                             ))}
+                             {unknownCarrierStat && (
+                                <TableRow key="inconnu" className="bg-muted/50">
+                                    <TableCell className="font-medium">Inconnu</TableCell>
+                                    <TableCell className="text-right">{unknownCarrierStat.totalDeliveries}</TableCell>
+                                    <TableCell className="text-right">{(100 - unknownCarrierStat.successRate).toFixed(2)}%</TableCell>
+                                    <TableCell className="text-right">{unknownCarrierStat.punctualityRate.toFixed(2)}%</TableCell>
+                                    <TableCell className="text-right">{unknownCarrierStat.averageRating > 0 ? unknownCarrierStat.averageRating.toFixed(2) : 'N/A'}</TableCell>
+                                    <TableCell className="text-center">
+                                        <Button variant="ghost" size="icon" onClick={() => handleCarrierClick(unknownCarrierStat)}>
+                                            <Info className="h-4 w-4" />
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            )}
                         </TableBody>
                     </Table>
                 </CardContent>
@@ -261,5 +370,3 @@ export function CarrierAnalytics({ data, objectives }: { data: Delivery[], objec
         </>
     );
 }
-
-    
