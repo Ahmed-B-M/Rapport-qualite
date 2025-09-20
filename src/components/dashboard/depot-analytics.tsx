@@ -21,6 +21,24 @@ import {
 
 type DepotStat = { name: string } & AggregatedStats;
 
+const ObjectiveIndicator = ({ value, objective, higherIsBetter, tooltipLabel, unit = '' }: { value: number, objective: number, higherIsBetter: boolean, tooltipLabel: string, unit?: string }) => {
+    const isBelowObjective = higherIsBetter ? value < objective : value > objective;
+    if (!isBelowObjective || (higherIsBetter && value <= 0)) return null;
+
+    return (
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger>
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p>{tooltipLabel}: {value.toFixed(2)}{unit} (Objectif: {higherIsBetter ? '>' : '<'} {objective}{unit})</p>
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+    );
+};
+
 export function DepotAnalytics({ data, objectives }: { data: Delivery[], objectives: Objectives }) {
     const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
     const [loadingAi, setLoadingAi] = useState(true);
@@ -81,25 +99,6 @@ export function DepotAnalytics({ data, objectives }: { data: Delivery[], objecti
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Performance Dépôts');
         XLSX.writeFile(workbook, 'performance_depots.xlsx');
-    };
-
-    const ObjectiveIndicator = ({ value, objective, higherIsBetter, tooltipLabel, unit = '' }: { value: number, objective: number, higherIsBetter: boolean, tooltipLabel: string, unit?: string }) => {
-        const isBelowObjective = higherIsBetter ? value < objective : value > objective;
-        if (!isBelowObjective || (higherIsBetter && value <= 0)) return null;
-
-
-        return (
-            <TooltipProvider>
-                <Tooltip>
-                    <TooltipTrigger>
-                        <AlertTriangle className="h-4 w-4 text-destructive" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p>{tooltipLabel}: {value.toFixed(2)}{unit} (Objectif: {higherIsBetter ? '>' : '<'} {objective}{unit})</p>
-                    </TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
-        );
     };
 
     const RankingList = ({ title, ranking, metric, unit, higherIsBetter }: { title: string, ranking: Ranking<DepotStat>, metric: RankingMetric, unit: string, higherIsBetter: boolean }) => {

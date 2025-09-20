@@ -28,6 +28,24 @@ type DriverStat = {
 
 type SortKey = 'name' | 'totalDeliveries' | 'averageRating' | 'punctualityRate' | 'failureRate' | 'forcedOnSiteRate' | 'forcedNoContactRate' | 'webCompletionRate' | 'ratingRate';
 
+const ObjectiveIndicator = ({ value, objective, higherIsBetter, tooltipLabel, unit = '' }: { value: number, objective: number, higherIsBetter: boolean, tooltipLabel: string, unit?: string }) => {
+    const isBelowObjective = higherIsBetter ? value < objective : value > objective;
+    if (!isBelowObjective || (higherIsBetter && value <= 0)) return null;
+
+    return (
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger>
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p>{tooltipLabel}: {value.toFixed(2)}{unit} (Objectif: {higherIsBetter ? '>' : '<'} {objective}{unit})</p>
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+    );
+};
+
 const CommentsList = ({ comments }: { comments: { comment: string, rating: number }[] }) => {
     if (comments.length === 0) {
         return (
@@ -182,24 +200,6 @@ export function DriverAnalytics({ data, objectives }: { data: Delivery[], object
         if (sortConfig.key !== key) return <ArrowUpDown className="ml-2 h-4 w-4 opacity-30" />;
         return sortConfig.direction === 'asc' ? '▲' : '▼';
     }
-
-    const ObjectiveIndicator = ({ value, objective, higherIsBetter, tooltipLabel, unit = '' }: { value: number, objective: number, higherIsBetter: boolean, tooltipLabel: string, unit?: string }) => {
-        const isBelowObjective = higherIsBetter ? value < objective : value > objective;
-        if (!isBelowObjective || (higherIsBetter && value <= 0)) return null;
-
-        return (
-            <TooltipProvider>
-                <Tooltip>
-                    <TooltipTrigger>
-                        <AlertTriangle className="h-4 w-4 text-destructive" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p>{tooltipLabel}: {value.toFixed(2)}{unit} (Objectif: {higherIsBetter ? '>' : '<'} {objective}{unit})</p>
-                    </TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
-        );
-    };
     
     const handleExport = () => {
         const dataToExport = sortedAndFilteredStats.map(stat => ({

@@ -8,11 +8,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Star, MessageSquareQuote, ThumbsDown, User, Building, Truck, Warehouse as WarehouseIcon, Bot, Loader2, AlertTriangle, Search, Printer, Download } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 import { analyzeCustomerFeedback, type AnalyzeCustomerFeedbackOutput } from '@/ai/flows/analyze-customer-feedback';
 import { Button } from '../ui/button';
 import * as XLSX from 'xlsx';
 import { getRankings } from '@/lib/data-processing';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 type GroupingKey = "depot" | "warehouse" | "carrier" | "driver";
 
@@ -122,7 +128,7 @@ const RatingChart = ({ data }: { data: RatingData[] }) => (
         <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
             <XAxis type="number" hide />
             <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12}} />
-            <Tooltip
+            <RechartsTooltip
                 cursor={{ fill: 'hsl(var(--muted))' }}
                 contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
             />
@@ -233,7 +239,7 @@ const NegativeFeedbackAIAnalysis = ({ comments, title }: { comments: Comment[], 
                                     <BarChart data={analysisData} layout="vertical" margin={{ top: 5, right: 20, left: 100, bottom: 5 }}>
                                         <XAxis type="number" hide />
                                         <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} width={100} tick={{fontSize: 11}} />
-                                        <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }} />
+                                        <RechartsTooltip cursor={{ fill: 'hsl(var(--muted))' }} contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }} />
                                         <Bar dataKey="count" name="Nombre" fill="hsl(var(--destructive))" barSize={20} radius={[0, 4, 4, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
@@ -245,6 +251,24 @@ const NegativeFeedbackAIAnalysis = ({ comments, title }: { comments: Comment[], 
                 )}
             </CardContent>
         </Card>
+    );
+};
+
+const ObjectiveIndicator = ({ value, objective, higherIsBetter, tooltipLabel, unit = '' }: { value: number, objective: number, higherIsBetter: boolean, tooltipLabel: string, unit?: string }) => {
+    const isBelowObjective = higherIsBetter ? value < objective : value > objective;
+    if (!isBelowObjective || (higherIsBetter && value <= 0)) return null;
+
+    return (
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger>
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p>{tooltipLabel}: {value.toFixed(2)}{unit} (Objectif: {higherIsBetter ? '>' : '<'} {objective}{unit})</p>
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
     );
 };
 
@@ -268,13 +292,15 @@ const EntitySatisfactionView = ({ stats, objectives }: { stats: EntitySatisfacti
                     <CardHeader>
                         <CardTitle>{entity.name}</CardTitle>
                         <CardDescription className="flex items-center gap-2">
-                            Note moyenne de {entity.averageRating.toFixed(2)} sur {entity.totalRatings} notations
-                            {entity.averageRating > 0 && entity.averageRating < objectives.averageRating && (
-                                <Badge variant="destructive" className="gap-1.5">
-                                    <AlertTriangle className="h-3 w-3" />
-                                    Sous l'objectif
-                                </Badge>
-                            )}
+                           <div className="flex items-center gap-1">
+                                Note moyenne de {entity.averageRating.toFixed(2)} sur {entity.totalRatings} notations
+                                <ObjectiveIndicator 
+                                    value={entity.averageRating}
+                                    objective={objectives.averageRating}
+                                    higherIsBetter={true}
+                                    tooltipLabel="Note moyenne"
+                                />
+                           </div>
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="grid gap-6 lg:grid-cols-2">
