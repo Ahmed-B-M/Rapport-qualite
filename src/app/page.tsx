@@ -9,7 +9,7 @@ import { Overview } from "@/components/dashboard/overview";
 import { DepotAnalytics } from "@/components/dashboard/depot-analytics";
 import { WarehouseAnalytics } from "@/components/dashboard/warehouse-analytics";
 import { CarrierAnalytics } from "@/components/dashboard/carrier-analytics";
-import { DriverAnalytics } from "@/components/dashboard/driver-analytics";
+import { DriverAnalytics, type DriverStat } from "@/components/dashboard/driver-analytics";
 import { CustomerSatisfaction } from "@/components/dashboard/customer-satisfaction";
 import { ReportDisplay } from "@/components/dashboard/report-display";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -49,6 +49,12 @@ export type AICache = {
     customerFeedbackAnalysis: any | null;
 }
 
+// State for detailed views
+export type DetailViewState = {
+    driver: DriverStat | null;
+    // Add other detail views here, e.g., carrier
+}
+
 export default function DashboardPage() {
   const [data, setData] = useState<Delivery[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -60,6 +66,9 @@ export default function DashboardPage() {
   const [report, setReport] = useState<string | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
   const [isReportLoading, setIsReportLoading] = useState(false);
+
+  // State for showing detailed views (like a specific driver)
+  const [detailView, setDetailView] = useState<DetailViewState>({ driver: null });
 
   // AI Caches
   const [aiCache, setAiCache] = useState<AICache>({
@@ -110,6 +119,14 @@ export default function DashboardPage() {
     setActiveView("overview");
     setIsReportOpen(false);
     clearCache();
+    setDetailView({ driver: null });
+  };
+  
+  const handleNavigate = (view: string, detail?: Partial<DetailViewState>) => {
+      setActiveView(view);
+      if (detail) {
+        setDetailView(prev => ({ ...prev, ...detail }));
+      }
   };
 
   const handleSaveSettings = (e: React.FormEvent<HTMLFormElement>) => {
@@ -252,7 +269,7 @@ export default function DashboardPage() {
 
     switch (activeView) {
       case "overview":
-        return <div ref={overviewRef}><Overview data={filteredData} objectives={objectives} setActiveView={setActiveView} aiCache={aiCache} setAiCache={setAiCache} loadingAi={loadingAi} setLoadingAi={setLoadingAi} /></div>;
+        return <div ref={overviewRef}><Overview data={filteredData} objectives={objectives} setActiveView={handleNavigate} aiCache={aiCache} setAiCache={setAiCache} loadingAi={loadingAi} setLoadingAi={setLoadingAi} /></div>;
       case "depots":
         return <DepotAnalytics data={filteredData} objectives={objectives} aiCache={aiCache} setAiCache={setAiCache} loadingAi={loadingAi} setLoadingAi={setLoadingAi} />;
       case "warehouses":
@@ -260,11 +277,11 @@ export default function DashboardPage() {
       case "carriers":
         return <CarrierAnalytics data={filteredData} objectives={objectives} aiCache={aiCache} setAiCache={setAiCache} loadingAi={loadingAi} setLoadingAi={setLoadingAi} />;
       case "drivers":
-        return <DriverAnalytics data={filteredData} objectives={objectives} />;
+        return <DriverAnalytics data={filteredData} objectives={objectives} selectedDriver={detailView.driver} onDriverSelect={(driver) => handleNavigate('drivers', { driver })} onBack={() => handleNavigate('drivers', { driver: null })} />;
       case "satisfaction":
-        return <CustomerSatisfaction data={filteredData} objectives={objectives} aiCache={aiCache} setAiCache={setAiCache} loadingAi={loadingAi} setLoadingAi={setLoadingAi} />;
+        return <CustomerSatisfaction data={filteredData} objectives={objectives} aiCache={aiCache} setAiCache={setAiCache} loadingAi={loadingAi} setLoadingAi={setLoadingAi} onNavigate={handleNavigate} />;
       default:
-        return <div ref={overviewRef}><Overview data={filteredData} objectives={objectives} setActiveView={setActiveView} aiCache={aiCache} setAiCache={setAiCache} loadingAi={loadingAi} setLoadingAi={setLoadingAi} /></div>;
+        return <div ref={overviewRef}><Overview data={filteredData} objectives={objectives} setActiveView={handleNavigate} aiCache={aiCache} setAiCache={setAiCache} loadingAi={loadingAi} setLoadingAi={setLoadingAi} /></div>;
     }
   };
 
@@ -355,3 +372,5 @@ export default function DashboardPage() {
     </SidebarProvider>
   );
 }
+
+    

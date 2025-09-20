@@ -20,7 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-type DriverStat = {
+export type DriverStat = {
     name: string;
     failureRate: number;
     carrier: string;
@@ -152,10 +152,17 @@ const DriverDetailView = ({ driver, driverData, onBack, objectives }: { driver: 
 };
 
 
-export function DriverAnalytics({ data, objectives }: { data: Delivery[], objectives: Objectives }) {
+interface DriverAnalyticsProps {
+    data: Delivery[];
+    objectives: Objectives;
+    selectedDriver: DriverStat | null;
+    onDriverSelect: (driver: DriverStat) => void;
+    onBack: () => void;
+}
+
+export function DriverAnalytics({ data, objectives, selectedDriver, onDriverSelect, onBack }: DriverAnalyticsProps) {
     const [filter, setFilter] = useState('');
     const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({ key: 'totalDeliveries', direction: 'desc' });
-    const [selectedDriver, setSelectedDriver] = useState<DriverStat | null>(null);
 
     const driverStats: DriverStat[] = useMemo(() => {
         const stats = aggregateStats(data, 'driver');
@@ -226,7 +233,7 @@ export function DriverAnalytics({ data, objectives }: { data: Delivery[], object
             <DriverDetailView 
                 driver={selectedDriver} 
                 driverData={data.filter(d => d.driver === selectedDriver.name)}
-                onBack={() => setSelectedDriver(null)}
+                onBack={onBack}
                 objectives={objectives} 
             />
         )
@@ -269,7 +276,7 @@ export function DriverAnalytics({ data, objectives }: { data: Delivery[], object
                     </TableHeader>
                     <TableBody>
                         {sortedAndFilteredStats.map((stat) => (
-                            <TableRow key={stat.name} onClick={() => setSelectedDriver(stat)} className="cursor-pointer">
+                            <TableRow key={stat.name} onClick={() => onDriverSelect(stat)} className="cursor-pointer">
                                 <TableCell className="font-medium">{stat.name}</TableCell>
                                 <TableCell className="text-muted-foreground">{stat.carrier}</TableCell>
                                 <TableCell className="text-right">{stat.totalDeliveries}</TableCell>
@@ -318,5 +325,7 @@ export function DriverAnalytics({ data, objectives }: { data: Delivery[], object
         </Card>
     );
 }
+
+    
 
     

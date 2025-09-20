@@ -1,8 +1,8 @@
 "use client"
 
 import { useMemo, useState, useEffect } from 'react';
-import { type Delivery } from '@/lib/definitions';
-import { type Objectives, type AICache } from '@/app/page';
+import { type Delivery, type AggregatedStats } from '@/lib/definitions';
+import { type Objectives, type AICache, type DetailViewState } from '@/app/page';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -12,13 +12,14 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveCont
 import { analyzeCustomerFeedback, type AnalyzeCustomerFeedbackOutput } from '@/ai/flows/analyze-customer-feedback';
 import { Button } from '../ui/button';
 import * as XLSX from 'xlsx';
-import { getRankings } from '@/lib/data-processing';
+import { getRankings, aggregateStats } from '@/lib/data-processing';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import type { DriverStat } from './driver-analytics';
 
 type GroupingKey = "depot" | "warehouse" | "carrier" | "driver";
 
@@ -36,112 +37,69 @@ type RatingData = {
     count: number;
 }
 
-type EntitySatisfactionStats = {
-    name: string;
-    averageRating: number;
-    totalRatings: number;
-    badRatings: number;
-    ratingDistribution: RatingData[];
-    comments: Comment[];
-    negativeComments: Comment[];
-    // Add missing fields for getRankings
-    totalDeliveries: number;
-    successfulDeliveries: number;
-    failedDeliveries: number;
-    pendingDeliveries: number;
-    successRate: number;
-    failureReasons: Record<string, number>;
-    totalRating: number;
-    ratedDeliveries: number;
-    onTimeDeliveries: number;
-    punctualityRate: number;
-    forcedNoContactCount: number;
-    forcedNoContactRate: number;
-    forcedOnSiteCount: number;
-    forcedOnSiteRate: number;
-    webCompletionCount: number;
-    webCompletionRate: number;
-    ratingRate: number;
-}
-
-const getSatisfactionStats = (data: Delivery[], groupBy: GroupingKey): EntitySatisfactionStats[] => {
-    const entities: Record<string, { totalRating: number, count: number, comments: Comment[], ratingCounts: Record<number, number>, badRatings: number }> = {};
+const getSatisfactionComments = (data: Delivery[], groupBy: GroupingKey): Record<string, { comments: Comment[], negativeComments: Comment[] }> => {
+    const entities: Record<string, { comments: Comment[], negativeComments: Comment[] }> = {};
 
     data.forEach(d => {
-        if (d.deliveryRating) {
-            const entityName = d[groupBy];
-            if (!entities[entityName]) {
-                entities[entityName] = { totalRating: 0, count: 0, comments: [], ratingCounts: {1:0, 2:0, 3:0, 4:0, 5:0}, badRatings: 0 };
-            }
-            entities[entityName].totalRating += d.deliveryRating;
-            entities[entityName].count++;
-            entities[entityName].ratingCounts[d.deliveryRating]++;
-            
-            if (d.deliveryRating <= 3) {
-                entities[entityName].badRatings++;
-            }
-            
-            if (d.feedbackComment) {
-                entities[entityName].comments.push({
-                    comment: d.feedbackComment,
-                    rating: d.deliveryRating,
-                    driver: d.driver,
-                    depot: d.depot,
-                    warehouse: d.warehouse,
-                    carrier: d.carrier
-                });
+        const entityName = d[groupBy];
+        if (!entities[entityName]) {
+            entities[entityName] = { comments: [], negativeComments: [] };
+        }
+        
+        if (d.feedbackComment) {
+            const comment = {
+                comment: d.feedbackComment,
+                rating: d.deliveryRating || 0,
+                driver: d.driver,
+                depot: d.depot,
+                warehouse: d.warehouse,
+                carrier: d.carrier
+            };
+            entities[entityName].comments.push(comment);
+            if ((d.deliveryRating || 0) <= 3) {
+                 entities[entityName].negativeComments.push(comment);
             }
         }
     });
-
-    return Object.entries(entities).map(([name, stats]) => ({
-        name,
-        averageRating: stats.count > 0 ? stats.totalRating / stats.count : 0,
-        totalRatings: stats.count,
-        ratedDeliveries: stats.count,
-        badRatings: stats.badRatings,
-        ratingDistribution: Object.entries(stats.ratingCounts).map(([rating, count]) => ({ name: `${rating} ★`, count })).reverse(),
-        comments: stats.comments,
-        negativeComments: stats.comments.filter(c => c.rating <= 3),
-        // Add dummy fields to satisfy getRankings
-        totalDeliveries: stats.count,
-        successfulDeliveries: 0,
-        failedDeliveries: 0,
-        pendingDeliveries: 0,
-        successRate: 0,
-        failureReasons: {},
-        totalRating: stats.totalRating,
-        onTimeDeliveries: 0,
-        punctualityRate: 0,
-        forcedNoContactCount: 0,
-        forcedNoContactRate: 0,
-        forcedOnSiteCount: 0,
-        forcedOnSiteRate: 0,
-        webCompletionCount: 0,
-        webCompletionRate: 0,
-        ratingRate: 0,
-    })).sort((a,b) => b.totalRatings - a.totalRatings);
+    return entities;
 }
 
-const RatingChart = ({ data }: { data: RatingData[] }) => (
-    <ResponsiveContainer width="100%" height={150}>
-        <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-            <XAxis type="number" hide />
-            <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12}} />
-            <RechartsTooltip
-                cursor={{ fill: 'hsl(var(--muted))' }}
-                contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
-            />
-            <Bar dataKey="count" name="Nombre" barSize={20} radius={[4, 4, 0, 0]}>
-                {data.map((entry, index) => {
-                    const rating = parseInt(entry.name.charAt(0));
-                    const color = rating <= 3 ? "hsl(var(--destructive))" : (rating === 4 ? "hsl(var(--primary))" : "hsl(var(--chart-1))");
-                    return <Cell key={`cell-${index}`} fill={color} />;
-                })}
-            </Bar>
-        </BarChart>
-    </ResponsiveContainer>
-);
+const RatingChart = ({ data }: { data: RatingData[] }) => {
+    const ratingDistribution = [
+        { name: '5 ★', count: 0 },
+        { name: '4 ★', count: 0 },
+        { name: '3 ★', count: 0 },
+        { name: '2 ★', count: 0 },
+        { name: '1 ★', count: 0 },
+    ];
+    
+    data.forEach(item => {
+        const index = ratingDistribution.findIndex(rd => rd.name === item.name);
+        if (index !== -1) {
+            ratingDistribution[index].count = item.count;
+        }
+    });
+
+    return (
+        <ResponsiveContainer width="100%" height={150}>
+            <BarChart data={ratingDistribution} layout="vertical" margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                <XAxis type="number" hide />
+                <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12}} />
+                <RechartsTooltip
+                    cursor={{ fill: 'hsl(var(--muted))' }}
+                    contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
+                />
+                <Bar dataKey="count" name="Nombre" barSize={20} radius={[4, 4, 0, 0]}>
+                    {ratingDistribution.map((entry, index) => {
+                        const rating = parseInt(entry.name.charAt(0));
+                        const color = rating <= 3 ? "hsl(var(--destructive))" : (rating === 4 ? "hsl(var(--primary))" : "hsl(var(--chart-1))");
+                        return <Cell key={`cell-${index}`} fill={color} />;
+                    })}
+                </Bar>
+            </BarChart>
+        </ResponsiveContainer>
+    );
+};
 
 const CommentsList = ({ title, comments, icon }: { title: string; comments: Comment[], icon: React.ElementType }) => {
     const Icon = icon;
@@ -290,10 +248,19 @@ const ObjectiveIndicator = ({ value, objective, higherIsBetter, tooltipLabel, un
     );
 };
 
+type EntityWithComments = AggregatedStats & {
+    name: string;
+    comments: Comment[];
+    negativeComments: Comment[];
+    ratingDistribution: RatingData[];
+    carrier?: string;
+}
 
-const EntitySatisfactionView = ({ stats, objectives, ...aiProps }: { 
-    stats: EntitySatisfactionStats[], 
+const EntitySatisfactionView = ({ stats, objectives, onNavigate, groupBy, ...aiProps }: { 
+    stats: EntityWithComments[], 
     objectives: Objectives,
+    onNavigate: (view: string, detail?: Partial<DetailViewState>) => void;
+    groupBy: GroupingKey;
     aiCache: AICache;
     setAiCache: React.Dispatch<React.SetStateAction<AICache>>;
     loadingAi: Record<string, boolean>;
@@ -304,10 +271,22 @@ const EntitySatisfactionView = ({ stats, objectives, ...aiProps }: {
             <div className="flex h-96 flex-col items-center justify-center text-center text-muted-foreground">
                  <Star className="h-12 w-12 mb-4" />
                 <p className="font-semibold text-lg">Aucune donnée de notation disponible.</p>
-                <p>Aucune livraison dans cet ensemble de données n'a encore été notée.</p>
+                <p>Aucune livraison dans cet ensemble de données n'a encore été notée pour ce groupe.</p>
             </div>
         )
     }
+    
+    const handleEntityClick = (entity: EntityWithComments) => {
+        if (groupBy === 'driver') {
+            onNavigate('drivers', { driver: entity as unknown as DriverStat });
+        } else if (groupBy === 'depot') {
+            onNavigate('depots');
+        } else if (groupBy === 'carrier') {
+            onNavigate('carriers');
+        } else if (groupBy === 'warehouse') {
+            onNavigate('warehouses');
+        }
+    };
     
     return (
        <ScrollArea className="h-[75vh]">
@@ -315,15 +294,41 @@ const EntitySatisfactionView = ({ stats, objectives, ...aiProps }: {
             {stats.map(entity => (
                 <Card key={entity.name} className="overflow-hidden">
                     <CardHeader>
-                        <CardTitle>{entity.name}</CardTitle>
-                        <CardDescription className="flex items-center gap-2">
+                        <CardTitle 
+                             className="cursor-pointer hover:underline"
+                             onClick={() => handleEntityClick(entity)}
+                        >
+                            {entity.name}
+                        </CardTitle>
+                        <CardDescription className="flex flex-wrap items-center gap-x-4 gap-y-1">
                            <div className="flex items-center gap-1">
-                                Note moyenne de {entity.averageRating.toFixed(2)} sur {entity.totalRatings} notations
+                                <Star className="h-4 w-4 text-yellow-500"/>
+                                Note: {entity.averageRating.toFixed(2)} ({entity.totalRatings} notes)
                                 <ObjectiveIndicator 
                                     value={entity.averageRating}
                                     objective={objectives.averageRating}
                                     higherIsBetter={true}
                                     tooltipLabel="Note moyenne"
+                                />
+                           </div>
+                           <div className="flex items-center gap-1">
+                                Ponctualité: {entity.punctualityRate.toFixed(2)}%
+                                <ObjectiveIndicator 
+                                    value={entity.punctualityRate}
+                                    objective={objectives.punctualityRate}
+                                    higherIsBetter={true}
+                                    tooltipLabel="Ponctualité"
+                                    unit="%"
+                                />
+                           </div>
+                           <div className="flex items-center gap-1">
+                                Taux d'échec: {(100 - entity.successRate).toFixed(2)}%
+                                 <ObjectiveIndicator 
+                                    value={100 - entity.successRate}
+                                    objective={objectives.failureRate}
+                                    higherIsBetter={false}
+                                    tooltipLabel="Taux d'échec"
+                                    unit="%"
                                 />
                            </div>
                         </CardDescription>
@@ -354,17 +359,44 @@ interface CustomerSatisfactionProps {
     setAiCache: React.Dispatch<React.SetStateAction<AICache>>;
     loadingAi: Record<string, boolean>;
     setLoadingAi: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+    onNavigate: (view: string, detail?: Partial<DetailViewState>) => void;
 }
 
-export function CustomerSatisfaction({ data, objectives, aiCache, setAiCache, loadingAi, setLoadingAi }: CustomerSatisfactionProps) {
+export function CustomerSatisfaction({ data, objectives, aiCache, setAiCache, loadingAi, setLoadingAi, onNavigate }: CustomerSatisfactionProps) {
     const [activeTab, setActiveTab] = useState<GroupingKey>("depot");
 
-    const satisfactionStats = useMemo(() => ({
-        depot: getSatisfactionStats(data, "depot"),
-        warehouse: getSatisfactionStats(data, "warehouse"),
-        carrier: getSatisfactionStats(data, "carrier"),
-        driver: getSatisfactionStats(data, "driver"),
-    }), [data]);
+    const satisfactionStats = useMemo(() => {
+        const getStatsForGroup = (groupBy: GroupingKey) => {
+            const aggregated = aggregateStats(data, groupBy);
+            const commentsData = getSatisfactionComments(data, groupBy);
+            
+            return Object.entries(aggregated).map(([name, stats]) => {
+                const ratingCounts: Record<number, number> = {1:0, 2:0, 3:0, 4:0, 5:0};
+                data.forEach(d => {
+                    if (d[groupBy] === name && d.deliveryRating) {
+                         ratingCounts[d.deliveryRating]++;
+                    }
+                });
+
+                return {
+                    ...stats,
+                    name,
+                    comments: commentsData[name]?.comments || [],
+                    negativeComments: commentsData[name]?.negativeComments || [],
+                    ratingDistribution: Object.entries(ratingCounts).map(([rating, count]) => ({ name: `${rating} ★`, count })).reverse(),
+                    carrier: groupBy === 'driver' ? data.find(d => d.driver === name)?.carrier : undefined,
+                };
+            }).sort((a,b) => b.totalRatings - a.totalRatings);
+        };
+
+        return {
+            depot: getStatsForGroup("depot"),
+            warehouse: getStatsForGroup("warehouse"),
+            carrier: getStatsForGroup("carrier"),
+            driver: getStatsForGroup("driver"),
+        }
+    }, [data]);
+    
 
     const allComments = useMemo(() => {
         return data.filter(d => d.feedbackComment)
@@ -417,7 +449,7 @@ export function CustomerSatisfaction({ data, objectives, aiCache, setAiCache, lo
                 [entityName]: r.name,
                 "Note Moyenne": r.averageRating.toFixed(2),
                 "Nombre de notes": r.totalRatings,
-                "Mauvaises Notes (≤3★)": r.badRatings
+                "Mauvaises Notes (≤3★)": r.negativeComments.length
             }));
 
         const rankingData: any[] = [
@@ -450,7 +482,7 @@ export function CustomerSatisfaction({ data, objectives, aiCache, setAiCache, lo
             "Dépôt": d.name,
             "Note Moyenne": d.averageRating.toFixed(2),
             "Nombre de notes": d.totalRatings,
-            "Mauvaises Notes (≤3★)": d.badRatings,
+            "Mauvaises Notes (≤3★)": d.negativeComments.length,
         }));
         const depotSheet = XLSX.utils.json_to_sheet(depotData);
         XLSX.utils.book_append_sheet(wb, depotSheet, "Détail par Dépôt");
@@ -460,7 +492,7 @@ export function CustomerSatisfaction({ data, objectives, aiCache, setAiCache, lo
             "Transporteur": c.name,
             "Note Moyenne": c.averageRating.toFixed(2),
             "Nombre de notes": c.totalRatings,
-            "Mauvaises Notes (≤3★)": c.badRatings,
+            "Mauvaises Notes (≤3★)": c.negativeComments.length,
         }));
         const carrierSheet = XLSX.utils.json_to_sheet(carrierData);
         XLSX.utils.book_append_sheet(wb, carrierSheet, "Détail par Transporteur");
@@ -538,16 +570,16 @@ export function CustomerSatisfaction({ data, objectives, aiCache, setAiCache, lo
                         ))}
                     </TabsList>
                     <TabsContent value="depot">
-                        <EntitySatisfactionView stats={satisfactionStats.depot} objectives={objectives} {...aiProps} />
+                        <EntitySatisfactionView stats={satisfactionStats.depot} objectives={objectives} onNavigate={onNavigate} groupBy="depot" {...aiProps} />
                     </TabsContent>
                     <TabsContent value="warehouse">
-                        <EntitySatisfactionView stats={satisfactionStats.warehouse} objectives={objectives} {...aiProps} />
+                        <EntitySatisfactionView stats={satisfactionStats.warehouse} objectives={objectives} onNavigate={onNavigate} groupBy="warehouse" {...aiProps} />
                     </TabsContent>
                     <TabsContent value="carrier">
-                        <EntitySatisfactionView stats={satisfactionStats.carrier} objectives={objectives} {...aiProps} />
+                        <EntitySatisfactionView stats={satisfactionStats.carrier} objectives={objectives} onNavigate={onNavigate} groupBy="carrier" {...aiProps} />
                     </TabsContent>
                     <TabsContent value="driver">
-                        <EntitySatisfactionView stats={satisfactionStats.driver} objectives={objectives} {...aiProps} />
+                        <EntitySatisfactionView stats={satisfactionStats.driver} objectives={objectives} onNavigate={onNavigate} groupBy="driver" {...aiProps} />
                     </TabsContent>
                 </Tabs>
             </div>
@@ -568,3 +600,5 @@ export function CustomerSatisfaction({ data, objectives, aiCache, setAiCache, lo
         </>
     );
 }
+
+    
