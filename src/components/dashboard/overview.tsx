@@ -258,7 +258,7 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
                         onClick={() => setModalMetric('successRate')}
                     />
                      <StatCard title="Commandes 'En attente'" value={`${overallStats.pendingDeliveries}`} icon={PackageSearch} />
-                    <StatCard 
+                     <StatCard 
                         title="Sur place forcé" 
                         value={`${overallStats.forcedOnSiteRate.toFixed(2)}%`} 
                         icon={Target} 
@@ -308,3 +308,5 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
         </div>
     );
 }
+
+    
