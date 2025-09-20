@@ -46,16 +46,19 @@ const getSatisfactionComments = (data: Delivery[], groupBy: GroupingKey): Record
         }
         
         if (d.feedbackComment) {
+            const rating = d.deliveryRating;
             const comment = {
                 comment: d.feedbackComment,
-                rating: d.deliveryRating || 0,
+                rating: rating || 0,
                 driver: d.driver,
                 depot: d.depot,
                 warehouse: d.warehouse,
                 carrier: d.carrier
             };
             entities[entityName].comments.push(comment);
-            if ((d.deliveryRating || 0) <= 3) {
+
+            // Only consider it a negative comment if there is a rating and it's <= 3
+            if (rating !== undefined && rating !== null && rating <= 3) {
                  entities[entityName].negativeComments.push(comment);
             }
         }
