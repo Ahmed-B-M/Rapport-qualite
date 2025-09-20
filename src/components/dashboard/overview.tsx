@@ -286,7 +286,7 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
             </div>
 
             <CustomerFeedbackSummary
-              data={negativeFeedbackDeliveries}
+              data={data}
               onClick={() => handleDrillDown('satisfaction')}
             />
 
