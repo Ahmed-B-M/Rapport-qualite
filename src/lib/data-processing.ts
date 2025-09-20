@@ -1,6 +1,7 @@
 
 
 
+
 import { type Delivery, type StatsByEntity, type AggregatedStats } from './definitions';
 import { WAREHOUSE_DEPOT_MAP, CARRIERS } from './constants';
 
@@ -33,7 +34,7 @@ const getCarrierFromDriver = (driverName: string): string => {
     }
 
     if (name.startsWith('. SST')) {
-        return 'Sous traitants';
+        return 'SST';
     }
     
     // Check for carriers with numeric suffixes first
@@ -73,10 +74,15 @@ export const processRawData = (rawData: any[]): Delivery[] => {
     
     const warehouse = (delivery.warehouse || 'Inconnu').trim();
     const depot = WAREHOUSE_DEPOT_MAP[warehouse] || 'Dépôt Inconnu';
-    const driverName = (delivery.driver || '').trim();
-    const driver = driverName ? `${driverName} (${depot})` : `Livreur Inconnu (${depot})`;
+    let driverName = (delivery.driver || '').trim();
     const carrier = getCarrierFromDriver(driverName || '');
 
+    if (carrier === 'SST' && driverName.startsWith('. SST')) {
+        driverName = `SST - ${driverName.substring(5).trim()}`;
+    }
+
+    const driver = driverName ? `${driverName} (${depot})` : `Livreur Inconnu (${depot})`;
+    
     let status = delivery.status;
     let failureReason = delivery.failureReason;
     if (status === 'Livré') {
