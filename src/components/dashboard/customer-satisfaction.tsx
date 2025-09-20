@@ -195,7 +195,7 @@ const NegativeFeedbackAIAnalysis = ({ comments, title, cacheKey, aiCache, setAiC
 
     useEffect(() => {
         const performAnalysis = async () => {
-            if (analysis) return;
+            if (analysis || comments.length === 0) return;
             
             setLoadingAi(prev => ({ ...prev, [`customerFeedback_${cacheKey}`]: true }));
             try {
@@ -212,8 +212,9 @@ const NegativeFeedbackAIAnalysis = ({ comments, title, cacheKey, aiCache, setAiC
                     ...prev,
                     customerFeedbackAnalysis: { ...prev.customerFeedbackAnalysis, [cacheKey]: errorResult }
                 }));
+            } finally {
+                setLoadingAi(prev => ({ ...prev, [`customerFeedback_${cacheKey}`]: false }));
             }
-            setLoadingAi(prev => ({ ...prev, [`customerFeedback_${cacheKey}`]: false }));
         };
         performAnalysis();
     }, [comments, analysis, cacheKey, setAiCache, setLoadingAi]);
@@ -567,5 +568,3 @@ export function CustomerSatisfaction({ data, objectives, aiCache, setAiCache, lo
         </>
     );
 }
-
-    

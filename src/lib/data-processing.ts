@@ -58,8 +58,27 @@ export const processRawData = (rawData: any[]): Delivery[] => {
     const warehouse = (delivery.warehouse || 'Inconnu').trim();
     const depot = WAREHOUSE_DEPOT_MAP[warehouse] || 'Dépôt Inconnu';
     const driverName = (delivery.driver || '').trim();
-    const carrier = getCarrierFromDriver(driverName || '');
-
+    
+    if (!driverName) {
+        return {
+          ...delivery,
+          date: delivery.date || 'N/A',
+          status: 'En attente',
+          taskId: String(delivery.taskId || 'N/A'),
+          warehouse: warehouse,
+          driver: 'Livreur Inconnu',
+          tourId: String(delivery.tourId || 'N/A'),
+          sequence: Number(delivery.sequence) || 0,
+          delaySeconds: Number(delivery.delaySeconds) || 0,
+          forcedNoContact: false,
+          forcedOnSite: 'No',
+          completedBy: 'unknown',
+          depot,
+          carrier: 'Inconnu',
+        } as Delivery;
+    }
+    
+    const carrier = getCarrierFromDriver(driverName);
     const driver = driverName ? `${driverName} (${depot})` : `Livreur Inconnu (${depot})`;
     
     let status: DeliveryStatus;
@@ -77,7 +96,6 @@ export const processRawData = (rawData: any[]): Delivery[] => {
             status = 'En attente';
             break;
     }
-
 
     let failureReason = delivery.failureReason;
     if (status === 'Livré' || status === 'Partiellement livré') {
@@ -132,7 +150,7 @@ const updateStats = (stats: AggregatedStats, delivery: Delivery) => {
     
     if (delivery.status === 'Livré' || delivery.status === 'Partiellement livré') {
         stats.successfulDeliveries++;
-    } else { // 'Non livré'
+    } else if (delivery.status === 'Non livré') {
         stats.failedDeliveries++;
         if (delivery.failureReason) {
             const reason = delivery.failureReason.trim();
@@ -243,7 +261,6 @@ export function getRankings<T extends {name: string} & AggregatedStats>(
         let valA: number, valB: number;
         
         if (metric === 'successRate') {
-            // For successRate, we want to rank by failure rate. Lower is better.
             valA = 100 - a.successRate;
             valB = 100 - b.successRate;
         } else {
