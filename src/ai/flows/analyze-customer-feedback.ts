@@ -21,6 +21,7 @@ export type AnalyzeCustomerFeedbackInput = z.infer<
 
 const FeedbackCategorySchema = z.enum([
     "Casse article(s)",
+    "produits manquants",
     "rupture chaine de froid",
     "Attitude livreur",
     "Ponctualité",
@@ -31,6 +32,7 @@ const FeedbackCategorySchema = z.enum([
 const AnalyzeCustomerFeedbackOutputSchema = z.object({
     categoryCounts: z.object({
         "Casse article(s)": z.number().optional(),
+        "produits manquants": z.number().optional(),
         "rupture chaine de froid": z.number().optional(),
         "Attitude livreur": z.number().optional(),
         "Ponctualité": z.number().optional(),
