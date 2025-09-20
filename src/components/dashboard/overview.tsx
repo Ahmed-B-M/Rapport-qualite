@@ -225,7 +225,7 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
                 <KpiDetailModal
                     metric={modalMetric}
                     onClose={() => setModalMetric(null)}
-                    data={modalMetric === 'successRate' ? failureDeliveries : data}
+                    data={data}
                     rankings={aggregatedData}
                 />
             )}
@@ -247,6 +247,7 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
                         icon={Timer} 
                         description={`Objectif: > ${objectives.punctualityRate}%`}
                         isBelowObjective={overallStats.punctualityRate < objectives.punctualityRate}
+                        onClick={() => setModalMetric('punctualityRate')}
                     />
                     <StatCard 
                         title="Taux d'échec" 
@@ -263,6 +264,7 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
                         icon={Target} 
                         description={`Objectif: < ${objectives.forcedOnSiteRate}%`}
                         isBelowObjective={overallStats.forcedOnSiteRate > objectives.forcedOnSiteRate}
+                        onClick={() => setModalMetric('forcedOnSiteRate')}
                     />
                     <StatCard 
                         title="Sans contact forcé" 
@@ -270,6 +272,7 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
                         icon={Ban} 
                         description={`Objectif: < ${objectives.forcedNoContactRate}%`}
                         isBelowObjective={overallStats.forcedNoContactRate > objectives.forcedNoContactRate}
+                        onClick={() => setModalMetric('forcedNoContactRate')}
                     />
                     <StatCard 
                         title="Validation Web" 
@@ -277,6 +280,7 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
                         icon={Globe}
                         description={`Objectif: < ${objectives.webCompletionRate}%`}
                         isBelowObjective={overallStats.webCompletionRate > objectives.webCompletionRate}
+                        onClick={() => setModalMetric('webCompletionRate')}
                      />
                     <StatCard title="Taux de notation" value={`${overallStats.ratingRate.toFixed(2)}%`} icon={PenSquare} />
                 </div>
@@ -304,3 +308,5 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
         </div>
     );
 }
+
+    
