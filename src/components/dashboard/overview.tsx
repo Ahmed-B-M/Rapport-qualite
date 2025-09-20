@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Star, Timer, Ban, Globe, Target, PenSquare, PackageSearch, Building2, Truck, User, Warehouse as WarehouseIcon, ChevronsRight, ThumbsUp, ThumbsDown, Bot, Loader2 } from 'lucide-react';
 import { KpiDetailModal } from '@/components/dashboard/kpi-detail-modal';
+import { CustomerFeedbackSummary } from '@/components/dashboard/customer-feedback-summary';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 
 type RankingEntity = { name: string } & AggregatedStats;
@@ -234,6 +235,8 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
     ];
 
     const failureDeliveries = useMemo(() => data.filter(d => d.status === 'Non livré'), [data]);
+    const negativeFeedbackDeliveries = useMemo(() => data.filter(d => d.deliveryRating && d.deliveryRating <= 3 && d.feedbackComment), [data]);
+
 
     return (
         <div className="space-y-8">
@@ -273,6 +276,7 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
                         icon={Star} 
                         description={`Objectif: > ${objectives.averageRating.toFixed(2)}`} 
                         isBelowObjective={overallStats.averageRating > 0 && overallStats.averageRating < objectives.averageRating}
+                        onClick={() => handleDrillDown('satisfaction')}
                     />
                     <StatCard 
                         title="Taux de ponctualité" 
@@ -314,6 +318,11 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
                     <StatCard title="Taux de notation" value={`${overallStats.ratingRate.toFixed(2)}%`} icon={PenSquare} />
                 </div>
             </div>
+
+            <CustomerFeedbackSummary
+              data={negativeFeedbackDeliveries}
+              onClick={() => handleDrillDown('satisfaction')}
+            />
 
             <div className="space-y-12">
                 <h2 className="text-2xl font-bold font-headline mb-6">Classements de Performance par Thématique</h2>

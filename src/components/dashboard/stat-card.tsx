@@ -9,10 +9,11 @@ interface StatCardProps {
   description?: string;
   isBelowObjective?: boolean;
   onClick?: () => void;
+  as?: React.ElementType;
 }
 
-export function StatCard({ title, value, icon: Icon, description, isBelowObjective, onClick }: StatCardProps) {
-  const CardComponent = onClick ? "button" : "div";
+export function StatCard({ title, value, icon: Icon, description, isBelowObjective, onClick, as }: StatCardProps) {
+  const CardComponent = as || (onClick ? "button" : "div");
   
   return (
     <Card as={CardComponent} onClick={onClick} className={cn(
