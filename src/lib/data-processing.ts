@@ -1,5 +1,4 @@
 
-
 import { type Delivery, type StatsByEntity, type AggregatedStats, type DeliveryStatus } from './definitions';
 import { WAREHOUSE_DEPOT_MAP, CARRIERS } from './constants';
 
@@ -136,6 +135,8 @@ const createInitialStats = (): AggregatedStats => ({
     averageRating: 0,
     onTimeDeliveries: 0,
     punctualityRate: 0,
+    problematicDeliveries: 0,
+    problematicDeliveriesRate: 0,
     forcedNoContactCount: 0,
     forcedNoContactRate: 0,
     forcedOnSiteCount: 0,
@@ -178,7 +179,14 @@ const updateStats = (stats: AggregatedStats, delivery: Delivery) => {
     }
 };
 
-const finalizeStats = (stats: AggregatedStats) => {
+const isProblematic = (delivery: Delivery): boolean => {
+    const isLate = delivery.delaySeconds > 900;
+    const hasBadRating = delivery.deliveryRating !== undefined && delivery.deliveryRating <= 2;
+    const isFailed = delivery.status === 'Non livré';
+    return isLate || hasBadRating || isFailed;
+};
+
+const finalizeStats = (stats: AggregatedStats, allDeliveries: Delivery[]) => {
     const relevantTotal = stats.successfulDeliveries + stats.failedDeliveries;
     if (relevantTotal > 0) {
         stats.successRate = (stats.successfulDeliveries / relevantTotal) * 100;
@@ -187,6 +195,8 @@ const finalizeStats = (stats: AggregatedStats) => {
         stats.forcedOnSiteRate = (stats.forcedOnSiteCount / relevantTotal) * 100;
         stats.webCompletionRate = (stats.webCompletionCount / relevantTotal) * 100;
         stats.ratingRate = (stats.ratedDeliveries / relevantTotal) * 100;
+        stats.problematicDeliveries = allDeliveries.filter(isProblematic).length;
+        stats.problematicDeliveriesRate = (stats.problematicDeliveries / relevantTotal) * 100;
     }
     if (stats.ratedDeliveries > 0) {
         stats.averageRating = stats.totalRating / stats.ratedDeliveries;
@@ -215,7 +225,7 @@ export const aggregateStats = (data: Delivery[], groupBy: keyof Delivery): Stats
     }
   });
   
-  Object.values(statsByEntity).forEach(finalizeStats);
+  Object.values(statsByEntity).forEach(stats => finalizeStats(stats, data));
 
   return statsByEntity;
 };
@@ -230,7 +240,7 @@ export const getOverallStats = (data: Delivery[]): AggregatedStats => {
         updateStats(overallStats, delivery);
     });
 
-    finalizeStats(overallStats);
+    finalizeStats(overallStats, relevantDeliveries);
     overallStats.pendingDeliveries = pendingCount;
     return overallStats;
 }

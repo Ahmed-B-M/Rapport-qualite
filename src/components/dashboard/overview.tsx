@@ -1,366 +1,114 @@
 
-"use client"
+'use client';
 
-import { useMemo, useState, useEffect } from 'react';
-import { type Delivery, type AggregatedStats } from '@/lib/definitions';
-import { type Objectives } from '@/app/page';
-import { getOverallStats, aggregateStats, getRankings, type Ranking, type RankingMetric } from '@/lib/data-processing';
-import { StatCard } from '@/components/dashboard/stat-card';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Star, Timer, Ban, Globe, Target, PenSquare, PackageSearch, Building2, Truck, User, Warehouse as WarehouseIcon, ChevronsRight, ThumbsUp, ThumbsDown, Package } from 'lucide-react';
-import { KpiDetailModal } from '@/components/dashboard/kpi-detail-modal';
-import { CustomerFeedbackSummary } from '@/components/dashboard/customer-feedback-summary';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
-import type { DetailViewState } from '@/app/page';
-import type { DriverStat } from './driver-analytics';
-
-type RankingEntity = { name: string } & AggregatedStats;
-
-const CustomTooltip = ({ active, payload, label, metric, unit, isFlop }: any) => {
-    if (active && payload && payload.length) {
-        const data = payload[0].payload;
-        const recurrence = getRecurrence(data, metric as RankingMetric, isFlop);
-        const value = formatValue(data.value, metric as RankingMetric, unit);
-        
-        return (
-            <div className="bg-background border border-border p-2 rounded-lg shadow-lg text-sm">
-                <p className="font-bold">{label}</p>
-                <p>Valeur : <span className="font-semibold">{value}</span></p>
-                <p>Récurrence : <span className="font-semibold">{recurrence}</span></p>
-            </div>
-        );
-    }
-    return null;
-};
-
-const formatValue = (value: number, metric: RankingMetric, unit: string) => {
-    if (metric === 'averageRating' && value === 0) return 'N/A';
-    if (metric === 'successRate') { // Display failure rate
-        return `${(100 - value).toFixed(2)}${unit}`;
-    }
-    return `${value.toFixed(2)}${unit}`;
-};
-
-const getRecurrence = (item: RankingEntity, metric: RankingMetric, isFlop: boolean) => {
-    if (!item) return '';
-    switch (metric) {
-        case 'successRate':
-            return isFlop ? `${item.failedDeliveries} échecs` : `${item.successfulDeliveries} succès`;
-        case 'punctualityRate':
-             return isFlop ? `${item.totalDeliveries - item.onTimeDeliveries} retards` : `${item.onTimeDeliveries} à l'heure`;
-        case 'forcedOnSiteRate':
-        case 'forcedNoContactRate':
-        case 'webCompletionRate':
-            const count = metric === 'forcedOnSiteRate' ? item.forcedOnSiteCount : (metric === 'forcedNoContactRate' ? item.forcedNoContactCount : item.webCompletionCount);
-            return `${count} cas`;
-        case 'averageRating':
-            return `${item.ratedDeliveries} notes`;
-        default:
-            return `${item.totalDeliveries} livraisons`;
-    }
-};
-
-const RankingChart = ({ rankings, metric, unit, isFlop, onBarClick, entityType }: {
-    rankings: RankingEntity[];
-    metric: RankingMetric;
-    unit: string;
-    isFlop: boolean;
-    onBarClick: (entity: RankingEntity, entityType: string) => void;
-    entityType: string;
-}) => {
-    const chartData = useMemo(() => rankings.map(item => ({
-        name: item.name,
-        value: metric === 'successRate' ? 100 - item.successRate : (item[metric as keyof AggregatedStats] as number || 0),
-        ...item
-    })), [rankings, metric]);
-
-    return (
-        <div>
-            {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={140}>
-                    <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 20, left: 120, bottom: 0 }}>
-                        <XAxis type="number" dataKey="value" hide />
-                        <YAxis 
-                            type="category" 
-                            dataKey="name" 
-                            stroke="hsl(var(--muted-foreground))"
-                            fontSize={11}
-                            tickLine={false}
-                            axisLine={false}
-                            width={120}
-                            interval={0}
-                        />
-                        <Tooltip content={<CustomTooltip metric={metric} unit={unit} isFlop={isFlop} />} cursor={{fill: 'hsl(var(--muted))'}} />
-                        <Bar dataKey="value" barSize={16} >
-                             {chartData.map((entry, index) => (
-                                <Cell 
-                                  key={`cell-${index}`} 
-                                  fill={isFlop ? "hsl(var(--destructive))" : "hsl(var(--primary))"} 
-                                  radius={[0, 4, 4, 0]} 
-                                  className={onBarClick ? 'cursor-pointer' : ''}
-                                  onClick={onBarClick ? () => onBarClick(entry, entityType) : undefined}
-                                 />
-                            ))}
-                        </Bar>
-                    </BarChart>
-                </ResponsiveContainer>
-            ) : (
-                <div className="flex items-center justify-center h-[140px] text-sm text-muted-foreground">
-                    Pas de données à afficher
-                </div>
-            )}
-        </div>
-    );
-};
-
-
-const ThematicRankingSection = ({ data, metric, unit, title, onDrillDown, icon: Icon, setActiveView }: {
-    data: any;
-    metric: RankingMetric;
-    unit: string;
-    title: string;
-    onDrillDown: (view: string) => void;
-    icon: React.ElementType;
-    setActiveView: (view: string, detail?: Partial<DetailViewState>) => void;
-}) => {
-    const entityTypes = [
-        { id: 'depots', name: 'Dépôts', icon: Building2 },
-        { id: 'warehouses', name: 'Entrepôts', icon: WarehouseIcon },
-        { id: 'carriers', name: 'Transporteurs', icon: Truck },
-        { id: 'drivers', name: 'Livreurs', icon: User },
-    ];
-
-    const handleBarClick = (entity: RankingEntity, entityType: string) => {
-        if (entityType === 'drivers') {
-            const driverStat: DriverStat = {
-                ...entity,
-                failureRate: 100 - entity.successRate
-            };
-            setActiveView('drivers', { driver: driverStat });
-        } else {
-            onDrillDown(entityType);
-        }
-    };
-    
-    return (
-        <div className="space-y-4 print-section">
-            <h3 className="text-xl font-bold font-headline print-title flex items-center gap-3"><Icon className="h-6 w-6" /> {title}</h3>
-            <div className="grid gap-6 md:grid-cols-2">
-                {entityTypes.map(entity => (
-                    <Card key={entity.id}>
-                        <CardHeader>
-                             <div className="flex justify-between items-center">
-                                <CardTitle className="flex items-center gap-2 text-md">
-                                    <entity.icon /> {entity.name}
-                                </CardTitle>
-                                {onDrillDown && (
-                                    <button onClick={() => onDrillDown(entity.id)} className="text-xs text-primary hover:underline flex items-center gap-1 no-print">
-                                        Voir plus <ChevronsRight className="h-3 w-3"/>
-                                    </button>
-                                )}
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div>
-                                <h4 className="flex items-center gap-2 font-semibold text-green-600 mb-2"><ThumbsUp /> Top 5</h4>
-                                <RankingChart
-                                    rankings={data[entity.id][metric].top}
-                                    metric={metric}
-                                    unit={unit}
-                                    isFlop={false}
-                                    onBarClick={handleBarClick}
-                                    entityType={entity.id}
-                                />
-                            </div>
-                            <div>
-                                <h4 className="flex items-center gap-2 font-semibold text-red-600 mb-2"><ThumbsDown /> Flop 5</h4>
-                                <RankingChart
-                                    rankings={data[entity.id][metric].flop}
-                                    metric={metric}
-                                    unit={unit}
-                                    isFlop={true}
-                                    onBarClick={handleBarClick}
-                                    entityType={entity.id}
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-        </div>
-    );
-};
-
+import { useState } from 'react';
+import { Truck, Users, Package, Star, Building, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react';
+import { StatCard } from './stat-card';
+import { DriverAnalytics } from './driver-analytics';
+import { CarrierAnalytics } from './carrier-analytics';
+import { DepotAnalytics } from './depot-analytics';
+import { CustomerSatisfaction } from './customer-satisfaction';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Delivery } from '@/lib/definitions';
+import { processGlobalData, filterDataByDepot, filterDataByPeriod } from '@/lib/data-processing';
 
 interface OverviewProps {
-    data: Delivery[];
-    objectives: Objectives;
-    setActiveView: (view: string, detail?: Partial<DetailViewState>) => void;
+  data: Delivery[];
 }
 
-export function Overview({ data, objectives, setActiveView }: OverviewProps) {
-    const [modalMetric, setModalMetric] = useState<RankingMetric | null>(null);
+type Depot = 'all' | 'VLG' | 'Vitry'; // This could be dynamic based on your data
 
-    const overallStats = useMemo(() => getOverallStats(data), [data]);
-    
-    const aggregatedData = useMemo(() => {
-        const depotStats = Object.entries(aggregateStats(data, 'depot')).map(([name, stat]) => ({ name, ...stat }));
-        const warehouseStats = Object.entries(aggregateStats(data, 'warehouse')).map(([name, stat]) => ({ name, ...stat }));
-        const carrierStats = Object.entries(aggregateStats(data, 'carrier')).map(([name, stat]) => ({ name, ...stat }));
-        const driverStats = Object.entries(aggregateStats(data, 'driver')).map(([name, stat]) => ({ name, ...stat, driver: name }));
+export function Overview({ data }: OverviewProps) {
+  const [activeDepot, setActiveDepot] = useState<Depot>('all');
+  const [activePeriod, setActivePeriod] = useState<string>('7d'); // e.g., '1d', '7d', '30d'
 
-        const metrics: RankingMetric[] = ['averageRating', 'punctualityRate', 'successRate', 'forcedOnSiteRate', 'forcedNoContactRate', 'webCompletionRate'];
+  // 1. Filter by period first
+  const periodData = filterDataByPeriod(data, activePeriod);
+  const previousPeriodData = filterDataByPeriod(data, activePeriod, true);
 
-        const getRankingsForAllMetrics = (stats: any[], filterFn: (item: any) => boolean = () => true) => {
-            const filteredStats = stats.filter(filterFn);
-            return metrics.reduce((acc, metric) => {
-                const take = 5;
-                const higherIsBetter = !['successRate', 'forcedOnSiteRate', 'forcedNoContactRate', 'webCompletionRate'].includes(metric);
-                acc[metric] = getRankings(filteredStats, metric, take, higherIsBetter ? 'asc' : 'desc');
-                return acc;
-            }, {} as Record<RankingMetric, Ranking<any>>);
-        };
+  // 2. Then filter by depot
+  const depotData = filterDataByDepot(periodData, activeDepot);
+  const previousDepotData = filterDataByDepot(previousPeriodData, activeDepot);
 
-        return {
-            depots: getRankingsForAllMetrics(depotStats),
-            warehouses: getRankingsForAllMetrics(warehouseStats),
-            carriers: getRankingsForAllMetrics(carrierStats, c => c.name !== "Inconnu"),
-            drivers: getRankingsForAllMetrics(driverStats, d => !d.name.startsWith("Livreur Inconnu")),
-        };
-    }, [data]);
+  // 3. Process the filtered data
+  const currentStats = processGlobalData(depotData);
+  const previousStats = processGlobalData(previousDepotData);
 
-    const handleDrillDown = (view: string) => {
-        if(setActiveView) {
-            setActiveView(view);
-        }
-    }
-
-    const rankingSections = [
-        { title: "Ponctualité", metric: "punctualityRate" as RankingMetric, unit: "%", icon: Timer },
-        { title: "Satisfaction", metric: "averageRating" as RankingMetric, unit: "/5", icon: Star },
-        { title: "Taux d'Échec", metric: "successRate" as RankingMetric, unit: "%", icon: AlertCircle },
-        { title: "'Sur Place Forcé'", metric: "forcedOnSiteRate" as RankingMetric, unit: "%", icon: Target },
-        { title: "'Sans Contact Forcé'", metric: "forcedNoContactRate" as RankingMetric, unit: "%", icon: Ban },
-        { title: "'Validation Web'", metric: "webCompletionRate" as RankingMetric, unit: "%", icon: Globe },
-    ];
-
-    const failureDeliveries = useMemo(() => data.filter(d => d.status === 'Non livré'), [data]);
-
-    return (
-        <div className="space-y-6">
-            {modalMetric && (
-                <KpiDetailModal
-                    metric={modalMetric}
-                    onClose={() => setModalMetric(null)}
-                    data={data}
-                    rankings={aggregatedData}
-                />
-            )}
-
-            <div className="print-section">
-                <h2 className="text-2xl font-bold font-headline mb-4">Indicateurs Clés de Performance (KPIs)</h2>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                     <StatCard 
-                        title="Livraisons analysées" 
-                        value={`${overallStats.totalDeliveries}`} 
-                        icon={Package}
-                        tooltipText="Nombre total de livraisons terminées (livrées ou non livrées) dans le fichier."
-                     />
-                    <StatCard 
-                        title="Note moyenne" 
-                        value={overallStats.ratedDeliveries > 0 ? `${overallStats.averageRating.toFixed(2)} / 5` : 'N/A'}
-                        icon={Star} 
-                        description={`Objectif: > ${objectives.averageRating.toFixed(2)}`} 
-                        isBelowObjective={overallStats.ratedDeliveries > 0 && overallStats.averageRating < objectives.averageRating}
-                        onClick={() => setActiveView('satisfaction')}
-                        tooltipText="Note moyenne donnée par les clients sur les livraisons notées."
-                    />
-                    <StatCard 
-                        title="Taux de ponctualité" 
-                        value={`${overallStats.punctualityRate.toFixed(2)}%`} 
-                        icon={Timer} 
-                        description={`Objectif: > ${objectives.punctualityRate}%`}
-                        isBelowObjective={overallStats.punctualityRate < objectives.punctualityRate}
-                        onClick={() => setModalMetric('punctualityRate')}
-                        tooltipText="Pourcentage de livraisons effectuées dans la fenêtre de ponctualité de -15 à +15 minutes."
-                    />
-                    <StatCard 
-                        title="Taux d'échec" 
-                        value={`${(100 - overallStats.successRate).toFixed(2)}%`} 
-                        icon={AlertCircle} 
-                        description={`Objectif: < ${objectives.failureRate}%`} 
-                        isBelowObjective={(100 - overallStats.successRate) > objectives.failureRate}
-                        onClick={() => setModalMetric('successRate')}
-                        tooltipText="Pourcentage de livraisons qui n'ont pas pu être effectuées."
-                    />
-                     <StatCard 
-                        title="Commandes 'En attente'" 
-                        value={`${overallStats.pendingDeliveries}`} 
-                        icon={PackageSearch}
-                        tooltipText="Nombre de commandes qui n'ont pas encore de statut final (Livré ou Non livré)." 
-                     />
-                     <StatCard 
-                        title="Sur place forcé" 
-                        value={`${overallStats.forcedOnSiteRate.toFixed(2)}%`} 
-                        icon={Target} 
-                        description={`Objectif: < ${objectives.forcedOnSiteRate}%`}
-                        isBelowObjective={overallStats.forcedOnSiteRate > objectives.forcedOnSiteRate}
-                        onClick={() => setModalMetric('forcedOnSiteRate')}
-                        tooltipText="Pourcentage de livraisons où le livreur a forcé la validation 'sur place' via l'application."
-                    />
-                    <StatCard 
-                        title="Sans contact forcé" 
-                        value={`${overallStats.forcedNoContactRate.toFixed(2)}%`} 
-                        icon={Ban} 
-                        description={`Objectif: < ${objectives.forcedNoContactRate}%`}
-                        isBelowObjective={overallStats.forcedNoContactRate > objectives.forcedNoContactRate}
-                        onClick={() => setModalMetric('forcedNoContactRate')}
-                        tooltipText="Pourcentage de livraisons où le livreur a utilisé la validation 'sans contact' de manière forcée."
-                    />
-                    <StatCard 
-                        title="Validation Web" 
-                        value={`${overallStats.webCompletionRate.toFixed(2)}%`} 
-                        icon={Globe}
-                        description={`Objectif: < ${objectives.webCompletionRate}%`}
-                        isBelowObjective={overallStats.webCompletionRate > objectives.webCompletionRate}
-                        onClick={() => setModalMetric('webCompletionRate')}
-                        tooltipText="Pourcentage de livraisons finalisées via l'interface web plutôt que l'application mobile du livreur."
-                     />
-                    <StatCard 
-                        title="Taux de notation" 
-                        value={`${overallStats.ratingRate.toFixed(2)}%`} 
-                        icon={PenSquare}
-                        tooltipText="Pourcentage de livraisons terminées qui ont reçu une note du client."
-                    />
-                </div>
-            </div>
-
-            <CustomerFeedbackSummary
-              data={data}
-              onClick={() => setActiveView('satisfaction')}
-            />
-
-            <div className="space-y-8">
-                <h2 className="text-2xl font-bold font-headline mb-6">Classements de Performance par Thématique</h2>
-                {rankingSections.map((section) => (
-                     <ThematicRankingSection
-                        key={section.metric}
-                        title={section.title}
-                        metric={section.metric}
-                        unit={section.unit}
-                        data={aggregatedData}
-                        onDrillDown={handleDrillDown}
-                        icon={section.icon}
-                        setActiveView={setActiveView}
-                    />
-                ))}
-            </div>
-
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center space-x-2">
+          <Button variant={activePeriod === '1d' ? 'default' : 'outline'} onClick={() => setActivePeriod('1d')}>Aujourd'hui</Button>
+          <Button variant={activePeriod === '7d' ? 'default' : 'outline'} onClick={() => setActivePeriod('7d')}>7 jours</Button>
+          <Button variant={activePeriod === '30d' ? 'default' : 'outline'} onClick={() => setActivePeriod('30d')}>30 jours</Button>
         </div>
-    );
+        <div className="w-48">
+          <Select onValueChange={(value: Depot) => setActiveDepot(value)} defaultValue="all">
+            <SelectTrigger>
+              <SelectValue placeholder="Sélectionner un dépôt" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les dépôts</SelectItem>
+              <SelectItem value="VLG">VLG</SelectItem>
+              <SelectItem value="Vitry">Vitry</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Taux de succès"
+          value={`${currentStats.successRate.toFixed(1)}%`}
+          description="Livraisons réussies"
+          icon={<TrendingUp className="text-green-500" />}
+          previousValue={previousStats.successRate}
+          trendDirection="up"
+        />
+        <StatCard
+          title="Livraisons échouées"
+          value={currentStats.failedDeliveries}
+          description="Retours et échecs"
+          icon={<TrendingDown className="text-red-500" />}
+          previousValue={previousStats.failedDeliveries}
+          trendDirection="down"
+        />
+        <StatCard
+          title="Total des livraisons"
+          value={currentStats.totalDeliveries}
+          description="Toutes tournées confondues"
+          icon={<Package />}
+          previousValue={previousStats.totalDeliveries}
+          trendDirection="up"
+        />
+        <StatCard
+          title="Satisfaction Client"
+          value={currentStats.averageRating.toFixed(2)}
+          description="Note moyenne"
+          icon={<Star className="text-yellow-500" />}
+          previousValue={previousStats.averageRating}
+          trendDirection="up"
+        />
+      </div>
+
+      {/* Pass filtered data to children components */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <div className="col-span-full lg:col-span-4">
+          <DriverAnalytics data={depotData} />
+        </div>
+        <div className="col-span-full lg:col-span-3">
+          <CarrierAnalytics data={depotData} />
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <div className="col-span-full lg:col-span-3">
+          <DepotAnalytics data={depotData} />
+        </div>
+        <div className="col-span-full lg:col-span-4">
+          <CustomerSatisfaction data={depotData} />
+        </div>
+      </div>
+    </div>
+  );
 }
-
-    
-
-    

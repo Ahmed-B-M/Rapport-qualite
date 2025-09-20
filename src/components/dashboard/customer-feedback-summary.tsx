@@ -1,52 +1,55 @@
 
-"use client"
+'use client';
 
 import { useMemo } from 'react';
 import { type Delivery } from '@/lib/definitions';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { MessageSquareQuote, ChevronsRight } from 'lucide-react';
 import { aggregateStats } from '@/lib/data-processing';
-import { cn } from '@/lib/utils';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Star, MessageSquareQuote, ThumbsDown } from 'lucide-react';
 
-interface CustomerFeedbackSummaryProps {
-  data: Delivery[];
-  onClick?: () => void;
+interface CustomerSatisfactionProps {
+    data: Delivery[];
 }
 
-export function CustomerFeedbackSummary({ data, onClick }: CustomerFeedbackSummaryProps) {
-  
-  const comments = useMemo(() => data.map(d => d.feedbackComment!).filter(Boolean), [data]);
-  const negativeCommentCount = useMemo(() => data.filter(d => d.deliveryRating && d.deliveryRating <= 3 && d.feedbackComment).length, [data]);
+export function CustomerSatisfaction({ data }: CustomerSatisfactionProps) {
+    const satisfactionStats = useMemo(() => {
+        const comments = data.filter(d => d.feedbackComment).map(d => ({
+            comment: d.feedbackComment!,
+            rating: d.deliveryRating!,
+            driver: d.driver,
+        })).reverse(); // Show most recent first
 
-  return (
-    <Card onClick={onClick} className={cn(onClick && 'cursor-pointer hover:bg-muted/20 transition-colors')}>
-      <CardHeader>
-        <div className="flex justify-between items-center">
-            <CardTitle className="flex items-center gap-2">
-                <MessageSquareQuote /> Retours Clients
-            </CardTitle>
-            {onClick && (
-                <div className="text-xs text-primary hover:underline flex items-center gap-1 no-print">
-                    Voir l'analyse détaillée <ChevronsRight className="h-3 w-3"/>
+        const globalStats = aggregateStats(data, 'driver')['global']; // Assuming 'global' key exists or is handled
+        const averageRating = globalStats?.averageRating ?? 0;
+        const totalRatings = globalStats?.ratedDeliveries ?? 0;
+
+        return { comments, averageRating, totalRatings };
+    }, [data]);
+    
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Satisfaction Client</CardTitle>
+                <CardDescription>
+                    Note moyenne de {satisfactionStats.averageRating.toFixed(2)}/5 basée sur {satisfactionStats.totalRatings} évaluations.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-4">
+                    {satisfactionStats.comments.slice(0, 5).map((item, index) => ( // Show top 5 recent comments
+                        <div key={index} className="flex items-start space-x-4">
+                            <div>
+                                {item.rating >= 4 ? <Star className="h-5 w-5 text-yellow-400" /> : <ThumbsDown className="h-5 w-5 text-red-500" />}
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-sm font-medium">{item.driver}</p>
+                                <p className="text-sm text-muted-foreground italic">"{item.comment}"</p>
+                            </div>
+                            <div className="text-sm font-bold">{item.rating}/5</div>
+                        </div>
+                    ))}
                 </div>
-            )}
-        </div>
-        <CardDescription>
-          Nombre de commentaires négatifs (note ≤ 3).
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-          {comments.length === 0 ? (
-             <div className="flex h-24 flex-col items-center justify-center text-center text-muted-foreground">
-                <p className="font-semibold">Aucun commentaire sur cette période.</p>
-            </div>
-          ) : (
-             <div className="text-4xl font-bold text-destructive">
-                {negativeCommentCount}
-             </div>
-          )
-        }
-      </CardContent>
-    </Card>
-  )
+            </CardContent>
+        </Card>
+    );
 }

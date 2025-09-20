@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -9,7 +10,7 @@ import { Overview } from "@/components/dashboard/overview";
 import { DepotAnalytics } from "@/components/dashboard/depot-analytics";
 import { WarehouseAnalytics } from "@/components/dashboard/warehouse-analytics";
 import { CarrierAnalytics } from "@/components/dashboard/carrier-analytics";
-import { DriverAnalytics, type DriverStat } from "@/components/dashboard/driver-analytics";
+import { DriverAnalytics } from "@/components/dashboard/driver-analytics";
 import { CustomerSatisfaction } from "@/components/dashboard/customer-satisfaction";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, AlertTriangle, Settings, FileText, Printer } from "lucide-react";
@@ -38,7 +39,7 @@ export type Objectives = {
 
 // State for detailed views
 export type DetailViewState = {
-    driver: DriverStat | null;
+    driver: any | null; // Simplified for now
     // Add other detail views here, e.g., carrier
 }
 
@@ -141,19 +142,28 @@ export default function DashboardPage() {
 
     switch (activeView) {
       case "overview":
-        return <div ref={overviewRef}><Overview data={filteredData} objectives={objectives} setActiveView={handleNavigate} /></div>;
+        return <div ref={overviewRef}><Overview data={filteredData} /></div>;
       case "depots":
-        return <DepotAnalytics data={filteredData} objectives={objectives} />;
+        return <DepotAnalytics data={filteredData} />;
       case "warehouses":
         return <WarehouseAnalytics data={filteredData} />;
       case "carriers":
-        return <CarrierAnalytics data={filteredData} objectives={objectives} />;
+        return <CarrierAnalytics data={filteredData} />;
       case "drivers":
-        return <DriverAnalytics data={filteredData} objectives={objectives} selectedDriver={detailView.driver} onDriverSelect={(driver) => handleNavigate('drivers', { driver })} onBack={() => handleNavigate('drivers', { driver: null })} />;
+        return <p>Driver detail page placeholder</p>; // Replace with the detailed driver component later
       case "satisfaction":
-        return <CustomerSatisfaction data={filteredData} objectives={objectives} onNavigate={handleNavigate} />;
+        return <CustomerSatisfaction data={filteredData} objectives={{
+          averageRating: 0,
+          punctualityRate: 0,
+          failureRate: 0,
+          forcedOnSiteRate: 0,
+          forcedNoContactRate: 0,
+          webCompletionRate: 0
+        }} onNavigate={function (view: string, detail?: Partial<DetailViewState>): void {
+          throw new Error("Function not implemented.");
+        } } />;
       default:
-        return <div ref={overviewRef}><Overview data={filteredData} objectives={objectives} setActiveView={handleNavigate} /></div>;
+        return <div ref={overviewRef}><Overview data={filteredData} /></div>;
     }
   };
 

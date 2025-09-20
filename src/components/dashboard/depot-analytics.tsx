@@ -1,205 +1,53 @@
-"use client"
 
-import { useMemo, useState, useEffect } from 'react';
-import { type Delivery, type AggregatedStats } from '@/lib/definitions';
-import { type Objectives } from '@/app/page';
-import { aggregateStats, getRankings, type Ranking, type RankingMetric } from '@/lib/data-processing';
+'use client';
+
+import { useMemo } from 'react';
+import { type Delivery } from '@/lib/definitions';
+import { aggregateStats } from '@/lib/data-processing';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Bot, Loader2, ThumbsUp, ThumbsDown, Download, AlertTriangle } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import * as XLSX from 'xlsx';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-
-type DepotStat = { name: string } & AggregatedStats;
-
-const ObjectiveIndicator = ({ value, objective, higherIsBetter, tooltipLabel, unit = '' }: { value: number, objective: number, higherIsBetter: boolean, tooltipLabel: string, unit?: string }) => {
-    const isBelowObjective = higherIsBetter ? value < objective : value > objective;
-    if (!isBelowObjective || (higherIsBetter && value <= 0)) return null;
-
-    return (
-        <TooltipProvider>
-            <Tooltip>
-                <TooltipTrigger>
-                    <AlertTriangle className="h-4 w-4 text-destructive" />
-                </TooltipTrigger>
-                <TooltipContent>
-                    <p>{tooltipLabel}: {value.toFixed(2)}{unit} (Objectif: {higherIsBetter ? '>' : '<'} {objective}{unit})</p>
-                </TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
-    );
-};
+import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface DepotAnalyticsProps {
     data: Delivery[];
-    objectives: Objectives;
 }
 
-export function DepotAnalytics({ data, objectives }: DepotAnalyticsProps) {
-    
-    const depotStats: DepotStat[] = useMemo(() => {
+export function DepotAnalytics({ data }: DepotAnalyticsProps) {
+    const depotStats = useMemo(() => {
         const stats = aggregateStats(data, 'depot');
-        return Object.entries(stats).map(([name, stat]) => ({ name, ...stat }));
+        const total = Object.values(stats).reduce((acc, curr) => acc + curr.totalDeliveries, 0);
+        const sorted = Object.entries(stats)
+            .map(([name, stat]) => ({
+                name,
+                ...stat,
+                percentage: total > 0 ? (stat.totalDeliveries / total) * 100 : 0,
+            }))
+            .sort((a, b) => b.totalDeliveries - a.totalDeliveries);
+        return sorted;
     }, [data]);
-    
-    const rankings = useMemo(() => ({
-        averageRating: getRankings(depotStats, 'averageRating'),
-        punctualityRate: getRankings(depotStats, 'punctualityRate'),
-        failureRate: getRankings(depotStats, 'successRate', 3, 'desc'), // Now using successRate and descending to get the worst
-        forcedOnSiteRate: getRankings(depotStats, 'forcedOnSiteRate', 3, 'desc'),
-        forcedNoContactRate: getRankings(depotStats, 'forcedNoContactRate', 3, 'desc'),
-        webCompletionRate: getRankings(depotStats, 'webCompletionRate', 3, 'desc'),
-    }), [depotStats]);
-    
-    const handleExport = () => {
-        const dataToExport = depotStats.map(stat => ({
-            "Dépôt": stat.name,
-            "Total Livraisons": stat.totalDeliveries,
-            "Note Moyenne": stat.averageRating > 0 ? stat.averageRating.toFixed(2) : 'N/A',
-            "Ponctualité (%)": stat.punctualityRate.toFixed(2),
-            "Taux d'échec (%)": (100 - stat.successRate).toFixed(2),
-            "Sur place forcé (%)": stat.forcedOnSiteRate.toFixed(2),
-            "Sans contact forcé (%)": stat.forcedNoContactRate.toFixed(2),
-            "Validation Web (%)": stat.webCompletionRate.toFixed(2),
-            "Taux de notation (%)": stat.ratingRate.toFixed(2),
-        }));
-        
-        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Performance Dépôts');
-        XLSX.writeFile(workbook, 'performance_depots.xlsx');
-    };
-
-    const RankingList = ({ title, ranking, metric, unit, higherIsBetter }: { title: string, ranking: Ranking<DepotStat>, metric: RankingMetric, unit: string, higherIsBetter: boolean }) => {
-        const formatValue = (value: number) => {
-            if (metric === 'averageRating' && value === 0) return 'N/A';
-            return value.toFixed(2) + unit;
-        }
-
-        const getMetricValue = (stat: DepotStat) => {
-            if (metric === 'successRate') {
-                return 100 - stat.successRate; // Display failure rate
-            }
-            return stat[metric];
-        }
-
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>{title}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div>
-                        <h4 className="flex items-center gap-2 font-semibold text-green-600"><ThumbsUp /> Top 3</h4>
-                        <ul className="list-disc pl-5 text-sm space-y-1 mt-2">
-                            {ranking.top.map(d => (
-                                <li key={d.name}>{d.name} <Badge variant="secondary">{formatValue(getMetricValue(d))}</Badge></li>
-                            ))}
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 className="flex items-center gap-2 font-semibold text-red-600"><ThumbsDown /> Flop 3</h4>
-                        <ul className="list-disc pl-5 text-sm space-y-1 mt-2">
-                             {ranking.flop.map(d => (
-                                <li key={d.name}>{d.name} <Badge variant="destructive">{formatValue(getMetricValue(d))}</Badge></li>
-                            ))}
-                        </ul>
-                    </div>
-                </CardContent>
-            </Card>
-        );
-    }
 
     return (
-        <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <RankingList title="Classement par Note Moyenne" ranking={rankings.averageRating} metric="averageRating" unit="/5" higherIsBetter={true} />
-                <RankingList title="Classement par Ponctualité" ranking={rankings.punctualityRate} metric="punctualityRate" unit="%" higherIsBetter={true} />
-                <RankingList title="Classement Taux d'Échec" ranking={rankings.failureRate} metric="successRate" unit="%" higherIsBetter={false} />
-            </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <RankingList title="Taux de 'Sur Place Forcé'" ranking={rankings.forcedOnSiteRate} metric="forcedOnSiteRate" unit="%" higherIsBetter={false} />
-                <RankingList title="Taux de 'Sans Contact Forcé'" ranking={rankings.forcedNoContactRate} metric="forcedNoContactRate" unit="%" higherIsBetter={false} />
-                <RankingList title="Taux de 'Validation Web'" ranking={rankings.webCompletionRate} metric="webCompletionRate" unit="%" higherIsBetter={false} />
-            </div>
-            <Card>
-                <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <CardTitle>Données sur la performance des dépôts</CardTitle>
-                        <Button variant="outline" size="sm" onClick={handleExport}><Download className="mr-2 h-4 w-4" /> Exporter en Excel</Button>
+        <Card>
+            <CardHeader>
+                <CardTitle>Analyse par dépôt</CardTitle>
+                <CardDescription>Répartition des livraisons par dépôt d'origine.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <ScrollArea className="h-[300px]">
+                    <div className="space-y-4">
+                        {depotStats.map((stat) => (
+                            <div key={stat.name}>
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-sm font-medium">{stat.name}</span>
+                                    <span className="text-sm text-muted-foreground">{stat.totalDeliveries} livraisons ({stat.percentage.toFixed(1)}%)</span>
+                                </div>
+                                <Progress value={stat.percentage} />
+                            </div>
+                        ))}
                     </div>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Dépôt</TableHead>
-                                <TableHead className="text-right">Total</TableHead>
-                                <TableHead className="text-right">Note moy.</TableHead>
-                                <TableHead className="text-right">Ponctualité</TableHead>
-                                <TableHead className="text-right">Taux d'échec</TableHead>
-                                <TableHead className="text-right">Sur place forcé</TableHead>
-                                <TableHead className="text-right">Sans contact forcé</TableHead>
-                                <TableHead className="text-right">Validation Web</TableHead>
-                                <TableHead className="text-right">Taux de notation</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {depotStats.map((stat) => (
-                                <TableRow key={stat.name}>
-                                    <TableCell className="font-medium">{stat.name}</TableCell>
-                                    <TableCell className="text-right">{stat.totalDeliveries}</TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex items-center justify-end gap-1">
-                                            <ObjectiveIndicator value={stat.averageRating} objective={objectives.averageRating} higherIsBetter={true} tooltipLabel="Note moyenne" />
-                                            {stat.averageRating > 0 ? stat.averageRating.toFixed(2) : 'N/A'}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex items-center justify-end gap-1">
-                                            <ObjectiveIndicator value={stat.punctualityRate} objective={objectives.punctualityRate} higherIsBetter={true} tooltipLabel="Ponctualité" unit="%" />
-                                            {stat.punctualityRate.toFixed(2)}%
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex items-center justify-end gap-1">
-                                            <ObjectiveIndicator value={(100 - stat.successRate)} objective={objectives.failureRate} higherIsBetter={false} tooltipLabel="Taux d'échec" unit="%" />
-                                            {(100 - stat.successRate).toFixed(2)}%
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex items-center justify-end gap-1">
-                                            <ObjectiveIndicator value={stat.forcedOnSiteRate} objective={objectives.forcedOnSiteRate} higherIsBetter={false} tooltipLabel="Sur place forcé" unit="%" />
-                                            {stat.forcedOnSiteRate.toFixed(2)}%
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex items-center justify-end gap-1">
-                                            <ObjectiveIndicator value={stat.forcedNoContactRate} objective={objectives.forcedNoContactRate} higherIsBetter={false} tooltipLabel="Sans contact forcé" unit="%" />
-                                            {stat.forcedNoContactRate.toFixed(2)}%
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex items-center justify-end gap-1">
-                                            <ObjectiveIndicator value={stat.webCompletionRate} objective={objectives.webCompletionRate} higherIsBetter={false} tooltipLabel="Validation Web" unit="%" />
-                                            {stat.webCompletionRate.toFixed(2)}%
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right">{stat.ratingRate.toFixed(2)}%</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-        </div>
+                </ScrollArea>
+            </CardContent>
+        </Card>
     );
 }

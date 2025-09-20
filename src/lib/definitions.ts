@@ -35,6 +35,8 @@ export type AggregatedStats = {
   averageRating: number;
   onTimeDeliveries: number;
   punctualityRate: number;
+  problematicDeliveries: number;
+  problematicDeliveriesRate: number;
   // New rates
   forcedNoContactCount: number;
   forcedNoContactRate: number;
