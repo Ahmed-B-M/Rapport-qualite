@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Truck, Users, Package, Star, Building, TrendingUp, TrendingDown, ArrowRight, Timer, Percent, Link2Off, UserX } from 'lucide-react';
 import { StatCard } from './stat-card';
 import { DriverAnalytics } from './driver-analytics';
@@ -17,11 +17,15 @@ interface OverviewProps {
   data: Delivery[];
 }
 
-type Depot = 'all' | 'VLG' | 'Vitry'; // This could be dynamic based on your data
-
 export function Overview({ data }: OverviewProps) {
-  const [activeDepot, setActiveDepot] = useState<Depot>('all');
+  const [activeDepot, setActiveDepot] = useState<string>('all');
   const [activePeriod, setActivePeriod] = useState<string>('7d'); // e.g., '1d', '7d', '30d'
+
+  // Extract unique depots from data for the filter dropdown
+  const uniqueDepots = useMemo(() => {
+    const depots = new Set(data.map(d => d.depot));
+    return Array.from(depots).sort();
+  }, [data]);
 
   // 1. Filter by period first
   const periodData = filterDataByPeriod(data, activePeriod);
@@ -44,14 +48,15 @@ export function Overview({ data }: OverviewProps) {
           <Button variant={activePeriod === '30d' ? 'default' : 'outline'} onClick={() => setActivePeriod('30d')}>30 jours</Button>
         </div>
         <div className="w-48">
-          <Select onValueChange={(value: Depot) => setActiveDepot(value)} defaultValue="all">
+          <Select onValueChange={(value: string) => setActiveDepot(value)} defaultValue="all">
             <SelectTrigger>
               <SelectValue placeholder="Sélectionner un dépôt" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tous les dépôts</SelectItem>
-              <SelectItem value="VLG">VLG</SelectItem>
-              <SelectItem value="Vitry">Vitry</SelectItem>
+              {uniqueDepots.map(depot => (
+                <SelectItem key={depot} value={depot}>{depot}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
