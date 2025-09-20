@@ -23,14 +23,16 @@ export function CustomerFeedbackSummary({ data, onClick, aiCache, setAiCache, lo
   
   const comments = useMemo(() => data.map(d => d.feedbackComment!).filter(Boolean), [data]);
 
-  const analysisData = useMemo(() => (
-    aiCache.customerFeedbackAnalysis ? Object.entries(aiCache.customerFeedbackAnalysis.categoryCounts)
-      .map(([name, count]) => ({ name, count }))
-      .filter(item => item.count > 0)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5) // Keep top 5
-    : []
-  ), [aiCache.customerFeedbackAnalysis]);
+  const analysisData = useMemo(() => {
+    if (aiCache.customerFeedbackAnalysis && aiCache.customerFeedbackAnalysis.categoryCounts) {
+      return Object.entries(aiCache.customerFeedbackAnalysis.categoryCounts)
+        .map(([name, count]) => ({ name, count }))
+        .filter(item => item.count > 0)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5); // Keep top 5
+    }
+    return [];
+  }, [aiCache.customerFeedbackAnalysis]);
 
   return (
     <Card onClick={onClick} className={onClick ? 'cursor-pointer hover:bg-muted/20 transition-colors' : ''}>
