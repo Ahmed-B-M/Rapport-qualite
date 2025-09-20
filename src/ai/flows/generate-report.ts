@@ -8,7 +8,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 
 const GeneratePerformanceReportInputSchema = z.object({
   overallStats: z.string().describe("A JSON string of the overall performance statistics (KPIs)."),
