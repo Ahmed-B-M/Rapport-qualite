@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Star, Timer, Ban, Globe, Target, PenSquare, PackageSearch, Building2, Truck, User, Warehouse as WarehouseIcon, ChevronsRight, ThumbsUp, ThumbsDown, Bot, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 
 type RankingEntity = { name: string } & AggregatedStats;
 
@@ -79,7 +79,7 @@ const RankingChart = ({ rankings, metric, unit, isFlop }: {
                 <text x={x + width + 5} y={y + height / 2} fill="hsl(var(--foreground))" textAnchor="start" dominantBaseline="middle" className="text-xs font-semibold">
                     {formattedValue}
                 </text>
-                 <text x={x + width + 50} y={y + height / 2} fill="hsl(var(--muted-foreground))" textAnchor="start" dominantBaseline="middle" className="text-xs">
+                 <text x={x + width + 60} y={y + height / 2} fill="hsl(var(--muted-foreground))" textAnchor="start" dominantBaseline="middle" className="text-xs">
                     ({recurrence})
                 </text>
             </g>
@@ -90,7 +90,7 @@ const RankingChart = ({ rankings, metric, unit, isFlop }: {
         <div>
             {chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={160}>
-                    <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 100, left: 120, bottom: 0 }}>
+                    <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 120, left: 120, bottom: 0 }}>
                         <XAxis type="number" dataKey="value" hide />
                         <YAxis 
                             type="category" 
@@ -100,13 +100,13 @@ const RankingChart = ({ rankings, metric, unit, isFlop }: {
                             tickLine={false}
                             axisLine={false}
                             width={120}
+                            interval={0}
                         />
                         <Tooltip content={<CustomTooltip metric={metric} unit={unit} isFlop={isFlop} />} cursor={{fill: 'hsl(var(--muted))'}} />
                         <Bar dataKey="value" barSize={16}>
                              {chartData.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={isFlop ? "hsl(var(--destructive))" : "hsl(var(--primary))"} radius={[0, 4, 4, 0]} />
                             ))}
-                            <LabelList dataKey="value" content={renderCustomizedLabel} position="right" />
                         </Bar>
                     </BarChart>
                 </ResponsiveContainer>
@@ -359,3 +359,5 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
         </div>
     );
 }
+
+    
