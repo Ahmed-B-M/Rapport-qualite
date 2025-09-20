@@ -1,8 +1,3 @@
-
-
-
-
-
 import { type Delivery, type StatsByEntity, type AggregatedStats } from './definitions';
 import { WAREHOUSE_DEPOT_MAP, CARRIERS } from './constants';
 
@@ -28,6 +23,14 @@ const getCarrierFromDriver = (driverName: string): string => {
     if (!driverName || driverName.trim() === '') return 'Inconnu';
 
     const name = driverName.trim();
+
+    if (name.toUpperCase().endsWith('ID LOG')) {
+        return 'ID LOGISTICS';
+    }
+
+    if (name.toUpperCase().startsWith('STT')) {
+        return 'Sous traitants';
+    }
     
     // Check for carriers with numeric suffixes first
     for (const carrier of CARRIERS) {
@@ -244,7 +247,7 @@ export function getRankings<T extends {name: string} & AggregatedStats>(
 
         if (valA !== valB) {
             // For flop, the primary sort is the reverse of top.
-            return higherIsBetter ? valA - valB : valB - valA;
+            return higherIsBetter ? valA - valB : valB - a[metric];
         }
         
         // Secondary sort: for flops, higher volume is worse.
