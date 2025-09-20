@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Star, MessageSquareQuote, ThumbsDown, User, Building, Truck, Warehouse as WarehouseIcon, AlertTriangle, Search, Printer, Download } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Button } from '../ui/button';
+import { Input } from '../ui/input';
 import * as XLSX from 'xlsx';
 import { getRankings, aggregateStats } from '@/lib/data-processing';
 import {
@@ -103,19 +104,25 @@ const RatingChart = ({ data }: { data: RatingData[] }) => {
     );
 };
 
-const CommentsList = ({ title, comments, icon }: { title: string; comments: Comment[], icon: React.ElementType }) => {
+const CommentsList = ({ title, comments, icon, searchQuery }: { title: string; comments: Comment[], icon: React.ElementType, searchQuery: string }) => {
     const Icon = icon;
+    
+    const filteredComments = useMemo(() => {
+        if (!searchQuery) return comments;
+        return comments.filter(c => c.comment.toLowerCase().includes(searchQuery.toLowerCase()));
+    }, [comments, searchQuery]);
+
     return (
         <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg"><Icon className="h-5 w-5" /> {title}</CardTitle>
-                <CardDescription>{comments.length} commentaire{comments.length > 1 ? 's' : ''}</CardDescription>
+                <CardDescription>{filteredComments.length} sur {comments.length} commentaire{comments.length > 1 ? 's' : ''} affiché{comments.length > 1 ? 's' : ''}</CardDescription>
             </CardHeader>
             <CardContent>
-                {comments.length > 0 ? (
+                {filteredComments.length > 0 ? (
                     <ScrollArea className="h-auto max-h-80">
                         <div className="space-y-4 pr-4">
-                        {comments.map((c, i) => (
+                        {filteredComments.map((c, i) => (
                             <div key={i} className="p-3 border rounded-lg bg-muted/20">
                                 <div className="flex justify-between items-start">
                                     <p className="text-sm italic">"{c.comment}"</p>
@@ -133,7 +140,7 @@ const CommentsList = ({ title, comments, icon }: { title: string; comments: Comm
                 ) : (
                     <div className="flex h-64 flex-col items-center justify-center text-center text-muted-foreground">
                         <MessageSquareQuote className="h-10 w-10 mb-4" />
-                        <p className="font-semibold">Aucun {title.toLowerCase()}.</p>
+                        <p className="font-semibold">Aucun commentaire ne correspond à votre recherche.</p>
                     </div>
                 )}
             </CardContent>
@@ -167,11 +174,12 @@ type EntityWithComments = AggregatedStats & {
     carrier?: string;
 }
 
-const EntitySatisfactionView = ({ stats, objectives, onNavigate, groupBy }: { 
+const EntitySatisfactionView = ({ stats, objectives, onNavigate, groupBy, searchQuery }: { 
     stats: EntityWithComments[], 
     objectives: Objectives,
     onNavigate: (view: string, detail?: Partial<DetailViewState>) => void;
     groupBy: GroupingKey;
+    searchQuery: string;
 }) => {
     if (stats.length === 0) {
          return (
@@ -245,7 +253,7 @@ const EntitySatisfactionView = ({ stats, objectives, onNavigate, groupBy }: {
                              <h4 className="font-semibold mb-2 text-center">Distribution des notes</h4>
                              <RatingChart data={entity.ratingDistribution} />
                         </div>
-                       <CommentsList title="Commentaires Négatifs (≤ 3★)" comments={entity.negativeComments} icon={ThumbsDown} />
+                       <CommentsList title="Commentaires Négatifs (≤ 3★)" comments={entity.negativeComments} icon={ThumbsDown} searchQuery={searchQuery} />
                     </CardContent>
                 </Card>
             ))}
@@ -262,6 +270,7 @@ interface CustomerSatisfactionProps {
 
 export function CustomerSatisfaction({ data, objectives, onNavigate }: CustomerSatisfactionProps) {
     const [activeTab, setActiveTab] = useState<GroupingKey>("depot");
+    const [searchQuery, setSearchQuery] = useState("");
 
     const satisfactionStats = useMemo(() => {
         const getStatsForGroup = (groupBy: GroupingKey) => {
@@ -423,6 +432,19 @@ export function CustomerSatisfaction({ data, objectives, onNavigate }: CustomerS
                         </Button>
                     </div>
                 </div>
+
+                <div className="mb-4">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Rechercher dans les commentaires négatifs..."
+                            className="pl-9"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                </div>
+
                 <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as GroupingKey)}>
                     <TabsList className="grid w-full grid-cols-4">
                         {tabs.map(tab => (
@@ -430,28 +452,28 @@ export function CustomerSatisfaction({ data, objectives, onNavigate }: CustomerS
                         ))}
                     </TabsList>
                     <TabsContent value="depot">
-                        <EntitySatisfactionView stats={satisfactionStats.depot} objectives={objectives} onNavigate={onNavigate} groupBy="depot" />
+                        <EntitySatisfactionView stats={satisfactionStats.depot} objectives={objectives} onNavigate={onNavigate} groupBy="depot" searchQuery={searchQuery} />
                     </TabsContent>
                     <TabsContent value="warehouse">
-                        <EntitySatisfactionView stats={satisfactionStats.warehouse} objectives={objectives} onNavigate={onNavigate} groupBy="warehouse" />
+                        <EntitySatisfactionView stats={satisfactionStats.warehouse} objectives={objectives} onNavigate={onNavigate} groupBy="warehouse" searchQuery={searchQuery} />
                     </TabsContent>
                     <TabsContent value="carrier">
-                        <EntitySatisfactionView stats={satisfactionStats.carrier} objectives={objectives} onNavigate={onNavigate} groupBy="carrier" />
+                        <EntitySatisfactionView stats={satisfactionStats.carrier} objectives={objectives} onNavigate={onNavigate} groupBy="carrier" searchQuery={searchQuery} />
                     </TabsContent>
                     <TabsContent value="driver">
-                        <EntitySatisfactionView stats={satisfactionStats.driver} objectives={objectives} onNavigate={onNavigate} groupBy="driver" />
+                        <EntitySatisfactionView stats={satisfactionStats.driver} objectives={objectives} onNavigate={onNavigate} groupBy="driver" searchQuery={searchQuery} />
                     </TabsContent>
                 </Tabs>
             </div>
              <div className="print-only print-satisfaction-content">
                 <div className="print-satisfaction-page">
                     <h1 className="text-2xl font-bold mb-4">Rapport de Satisfaction Client - Global</h1>
-                    <CommentsList title={`Commentaires Négatifs (≤ 3★) - Tous les dépôts`} comments={allNegativeComments} icon={ThumbsDown} />
+                    <CommentsList title={`Commentaires Négatifs (≤ 3★) - Tous les dépôts`} comments={allNegativeComments} icon={ThumbsDown} searchQuery="" />
                 </div>
                 {satisfactionStats.depot.map(depotStat => (
                     <div key={depotStat.name} className="print-satisfaction-page">
                         <h1 className="text-2xl font-bold mb-4">Rapport de Satisfaction Client - Dépôt: {depotStat.name}</h1>
-                        <CommentsList title={`Commentaires Négatifs (≤ 3★) - ${depotStat.name}`} comments={depotStat.negativeComments} icon={ThumbsDown} />
+                        <CommentsList title={`Commentaires Négatifs (≤ 3★) - ${depotStat.name}`} comments={depotStat.negativeComments} icon={ThumbsDown} searchQuery="" />
                     </div>
                 ))}
             </div>
