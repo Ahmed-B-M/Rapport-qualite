@@ -1,5 +1,6 @@
 
 
+
 import { type Delivery, type StatsByEntity, type AggregatedStats } from './definitions';
 import { WAREHOUSE_DEPOT_MAP, CARRIERS } from './constants';
 
@@ -231,37 +232,37 @@ export function getRankings<T extends {name: string} & AggregatedStats>(
 
     const higherIsBetter = order === 'asc';
     
+    // The logic for 'top' ranking remains the same.
     const sortedForTop = [...validStats].sort((a, b) => {
-        const valA = metric === 'successRate' ? 100 - a.successRate : a[metric];
-        const valB = metric === 'successRate' ? 100 - b.successRate : b[metric];
+        const valA = a[metric];
+        const valB = b[metric];
 
         if (valA !== valB) {
             return higherIsBetter ? valB - valA : valA - valB;
         }
-        
         return b.totalDeliveries - a.totalDeliveries;
     });
     
+    // The logic for 'flop' ranking is adjusted to consider volume.
     const sortedForFlop = [...validStats].sort((a, b) => {
-        const valA = metric === 'successRate' ? 100 - a.successRate : a[metric];
-        const valB = metric === 'successRate' ? 100 - b.successRate : b[metric];
+        const valA = a[metric];
+        const valB = b[metric];
 
         if (valA !== valB) {
+            // For flop, the primary sort is the reverse of top.
             return higherIsBetter ? valA - valB : valB - valA;
         }
-
+        
+        // Secondary sort: for flops, higher volume is worse.
         return b.totalDeliveries - a.totalDeliveries;
     });
     
     const top = sortedForTop.slice(0, take);
 
-    if (validStats.length < (take * 2)) {
-        const topNames = new Set(top.map(t => t.name));
-        const flop = sortedForFlop.filter(item => !topNames.has(item.name)).slice(0, take);
-        return { top, flop };
-    }
-
-    const flop = sortedForFlop.slice(0, take);
+    const topNames = new Set(top.map(t => t.name));
+    
+    // Flops should not include items that are already in the top list
+    const flop = sortedForFlop.filter(item => !topNames.has(item.name)).slice(0, take);
 
 
     return { top, flop };
