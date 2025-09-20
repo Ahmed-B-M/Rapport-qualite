@@ -35,6 +35,9 @@ const CustomTooltip = ({ active, payload, label, metric, unit, isFlop }: any) =>
 
 const formatValue = (value: number, metric: RankingMetric, unit: string) => {
     if (metric === 'averageRating' && value === 0) return 'N/A';
+    if (metric === 'successRate') { // Display failure rate
+        return `${(100 - value).toFixed(2)}${unit}`;
+    }
     return `${value.toFixed(2)}${unit}`;
 };
 
@@ -68,23 +71,6 @@ const RankingChart = ({ rankings, metric, unit, isFlop }: {
         value: metric === 'successRate' ? 100 - item.successRate : item[metric],
         ...item
     })), [rankings, metric]);
-
-    const renderCustomizedLabel = (props: any) => {
-        const { x, y, width, height, value, payload } = props;
-        const recurrence = getRecurrence(payload, metric, isFlop);
-        const formattedValue = formatValue(value, metric, unit);
-
-        return (
-            <g>
-                <text x={x + width + 5} y={y + height / 2} fill="hsl(var(--foreground))" textAnchor="start" dominantBaseline="middle" className="text-xs font-semibold">
-                    {formattedValue}
-                </text>
-                 <text x={x + width + 60} y={y + height / 2} fill="hsl(var(--muted-foreground))" textAnchor="start" dominantBaseline="middle" className="text-xs">
-                    ({recurrence})
-                </text>
-            </g>
-        );
-    };
 
     return (
         <div>
@@ -317,32 +303,7 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
                 </div>
             </div>
 
-            <div className="no-print">
-                <h2 className="text-2xl font-bold font-headline mb-6">Classements de Performance par Thématique</h2>
-                <Tabs defaultValue={rankingSections[0].metric}>
-                    <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-6 mb-4">
-                        {rankingSections.map((section) => (
-                           <TabsTrigger key={section.metric} value={section.metric}>
-                               <section.icon className="mr-2 h-4 w-4" />
-                               {section.title}
-                           </TabsTrigger>
-                        ))}
-                    </TabsList>
-                    {rankingSections.map((section) => (
-                        <TabsContent key={section.metric} value={section.metric}>
-                            <ThematicRankingSection
-                                title={section.title}
-                                metric={section.metric}
-                                unit={section.unit}
-                                data={aggregatedData}
-                                onDrillDown={handleDrillDown}
-                            />
-                        </TabsContent>
-                    ))}
-                </Tabs>
-            </div>
-            
-            <div className="print-only space-y-12">
+            <div className="space-y-12">
                 <h2 className="text-2xl font-bold font-headline mb-6">Classements de Performance par Thématique</h2>
                 {rankingSections.map((section) => (
                      <ThematicRankingSection
@@ -351,7 +312,7 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
                         metric={section.metric}
                         unit={section.unit}
                         data={aggregatedData}
-                        onDrillDown={() => {}} // No drill-down in print view
+                        onDrillDown={handleDrillDown}
                     />
                 ))}
             </div>
@@ -359,5 +320,3 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
         </div>
     );
 }
-
-    
