@@ -8,7 +8,7 @@ import { getOverallStats, aggregateStats, getRankings, type Ranking, type Rankin
 import { StatCard } from '@/components/dashboard/stat-card';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Star, Timer, Ban, Globe, Target, PenSquare, PackageSearch, Building2, Truck, User, Warehouse as WarehouseIcon, ChevronsRight, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { AlertCircle, Star, Timer, Ban, Globe, Target, PenSquare, PackageSearch, Building2, Truck, User, Warehouse as WarehouseIcon, ChevronsRight, ThumbsUp, ThumbsDown, Package } from 'lucide-react';
 import { KpiDetailModal } from '@/components/dashboard/kpi-detail-modal';
 import { CustomerFeedbackSummary } from '@/components/dashboard/customer-feedback-summary';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
@@ -61,24 +61,24 @@ const getRecurrence = (item: RankingEntity, metric: RankingMetric, isFlop: boole
     }
 };
 
-const RankingChart = ({ rankings, metric, unit, isFlop, onBarClick }: {
+const RankingChart = ({ rankings, metric, unit, isFlop, onBarClick, entityType }: {
     rankings: RankingEntity[];
     metric: RankingMetric;
     unit: string;
     isFlop: boolean;
-    onBarClick?: (entity: RankingEntity, entityType: string) => void;
+    onBarClick: (entity: RankingEntity, entityType: string) => void;
     entityType: string;
 }) => {
     const chartData = useMemo(() => rankings.map(item => ({
         name: item.name,
-        value: metric === 'successRate' ? 100 - item.successRate : (item[metric] || 0),
+        value: metric === 'successRate' ? 100 - item.successRate : (item[metric as keyof AggregatedStats] as number || 0),
         ...item
     })), [rankings, metric]);
 
     return (
         <div>
             {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={160}>
+                <ResponsiveContainer width="100%" height={140}>
                     <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 20, left: 120, bottom: 0 }}>
                         <XAxis type="number" dataKey="value" hide />
                         <YAxis 
@@ -106,7 +106,7 @@ const RankingChart = ({ rankings, metric, unit, isFlop, onBarClick }: {
                     </BarChart>
                 </ResponsiveContainer>
             ) : (
-                <div className="flex items-center justify-center h-40 text-sm text-muted-foreground">
+                <div className="flex items-center justify-center h-[140px] text-sm text-muted-foreground">
                     Pas de données à afficher
                 </div>
             )}
@@ -144,8 +144,8 @@ const ThematicRankingSection = ({ data, metric, unit, title, onDrillDown, icon: 
     };
     
     return (
-        <div className="space-y-6 print-section">
-            <h3 className="text-xl font-bold font-headline mb-4 print-title flex items-center gap-3"><Icon className="h-6 w-6" /> {title}</h3>
+        <div className="space-y-4 print-section">
+            <h3 className="text-xl font-bold font-headline print-title flex items-center gap-3"><Icon className="h-6 w-6" /> {title}</h3>
             <div className="grid gap-6 md:grid-cols-2">
                 {entityTypes.map(entity => (
                     <Card key={entity.id}>
@@ -248,7 +248,7 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
     const failureDeliveries = useMemo(() => data.filter(d => d.status === 'Non livré'), [data]);
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-6">
             {modalMetric && (
                 <KpiDetailModal
                     metric={modalMetric}
@@ -261,6 +261,12 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
             <div className="print-section">
                 <h2 className="text-2xl font-bold font-headline mb-4">Indicateurs Clés de Performance (KPIs)</h2>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                     <StatCard 
+                        title="Livraisons analysées" 
+                        value={`${overallStats.totalDeliveries}`} 
+                        icon={Package}
+                        tooltipText="Nombre total de livraisons terminées (livrées ou non livrées) dans le fichier."
+                     />
                     <StatCard 
                         title="Note moyenne" 
                         value={overallStats.ratedDeliveries > 0 ? `${overallStats.averageRating.toFixed(2)} / 5` : 'N/A'}
@@ -335,7 +341,7 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
               onClick={() => setActiveView('satisfaction')}
             />
 
-            <div className="space-y-6">
+            <div className="space-y-8">
                 <h2 className="text-2xl font-bold font-headline mb-6">Classements de Performance par Thématique</h2>
                 {rankingSections.map((section) => (
                      <ThematicRankingSection
@@ -354,5 +360,7 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
         </div>
     );
 }
+
+    
 
     

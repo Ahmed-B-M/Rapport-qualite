@@ -130,7 +130,7 @@ const FlopRankingList = ({ title, rankings, metric, icon: Icon }: {
                         {rankings.map(item => (
                             <TableRow key={item.name}>
                                 <TableCell className="font-medium truncate max-w-[150px] sm:max-w-xs">{item.name}</TableCell>
-                                <TableCell className={cn("text-right font-semibold", !metricConfig.higherIsBetter && "text-destructive")}>
+                                <TableCell className={cn("text-right font-semibold", metricConfig.higherIsBetter ? "text-primary" : "text-destructive")}>
                                     {getValue(item).toFixed(2)}{metricConfig.unit}
                                 </TableCell>
                                 <TableCell className="text-right">{getRecurrence(item)}</TableCell>
@@ -192,5 +192,7 @@ export function KpiDetailModal({ metric, onClose, data, rankings }: {
         </Dialog>
     );
 }
+
+    
 
     
