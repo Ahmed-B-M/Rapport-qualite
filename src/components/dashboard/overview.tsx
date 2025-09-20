@@ -2,14 +2,13 @@
 "use client"
 
 import { useMemo, useState, useEffect } from 'react';
-import ReactMarkdown from "react-markdown";
 import { type Delivery, type AggregatedStats } from '@/lib/definitions';
 import { type Objectives } from '@/app/page';
 import { getOverallStats, aggregateStats, getRankings, type Ranking, type RankingMetric } from '@/lib/data-processing';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Star, Timer, Ban, Globe, Target, PenSquare, PackageSearch, Building2, Truck, User, Warehouse as WarehouseIcon, ChevronsRight, ThumbsUp, ThumbsDown, Bot, Loader2 } from 'lucide-react';
+import { AlertCircle, Star, Timer, Ban, Globe, Target, PenSquare, PackageSearch, Building2, Truck, User, Warehouse as WarehouseIcon, ChevronsRight, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { KpiDetailModal } from '@/components/dashboard/kpi-detail-modal';
 import { CustomerFeedbackSummary } from '@/components/dashboard/customer-feedback-summary';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
@@ -219,8 +218,6 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
     ];
 
     const failureDeliveries = useMemo(() => data.filter(d => d.status === 'Non livré'), [data]);
-    const negativeFeedbackDeliveries = useMemo(() => data.filter(d => d.deliveryRating && d.deliveryRating <= 3 && d.feedbackComment), [data]);
-
 
     return (
         <div className="space-y-8">
@@ -307,5 +304,3 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
         </div>
     );
 }
-
-    
