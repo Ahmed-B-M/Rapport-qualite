@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Truck, Users, Package, Star, Building, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react';
+import { Truck, Users, Package, Star, Building, TrendingUp, TrendingDown, ArrowRight, Timer, Percent, Link2Off, UserX } from 'lucide-react';
 import { StatCard } from './stat-card';
 import { DriverAnalytics } from './driver-analytics';
 import { CarrierAnalytics } from './carrier-analytics';
@@ -10,7 +10,7 @@ import { DepotAnalytics } from './depot-analytics';
 import { CustomerSatisfaction } from './customer-satisfaction';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Delivery } from '@/lib/definitions';
+import { type Delivery } from '@/lib/definitions';
 import { processGlobalData, filterDataByDepot, filterDataByPeriod } from '@/lib/data-processing';
 
 interface OverviewProps {
@@ -58,6 +58,14 @@ export function Overview({ data }: OverviewProps) {
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
+          title="Total Livraisons"
+          value={currentStats.totalDeliveries}
+          description="Nombre total de livraisons analysées"
+          icon={<Package />}
+          previousValue={previousStats.totalDeliveries}
+          trendDirection="up"
+        />
+        <StatCard
           title="Taux de succès"
           value={`${currentStats.successRate.toFixed(1)}%`}
           description="Livraisons réussies"
@@ -73,21 +81,47 @@ export function Overview({ data }: OverviewProps) {
           previousValue={previousStats.failedDeliveries}
           trendDirection="down"
         />
-        <StatCard
-          title="Total des livraisons"
-          value={currentStats.totalDeliveries}
-          description="Toutes tournées confondues"
-          icon={<Package />}
-          previousValue={previousStats.totalDeliveries}
-          trendDirection="up"
-        />
-        <StatCard
+         <StatCard
           title="Satisfaction Client"
           value={currentStats.averageRating.toFixed(2)}
-          description="Note moyenne"
+          description="Note moyenne sur 5"
           icon={<Star className="text-yellow-500" />}
           previousValue={previousStats.averageRating}
           trendDirection="up"
+        />
+      </div>
+       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Ponctualité"
+          value={`${currentStats.punctualityRate.toFixed(1)}%`}
+          description="Livraisons à l'heure (fenêtre de +/- 15min)"
+          icon={<Timer />}
+          previousValue={previousStats.punctualityRate}
+          trendDirection="up"
+        />
+        <StatCard
+          title="Taux de Notation"
+          value={`${currentStats.ratingRate.toFixed(1)}%`}
+          description="Pourcentage de livraisons notées"
+          icon={<Percent />}
+          previousValue={previousStats.ratingRate}
+          trendDirection="up"
+        />
+        <StatCard
+          title="'Sans Contact' Forcé"
+          value={`${currentStats.forcedNoContactRate.toFixed(1)}%`}
+          description="Utilisation de la complétion forcée sans contact"
+          icon={<UserX />}
+          previousValue={previousStats.forcedNoContactRate}
+          trendDirection="down"
+        />
+        <StatCard
+          title="'Validation Web'"
+          value={`${currentStats.webCompletionRate.toFixed(1)}%`}
+          description="Utilisation de la validation par le web"
+          icon={<Link2Off />}
+          previousValue={previousStats.webCompletionRate}
+          trendDirection="down"
         />
       </div>
 

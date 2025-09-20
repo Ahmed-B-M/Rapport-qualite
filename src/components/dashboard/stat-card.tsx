@@ -12,22 +12,29 @@ interface StatCardProps {
 }
 
 const TrendIndicator = ({ value, previousValue, direction }: { value: number, previousValue: number, direction: 'up' | 'down' }) => {
-  if (value > previousValue) {
-    return direction === 'up'
-      ? <span className="flex items-center text-sm text-green-500"><ArrowUp className="h-4 w-4 mr-1" /> {(((value - previousValue) / previousValue) * 100).toFixed(1)}%</span>
-      : <span className="flex items-center text-sm text-red-500"><ArrowUp className="h-4 w-4 mr-1" /> {(((value - previousValue) / previousValue) * 100).toFixed(1)}%</span>;
+  const numericValue = typeof value === 'string' ? parseFloat(value.replace('%','')) : value;
+  
+  if (isNaN(numericValue) || isNaN(previousValue) || previousValue === 0) {
+      return <span className="flex items-center text-sm text-gray-500"><ArrowRight className="h-4 w-4 mr-1" /> --</span>;
   }
-  if (value < previousValue) {
-    return direction === 'up'
-      ? <span className="flex items-center text-sm text-red-500"><ArrowDown className="h-4 w-4 mr-1" /> {(((previousValue - value) / previousValue) * 100).toFixed(1)}%</span>
-      : <span className="flex items-center text-sm text-green-500"><ArrowDown className="h-4 w-4 mr-1" /> {(((previousValue - value) / previousValue) * 100).toFixed(1)}%</span>;
+
+  if (numericValue > previousValue) {
+    const percentageChange = (((numericValue - previousValue) / previousValue) * 100).toFixed(1);
+    const color = direction === 'up' ? 'text-green-500' : 'text-red-500';
+    return <span className={`flex items-center text-sm ${color}`}><ArrowUp className="h-4 w-4 mr-1" /> {percentageChange}%</span>;
+  }
+  if (numericValue < previousValue) {
+    const percentageChange = (((previousValue - numericValue) / previousValue) * 100).toFixed(1);
+    const color = direction === 'up' ? 'text-red-500' : 'text-green-500';
+    return <span className={`flex items-center text-sm ${color}`}><ArrowDown className="h-4 w-4 mr-1" /> {percentageChange}%</span>;
   }
   return <span className="flex items-center text-sm text-gray-500"><ArrowRight className="h-4 w-4 mr-1" /> 0.0%</span>;
 };
 
 
 export const StatCard: React.FC<StatCardProps> = ({ title, value, icon, description, previousValue, trendDirection }) => {
-  const isNumericValue = typeof value === 'number';
+  
+  const numericValueForTrend = typeof value === 'string' ? parseFloat(value.replace('%','')) : value;
 
   return (
     <Card>
@@ -39,8 +46,8 @@ export const StatCard: React.FC<StatCardProps> = ({ title, value, icon, descript
         <div className="text-2xl font-bold">{value}</div>
         <div className="flex justify-between items-center">
           <p className="text-xs text-muted-foreground">{description}</p>
-          {isNumericValue && previousValue !== undefined && trendDirection && (
-            <TrendIndicator value={value} previousValue={previousValue} direction={trendDirection} />
+          {previousValue !== undefined && trendDirection && (
+            <TrendIndicator value={numericValueForTrend} previousValue={previousValue} direction={trendDirection} />
           )}
         </div>
       </CardContent>
