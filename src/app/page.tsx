@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { type Delivery } from "@/lib/definitions";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
@@ -26,6 +26,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { analyzeCustomerFeedback } from "@/ai/flows/analyze-customer-feedback";
+import { analyzeDepotDelivery } from "@/ai/flows/depot-delivery-analysis";
+import { generateOverviewSummary } from "@/ai/flows/generate-overview-summary";
+import { getOverallStats, aggregateStats, getRankings, type RankingMetric } from "@/lib/data-processing";
 
 
 export type Objectives = {
@@ -134,6 +138,75 @@ export default function DashboardPage() {
     }
     return data;
   }, [data, excludeMagasin]);
+
+  useEffect(() => {
+    if (!filteredData) return;
+
+    const runBackgroundAnalyses = async () => {
+        // Overview Summary
+        if (!aiCache.overviewSummary) {
+            setLoadingAi(prev => ({ ...prev, overviewSummary: true }));
+            try {
+                 const overallStats = getOverallStats(filteredData);
+                 const aggregatedData = {
+                    depots: getRankings(aggregateStats(filteredData, 'depot'), 'averageRating'),
+                    warehouses: getRankings(aggregateStats(filteredData, 'warehouse'), 'averageRating'),
+                    carriers: getRankings(aggregateStats(filteredData, 'carrier'), 'averageRating'),
+                    drivers: getRankings(aggregateStats(filteredData, 'driver'), 'averageRating'),
+                 };
+                 const result = await generateOverviewSummary({
+                    overallStats: JSON.stringify(overallStats),
+                    rankings: JSON.stringify(aggregatedData),
+                 });
+                setAiCache(prev => ({ ...prev, overviewSummary: result.summary }));
+            } catch (error) {
+                 setAiCache(prev => ({ ...prev, overviewSummary: "L'analyse par IA n'a pas pu être générée." }));
+            } finally {
+                setLoadingAi(prev => ({ ...prev, overviewSummary: false }));
+            }
+        }
+        
+        // Depot Analysis
+        if (!aiCache.depotAnalysis) {
+            setLoadingAi(prev => ({ ...prev, depotAnalysis: true }));
+            try {
+                const relevantData = filteredData.map(d => ({
+                    depot: d.depot,
+                    status: d.status,
+                    delaySeconds: d.delaySeconds,
+                }));
+                const csvHeader = "depot,status,delaySeconds\n";
+                const csvRows = relevantData.map(d => `${d.depot},${d.status},${d.delaySeconds}`).join("\n");
+                const result = await analyzeDepotDelivery({ deliveryData: csvHeader + csvRows });
+                setAiCache(prev => ({ ...prev, depotAnalysis: result.analysisResults }));
+            } catch (error) {
+                setAiCache(prev => ({ ...prev, depotAnalysis: "L'analyse IA des dépôts a échoué." }));
+            } finally {
+                setLoadingAi(prev => ({ ...prev, depotAnalysis: false }));
+            }
+        }
+
+        // Customer Feedback Analysis
+        if (!aiCache.customerFeedbackAnalysis) {
+             const comments = filteredData.map(d => d.feedbackComment!).filter(Boolean);
+             if (comments.length > 0) {
+                setLoadingAi(prev => ({ ...prev, customerFeedback: true }));
+                try {
+                    const result = await analyzeCustomerFeedback({ comments });
+                    setAiCache(prev => ({ ...prev, customerFeedbackAnalysis: result }));
+                } catch (error) {
+                     setAiCache(prev => ({ ...prev, customerFeedbackAnalysis: { categoryCounts: {}, analysisSummary: "L'analyse par IA a échoué." } }));
+                } finally {
+                    setLoadingAi(prev => ({ ...prev, customerFeedback: false }));
+                }
+             } else {
+                 setAiCache(prev => ({ ...prev, customerFeedbackAnalysis: { categoryCounts: {}, analysisSummary: "Aucun commentaire à analyser." } }));
+             }
+        }
+    };
+
+    runBackgroundAnalyses();
+  }, [filteredData, aiCache, setAiCache, setLoadingAi]);
   
   const handleGenerateReport = () => {
     setIsReportOpen(true);

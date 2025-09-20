@@ -6,7 +6,7 @@ import { type Delivery } from '@/lib/definitions';
 import { type AICache } from '@/app/page';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
-import { analyzeCustomerFeedback, type AnalyzeCustomerFeedbackOutput } from '@/ai/flows/analyze-customer-feedback';
+// import { analyzeCustomerFeedback, type AnalyzeCustomerFeedbackOutput } from '@/ai/flows/analyze-customer-feedback';
 import { Loader2, MessageSquareQuote, Bot } from 'lucide-react';
 import { ChevronsRight } from 'lucide-react';
 
@@ -22,38 +22,6 @@ interface CustomerFeedbackSummaryProps {
 export function CustomerFeedbackSummary({ data, onClick, aiCache, setAiCache, loadingAi, setLoadingAi }: CustomerFeedbackSummaryProps) {
   
   const comments = useMemo(() => data.map(d => d.feedbackComment!).filter(Boolean), [data]);
-
-  useEffect(() => {
-    const performAnalysis = async () => {
-      if (aiCache.customerFeedbackAnalysis) return;
-
-      if (comments.length === 0) {
-        setAiCache(prev => ({
-          ...prev,
-          customerFeedbackAnalysis: {
-            categoryCounts: {},
-            analysisSummary: "Aucun commentaire négatif à analyser.",
-          }
-        }));
-        return;
-      }
-      
-      setLoadingAi(prev => ({ ...prev, customerFeedback: true }));
-      try {
-        const result = await analyzeCustomerFeedback({ comments });
-        setAiCache(prev => ({ ...prev, customerFeedbackAnalysis: result }));
-      } catch (error) {
-        console.error("AI feedback analysis failed:", error);
-        setAiCache(prev => ({ 
-            ...prev,
-            customerFeedbackAnalysis: { categoryCounts: {}, analysisSummary: "L'analyse par IA a échoué." } 
-        }));
-      }
-      setLoadingAi(prev => ({ ...prev, customerFeedback: false }));
-    };
-
-    performAnalysis();
-  }, [comments, aiCache.customerFeedbackAnalysis, setAiCache, setLoadingAi]);
 
   const analysisData = useMemo(() => (
     aiCache.customerFeedbackAnalysis ? Object.entries(aiCache.customerFeedbackAnalysis.categoryCounts)

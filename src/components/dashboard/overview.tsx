@@ -6,7 +6,7 @@ import ReactMarkdown from "react-markdown";
 import { type Delivery, type AggregatedStats } from '@/lib/definitions';
 import { type Objectives, type AICache } from '@/app/page';
 import { getOverallStats, aggregateStats, getRankings, type Ranking, type RankingMetric } from '@/lib/data-processing';
-import { generateOverviewSummary } from '@/ai/flows/generate-overview-summary';
+// import { generateOverviewSummary } from '@/ai/flows/generate-overview-summary';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -207,27 +207,6 @@ export function Overview({ data, objectives, setActiveView, aiCache, setAiCache,
             drivers: getRankingsForAllMetrics(driverStats, d => !d.name.startsWith("Livreur Inconnu")),
         };
     }, [data]);
-    
-    useEffect(() => {
-        const fetchSummary = async () => {
-            if (aiCache.overviewSummary) return;
-
-            setLoadingAi(prev => ({ ...prev, overviewSummary: true }));
-            try {
-                const result = await generateOverviewSummary({
-                    overallStats: JSON.stringify(overallStats),
-                    rankings: JSON.stringify(aggregatedData),
-                });
-                setAiCache(prev => ({ ...prev, overviewSummary: result.summary }));
-            } catch (error) {
-                console.error("Failed to generate overview summary:", error);
-                setAiCache(prev => ({ ...prev, overviewSummary: "L'analyse par IA n'a pas pu être générée pour le moment." }));
-            }
-            setLoadingAi(prev => ({ ...prev, overviewSummary: false }));
-        };
-
-        fetchSummary();
-    }, [overallStats, aggregatedData, aiCache.overviewSummary, setAiCache, setLoadingAi]);
 
     const handleDrillDown = (view: string) => {
         if(setActiveView) {

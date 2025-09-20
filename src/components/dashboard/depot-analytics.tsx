@@ -6,7 +6,7 @@ import { type Objectives, type AICache } from '@/app/page';
 import { aggregateStats, getRankings, type Ranking, type RankingMetric } from '@/lib/data-processing';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { analyzeDepotDelivery } from '@/ai/flows/depot-delivery-analysis';
+// import { analyzeDepotDelivery } from '@/ai/flows/depot-delivery-analysis';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Bot, Loader2, ThumbsUp, ThumbsDown, Download, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -63,33 +63,6 @@ export function DepotAnalytics({ data, objectives, aiCache, setAiCache, loadingA
         forcedNoContactRate: getRankings(depotStats, 'forcedNoContactRate', 3, 'desc'),
         webCompletionRate: getRankings(depotStats, 'webCompletionRate', 3, 'desc'),
     }), [depotStats]);
-
-    useEffect(() => {
-        const generateAnalysis = async () => {
-            if (aiCache.depotAnalysis) return;
-
-            setLoadingAi(prev => ({ ...prev, depotAnalysis: true }));
-            try {
-                const relevantData = data.map(d => ({
-                    depot: d.depot,
-                    status: d.status,
-                    delaySeconds: d.delaySeconds,
-                }));
-                
-                const csvHeader = "depot,status,delaySeconds\n";
-                const csvRows = relevantData.map(d => `${d.depot},${d.status},${d.delaySeconds}`).join("\n");
-                const csvData = csvHeader + csvRows;
-
-                const result = await analyzeDepotDelivery({ deliveryData: csvData });
-                setAiCache(prev => ({ ...prev, depotAnalysis: result.analysisResults }));
-            } catch (error) {
-                console.error("L'analyse IA a échoué:", error);
-                setAiCache(prev => ({ ...prev, depotAnalysis: "Nous n'avons pas pu générer d'analyse IA pour le moment. Veuillez réessayer plus tard." }));
-            }
-            setLoadingAi(prev => ({ ...prev, depotAnalysis: false }));
-        };
-        generateAnalysis();
-    }, [data, aiCache.depotAnalysis, setAiCache, setLoadingAi]);
     
     const handleExport = () => {
         const dataToExport = depotStats.map(stat => ({
