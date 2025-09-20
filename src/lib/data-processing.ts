@@ -248,10 +248,9 @@ export function getRankings<T extends {name: string} & AggregatedStats>(
     order: 'asc' | 'desc' = 'asc'
 ): Ranking<T> {
 
-    // Filter out entities that should not be ranked (e.g., no rated deliveries for averageRating)
     const validStats = stats.filter(s => {
-        if (metric === 'averageRating') return s.averageRating > 0 && s.ratedDeliveries > 0;
-        return s.totalDeliveries > 0;
+        if (metric === 'averageRating') return s.averageRating > 0 && s.ratedDeliveries > 1; // Require at least 2 ratings for ranking
+        return s.totalDeliveries > 10; // Require a minimum number of deliveries for other stats
     });
 
     const metricsWhereLowerIsBetter: RankingMetric[] = ['successRate', 'forcedOnSiteRate', 'forcedNoContactRate', 'webCompletionRate'];
@@ -271,7 +270,7 @@ export function getRankings<T extends {name: string} & AggregatedStats>(
         if (valA !== valB) {
             return higherIsBetter ? valB - valA : valA - valB;
         }
-        return b.totalDeliveries - a.totalDeliveries; // Secondary sort by volume
+        return b.totalDeliveries - a.totalDeliveries;
     });
     
     let top, flop;
@@ -280,7 +279,6 @@ export function getRankings<T extends {name: string} & AggregatedStats>(
         top = sorted.slice(0, take);
         flop = sorted.slice(-take).reverse();
     } else {
-        // If lower is better, the "top" are those with the lowest values, and "flop" has the highest.
         top = sorted.slice(0, take);
         flop = sorted.slice(-take).reverse();
     }

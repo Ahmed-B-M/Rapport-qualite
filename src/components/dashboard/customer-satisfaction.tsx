@@ -7,8 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Star, MessageSquareQuote, ThumbsDown, User, Building, Truck, Warehouse as WarehouseIcon, AlertTriangle, Search, Printer, Download } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
+import { Star, MessageSquareQuote, ThumbsDown, User, Building, Truck, Warehouse as WarehouseIcon, AlertTriangle, Search, Printer, Download, ArrowLeft } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import * as XLSX from 'xlsx';
@@ -58,7 +58,6 @@ const getSatisfactionComments = (data: Delivery[], groupBy: GroupingKey): Record
             };
             entities[entityName].comments.push(comment);
 
-            // Only consider it a negative comment if there is a rating and it's <= 3
             if (rating !== undefined && rating !== null && rating <= 3) {
                  entities[entityName].negativeComments.push(comment);
             }
@@ -126,9 +125,11 @@ const CommentsList = ({ title, comments, icon, searchQuery }: { title: string; c
                             <div key={i} className="p-3 border rounded-lg bg-muted/20">
                                 <div className="flex justify-between items-start">
                                     <p className="text-sm italic">"{c.comment}"</p>
-                                    <Badge variant={c.rating <= 3 ? "destructive": "default"}>
-                                        {c.rating} <Star className="h-3 w-3 ml-1" />
-                                    </Badge>
+                                    { c.rating > 0 && 
+                                        <Badge variant={c.rating <= 3 ? "destructive": "default"}>
+                                            {c.rating} <Star className="h-3 w-3 ml-1" />
+                                        </Badge>
+                                    }
                                 </div>
                                 <div className="flex items-center justify-start mt-2 text-xs text-muted-foreground">
                                     <span>Livreur: {c.driver}</span>
@@ -140,7 +141,7 @@ const CommentsList = ({ title, comments, icon, searchQuery }: { title: string; c
                 ) : (
                     <div className="flex h-64 flex-col items-center justify-center text-center text-muted-foreground">
                         <MessageSquareQuote className="h-10 w-10 mb-4" />
-                        <p className="font-semibold">Aucun commentaire ne correspond à votre recherche.</p>
+                        <p className="font-semibold">{searchQuery ? "Aucun commentaire ne correspond à votre recherche." : "Aucun commentaire négatif pour cette sélection."}</p>
                     </div>
                 )}
             </CardContent>
@@ -174,93 +175,137 @@ type EntityWithComments = AggregatedStats & {
     carrier?: string;
 }
 
-const EntitySatisfactionView = ({ stats, objectives, onNavigate, groupBy, searchQuery }: { 
-    stats: EntityWithComments[], 
+const EntitySatisfactionDetail = ({ entity, objectives, onNavigate, onBack, searchQuery }: { 
+    entity: EntityWithComments, 
     objectives: Objectives,
     onNavigate: (view: string, detail?: Partial<DetailViewState>) => void;
-    groupBy: GroupingKey;
+    onBack: () => void;
     searchQuery: string;
 }) => {
-    if (stats.length === 0) {
-         return (
-            <div className="flex h-96 flex-col items-center justify-center text-center text-muted-foreground">
-                 <Star className="h-12 w-12 mb-4" />
-                <p className="font-semibold text-lg">Aucune donnée de notation disponible.</p>
-                <p>Aucune livraison dans cet ensemble de données n'a encore été notée pour ce groupe.</p>
-            </div>
-        )
-    }
-    
-    const handleEntityClick = (entity: EntityWithComments) => {
-        if (groupBy === 'driver') {
+    const handleEntityClick = () => {
+        if (entity.carrier) { // This implies it's a driver
             onNavigate('drivers', { driver: entity as unknown as DriverStat });
-        } else if (groupBy === 'depot') {
+        } else if (entity.name.includes('(')) { // Heuristic for driver
+             onNavigate('drivers', { driver: entity as unknown as DriverStat });
+        } else if (tabs.find(t => t.id === 'depot' && entity.name)) {
             onNavigate('depots');
-        } else if (groupBy === 'carrier') {
+        } else if (tabs.find(t => t.id === 'carrier' && entity.name)) {
             onNavigate('carriers');
-        } else if (groupBy === 'warehouse') {
+        } else if (tabs.find(t => t.id === 'warehouse' && entity.name)) {
             onNavigate('warehouses');
         }
     };
     
     return (
-       <ScrollArea className="h-[75vh]">
-         <div className="space-y-6 pr-4">
-            {stats.map(entity => (
-                <Card key={entity.name} className="overflow-hidden">
-                    <CardHeader>
-                        <CardTitle 
-                             className="cursor-pointer hover:underline"
-                             onClick={() => handleEntityClick(entity)}
-                        >
-                            {entity.name}
-                        </CardTitle>
-                        <CardDescription className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                           <div className="flex items-center gap-1">
-                                <Star className="h-4 w-4 text-yellow-500"/>
-                                Note: {entity.averageRating.toFixed(2)} ({entity.totalRatings} notes)
-                                <ObjectiveIndicator 
-                                    value={entity.averageRating}
-                                    objective={objectives.averageRating}
-                                    higherIsBetter={true}
-                                    tooltipLabel="Note moyenne"
-                                />
-                           </div>
-                           <div className="flex items-center gap-1">
-                                Ponctualité: {entity.punctualityRate.toFixed(2)}%
-                                <ObjectiveIndicator 
-                                    value={entity.punctualityRate}
-                                    objective={objectives.punctualityRate}
-                                    higherIsBetter={true}
-                                    tooltipLabel="Ponctualité"
-                                    unit="%"
-                                />
-                           </div>
-                           <div className="flex items-center gap-1">
-                                Taux d'échec: {(100 - entity.successRate).toFixed(2)}%
-                                 <ObjectiveIndicator 
-                                    value={100 - entity.successRate}
-                                    objective={objectives.failureRate}
-                                    higherIsBetter={false}
-                                    tooltipLabel="Taux d'échec"
-                                    unit="%"
-                                />
-                           </div>
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid gap-6 lg:grid-cols-2">
-                        <div>
-                             <h4 className="font-semibold mb-2 text-center">Distribution des notes</h4>
-                             <RatingChart data={entity.ratingDistribution} />
-                        </div>
-                       <CommentsList title="Commentaires Négatifs (≤ 3★)" comments={entity.negativeComments} icon={ThumbsDown} searchQuery={searchQuery} />
-                    </CardContent>
-                </Card>
-            ))}
+        <div className="space-y-4">
+            <Button variant="outline" onClick={onBack}><ArrowLeft className="mr-2 h-4 w-4" /> Retour au classement</Button>
+            <Card className="overflow-hidden">
+                <CardHeader>
+                    <CardTitle 
+                         className="cursor-pointer hover:underline"
+                         onClick={handleEntityClick}
+                    >
+                        {entity.name}
+                    </CardTitle>
+                    <CardDescription className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                       <div className="flex items-center gap-1">
+                            <Star className="h-4 w-4 text-yellow-500"/>
+                            Note: {entity.averageRating.toFixed(2)} ({entity.totalRatings} notes)
+                            <ObjectiveIndicator 
+                                value={entity.averageRating}
+                                objective={objectives.averageRating}
+                                higherIsBetter={true}
+                                tooltipLabel="Note moyenne"
+                            />
+                       </div>
+                       <div className="flex items-center gap-1">
+                            Ponctualité: {entity.punctualityRate.toFixed(2)}%
+                            <ObjectiveIndicator 
+                                value={entity.punctualityRate}
+                                objective={objectives.punctualityRate}
+                                higherIsBetter={true}
+                                tooltipLabel="Ponctualité"
+                                unit="%"
+                            />
+                       </div>
+                       <div className="flex items-center gap-1">
+                            Taux d'échec: {(100 - entity.successRate).toFixed(2)}%
+                             <ObjectiveIndicator 
+                                value={100 - entity.successRate}
+                                objective={objectives.failureRate}
+                                higherIsBetter={false}
+                                tooltipLabel="Taux d'échec"
+                                unit="%"
+                            />
+                       </div>
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-6 lg:grid-cols-2">
+                    <div>
+                         <h4 className="font-semibold mb-2 text-center">Distribution des notes</h4>
+                         <RatingChart data={entity.ratingDistribution} />
+                    </div>
+                   <CommentsList title="Commentaires Négatifs (≤ 3★)" comments={entity.negativeComments} icon={ThumbsDown} searchQuery={searchQuery} />
+                </CardContent>
+            </Card>
         </div>
-       </ScrollArea>
     )
+}
+
+const SatisfactionRankingChart = ({ data, onSelect }: { data: EntityWithComments[], onSelect: (entity: EntityWithComments) => void }) => {
+    const chartData = useMemo(() => 
+        data
+          .filter(d => d.totalRatings > 0)
+          .sort((a,b) => b.averageRating - a.averageRating)
+    , [data]);
+
+    if (chartData.length === 0) {
+        return (
+           <div className="flex h-96 flex-col items-center justify-center text-center text-muted-foreground">
+                <Star className="h-12 w-12 mb-4" />
+               <p className="font-semibold text-lg">Aucune donnée de notation disponible.</p>
+               <p>Aucune livraison dans cet ensemble de données n'a encore été notée pour ce groupe.</p>
+           </div>
+       )
+    }
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Classement par Note Moyenne</CardTitle>
+                <CardDescription>Cliquez sur une barre pour voir le détail.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <ResponsiveContainer width="100%" height={Math.max(300, chartData.length * 35)}>
+                    <BarChart 
+                        data={chartData} 
+                        layout="vertical"
+                        margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+                    >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" domain={[0, 5]} />
+                        <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 11 }} interval={0} />
+                        <RechartsTooltip
+                            cursor={{ fill: 'hsl(var(--muted))' }}
+                            contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
+                            formatter={(value: number, name: string) => [value.toFixed(2), "Note moyenne"]}
+                        />
+                        <Bar dataKey="averageRating" name="Note moyenne" background={{ fill: 'hsl(var(--muted))' }} barSize={20} onClick={(d) => onSelect(d)}>
+                           {chartData.map((entry, index) => (
+                                <Cell 
+                                    key={`cell-${index}`} 
+                                    cursor="pointer"
+                                    fill={entry.averageRating < 4.5 ? "hsl(var(--destructive))" : "hsl(var(--primary))"} 
+                                />
+                            ))}
+                        </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
+    );
 };
+
 
 interface CustomerSatisfactionProps {
     data: Delivery[];
@@ -268,9 +313,36 @@ interface CustomerSatisfactionProps {
     onNavigate: (view: string, detail?: Partial<DetailViewState>) => void;
 }
 
+const tabs : {id: GroupingKey, label: string, icon: React.ElementType}[] = [
+    { id: "depot", label: "Par Dépôt", icon: Building },
+    { id: "warehouse", label: "Par Entrepôt", icon: WarehouseIcon },
+    { id: "carrier", label: "Par Transporteur", icon: Truck },
+    { id: "driver", label: "Par Livreur", icon: User },
+]
+
 export function CustomerSatisfaction({ data, objectives, onNavigate }: CustomerSatisfactionProps) {
     const [activeTab, setActiveTab] = useState<GroupingKey>("depot");
     const [searchQuery, setSearchQuery] = useState("");
+    const [selectedEntity, setSelectedEntity] = useState<Record<GroupingKey, EntityWithComments | null>>({
+        depot: null,
+        warehouse: null,
+        carrier: null,
+        driver: null
+    });
+    
+    const handleSelectEntity = (group: GroupingKey, entity: EntityWithComments) => {
+        setSelectedEntity(prev => ({ ...prev, [group]: entity }));
+    };
+
+    const handleBack = () => {
+        setSelectedEntity(prev => ({ ...prev, [activeTab]: null }));
+    };
+    
+    useEffect(() => {
+        // Reset selected entity when tab changes
+        handleBack();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab]);
 
     const satisfactionStats = useMemo(() => {
         const getStatsForGroup = (groupBy: GroupingKey) => {
@@ -280,7 +352,7 @@ export function CustomerSatisfaction({ data, objectives, onNavigate }: CustomerS
             return Object.entries(aggregated).map(([name, stats]) => {
                 const ratingCounts: Record<number, number> = {1:0, 2:0, 3:0, 4:0, 5:0};
                 data.forEach(d => {
-                    if (d[groupBy] === name && d.deliveryRating) {
+                    if (d[groupBy] === name && d.deliveryRating && d.deliveryRating >=1 && d.deliveryRating <=5) {
                          ratingCounts[d.deliveryRating]++;
                     }
                 });
@@ -309,7 +381,7 @@ export function CustomerSatisfaction({ data, objectives, onNavigate }: CustomerS
         return data.filter(d => d.feedbackComment)
             .map(d => ({
                 comment: d.feedbackComment!,
-                rating: d.deliveryRating!,
+                rating: d.deliveryRating,
                 driver: d.driver,
                 depot: d.depot,
                 warehouse: d.warehouse,
@@ -317,15 +389,8 @@ export function CustomerSatisfaction({ data, objectives, onNavigate }: CustomerS
             }));
     }, [data]);
     
-    const allNegativeComments = useMemo(() => allComments.filter(c => c.rating <= 3), [allComments]);
+    const allNegativeComments = useMemo(() => allComments.filter(c => c.rating && c.rating <= 3), [allComments]);
     
-    const tabs : {id: GroupingKey, label: string, icon: React.ElementType}[] = [
-        { id: "depot", label: "Par Dépôt", icon: Building },
-        { id: "warehouse", label: "Par Entrepôt", icon: WarehouseIcon },
-        { id: "carrier", label: "Par Transporteur", icon: Truck },
-        { id: "driver", label: "Par Livreur", icon: User },
-    ]
-
     const handlePrint = () => {
         const mainContent = document.getElementById('main-content');
         if (mainContent) {
@@ -338,7 +403,6 @@ export function CustomerSatisfaction({ data, objectives, onNavigate }: CustomerS
     const handleExcelExport = async () => {
         const wb = XLSX.utils.book_new();
 
-        // Sheet 1: Rankings
         const depotRankings = getRankings(satisfactionStats.depot, 'averageRating', 5);
         const carrierRankings = getRankings(satisfactionStats.carrier, 'averageRating', 5);
         const driverRankings = getRankings(satisfactionStats.driver, 'averageRating', 10);
@@ -383,7 +447,6 @@ export function CustomerSatisfaction({ data, objectives, onNavigate }: CustomerS
         const rankingSheet = XLSX.utils.json_to_sheet(rankingData, {skipHeader: true});
         XLSX.utils.book_append_sheet(wb, rankingSheet, "Classements Satisfaction");
 
-        // Sheet 2: Detail par depot
         const depotData = satisfactionStats.depot.map(d => ({
             "Dépôt": d.name,
             "Note Moyenne": d.averageRating.toFixed(2),
@@ -393,7 +456,6 @@ export function CustomerSatisfaction({ data, objectives, onNavigate }: CustomerS
         const depotSheet = XLSX.utils.json_to_sheet(depotData);
         XLSX.utils.book_append_sheet(wb, depotSheet, "Détail par Dépôt");
 
-        // Sheet 3: Detail par transporteur
         const carrierData = satisfactionStats.carrier.map(c => ({
             "Transporteur": c.name,
             "Note Moyenne": c.averageRating.toFixed(2),
@@ -403,7 +465,6 @@ export function CustomerSatisfaction({ data, objectives, onNavigate }: CustomerS
         const carrierSheet = XLSX.utils.json_to_sheet(carrierData);
         XLSX.utils.book_append_sheet(wb, carrierSheet, "Détail par Transporteur");
         
-        // Sheet 4: Negative comments
         const negativeCommentExport = allNegativeComments.map(c => ({
             "Note": c.rating,
             "Commentaire": c.comment,
@@ -416,6 +477,27 @@ export function CustomerSatisfaction({ data, objectives, onNavigate }: CustomerS
         XLSX.writeFile(wb, "rapport_satisfaction.xlsx");
     };
     
+    const renderTabContent = (groupKey: GroupingKey) => {
+        const currentSelectedEntity = selectedEntity[groupKey];
+        if (currentSelectedEntity) {
+            return (
+                <EntitySatisfactionDetail
+                    entity={currentSelectedEntity}
+                    objectives={objectives}
+                    onNavigate={onNavigate}
+                    onBack={handleBack}
+                    searchQuery={searchQuery}
+                />
+            );
+        }
+        return (
+            <SatisfactionRankingChart
+                data={satisfactionStats[groupKey]}
+                onSelect={(entity) => handleSelectEntity(groupKey, entity)}
+            />
+        );
+    };
+
     return (
         <>
             <div className="no-print">
@@ -441,6 +523,7 @@ export function CustomerSatisfaction({ data, objectives, onNavigate }: CustomerS
                             className="pl-9"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
+                            disabled={!selectedEntity[activeTab]} // Disable when chart is shown
                         />
                     </div>
                 </div>
@@ -451,18 +534,10 @@ export function CustomerSatisfaction({ data, objectives, onNavigate }: CustomerS
                             <TabsTrigger key={tab.id} value={tab.id}><tab.icon className="mr-2 h-4 w-4" />{tab.label}</TabsTrigger>
                         ))}
                     </TabsList>
-                    <TabsContent value="depot">
-                        <EntitySatisfactionView stats={satisfactionStats.depot} objectives={objectives} onNavigate={onNavigate} groupBy="depot" searchQuery={searchQuery} />
-                    </TabsContent>
-                    <TabsContent value="warehouse">
-                        <EntitySatisfactionView stats={satisfactionStats.warehouse} objectives={objectives} onNavigate={onNavigate} groupBy="warehouse" searchQuery={searchQuery} />
-                    </TabsContent>
-                    <TabsContent value="carrier">
-                        <EntitySatisfactionView stats={satisfactionStats.carrier} objectives={objectives} onNavigate={onNavigate} groupBy="carrier" searchQuery={searchQuery} />
-                    </TabsContent>
-                    <TabsContent value="driver">
-                        <EntitySatisfactionView stats={satisfactionStats.driver} objectives={objectives} onNavigate={onNavigate} groupBy="driver" searchQuery={searchQuery} />
-                    </TabsContent>
+                    <TabsContent value="depot">{renderTabContent("depot")}</TabsContent>
+                    <TabsContent value="warehouse">{renderTabContent("warehouse")}</TabsContent>
+                    <TabsContent value="carrier">{renderTabContent("carrier")}</TabsContent>
+                    <TabsContent value="driver">{renderTabContent("driver")}</TabsContent>
                 </Tabs>
             </div>
              <div className="print-only print-satisfaction-content">
