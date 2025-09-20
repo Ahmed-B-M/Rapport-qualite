@@ -20,23 +20,21 @@ export type AnalyzeCustomerFeedbackInput = z.infer<
 >;
 
 const FeedbackCategorySchema = z.enum([
-    "Attitude du livreur",
-    "Problème de communication",
-    "Retard de livraison",
-    "Non-respect des instructions",
-    "Colis endommagé",
-    "Problème d'adresse",
+    "Casse article(s)",
+    "rupture chaine de froid",
+    "Attitude livreur",
+    "Ponctualité",
+    "Non respect des consignes de livraison",
     "Autre"
 ]);
 
 const AnalyzeCustomerFeedbackOutputSchema = z.object({
     categoryCounts: z.object({
-        "Attitude du livreur": z.number().optional(),
-        "Problème de communication": z.number().optional(),
-        "Retard de livraison": z.number().optional(),
-        "Non-respect des instructions": z.number().optional(),
-        "Colis endommagé": z.number().optional(),
-        "Problème d'adresse": z.number().optional(),
+        "Casse article(s)": z.number().optional(),
+        "rupture chaine de froid": z.number().optional(),
+        "Attitude livreur": z.number().optional(),
+        "Ponctualité": z.number().optional(),
+        "Non respect des consignes de livraison": z.number().optional(),
         "Autre": z.number().optional()
     }).describe('A count of comments for each predefined category.'),
     analysisSummary: z
