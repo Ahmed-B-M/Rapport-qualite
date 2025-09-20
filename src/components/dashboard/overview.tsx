@@ -12,6 +12,8 @@ import { AlertCircle, Star, Timer, Ban, Globe, Target, PenSquare, PackageSearch,
 import { KpiDetailModal } from '@/components/dashboard/kpi-detail-modal';
 import { CustomerFeedbackSummary } from '@/components/dashboard/customer-feedback-summary';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
+import type { DetailViewState } from '@/app/page';
+import type { DriverStat } from './driver-analytics';
 
 type RankingEntity = { name: string } & AggregatedStats;
 
@@ -59,15 +61,16 @@ const getRecurrence = (item: RankingEntity, metric: RankingMetric, isFlop: boole
     }
 };
 
-const RankingChart = ({ rankings, metric, unit, isFlop }: {
+const RankingChart = ({ rankings, metric, unit, isFlop, onBarClick }: {
     rankings: RankingEntity[];
     metric: RankingMetric;
     unit: string;
     isFlop: boolean;
+    onBarClick?: (entity: RankingEntity) => void;
 }) => {
     const chartData = useMemo(() => rankings.map(item => ({
         name: item.name,
-        value: metric === 'successRate' ? 100 - item.successRate : item[metric],
+        value: metric === 'successRate' ? 100 - item.successRate : (item[metric] || 0),
         ...item
     })), [rankings, metric]);
 
@@ -88,9 +91,9 @@ const RankingChart = ({ rankings, metric, unit, isFlop }: {
                             interval={0}
                         />
                         <Tooltip content={<CustomTooltip metric={metric} unit={unit} isFlop={isFlop} />} cursor={{fill: 'hsl(var(--muted))'}} />
-                        <Bar dataKey="value" barSize={16} >
+                        <Bar dataKey="value" barSize={16} onClick={onBarClick}>
                              {chartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={isFlop ? "hsl(var(--destructive))" : "hsl(var(--primary))"} radius={[0, 4, 4, 0]} />
+                                <Cell key={`cell-${index}`} fill={isFlop ? "hsl(var(--destructive))" : "hsl(var(--primary))"} radius={[0, 4, 4, 0]} className={onBarClick ? 'cursor-pointer' : ''} />
                             ))}
                         </Bar>
                     </BarChart>
@@ -105,13 +108,14 @@ const RankingChart = ({ rankings, metric, unit, isFlop }: {
 };
 
 
-const ThematicRankingSection = ({ data, metric, unit, title, onDrillDown, icon: Icon }: {
+const ThematicRankingSection = ({ data, metric, unit, title, onDrillDown, icon: Icon, setActiveView }: {
     data: any;
     metric: RankingMetric;
     unit: string;
     title: string;
     onDrillDown: (view: string) => void;
     icon: React.ElementType;
+    setActiveView: (view: string, detail?: Partial<DetailViewState>) => void;
 }) => {
     const entityTypes = [
         { id: 'depots', name: 'Dépôts', icon: Building2 },
@@ -119,6 +123,18 @@ const ThematicRankingSection = ({ data, metric, unit, title, onDrillDown, icon: 
         { id: 'carriers', name: 'Transporteurs', icon: Truck },
         { id: 'drivers', name: 'Livreurs', icon: User },
     ];
+
+    const handleBarClick = (entity: RankingEntity, entityType: string) => {
+        if (entityType === 'drivers') {
+            const driverStat: DriverStat = {
+                ...entity,
+                failureRate: 100 - entity.successRate
+            };
+            setActiveView('drivers', { driver: driverStat });
+        } else {
+            onDrillDown(entityType);
+        }
+    };
     
     return (
         <div className="space-y-6 print-section">
@@ -146,6 +162,7 @@ const ThematicRankingSection = ({ data, metric, unit, title, onDrillDown, icon: 
                                     metric={metric}
                                     unit={unit}
                                     isFlop={false}
+                                    onBarClick={(item) => handleBarClick(item, entity.id)}
                                 />
                             </div>
                             <div>
@@ -155,6 +172,7 @@ const ThematicRankingSection = ({ data, metric, unit, title, onDrillDown, icon: 
                                     metric={metric}
                                     unit={unit}
                                     isFlop={true}
+                                    onBarClick={(item) => handleBarClick(item, entity.id)}
                                 />
                             </div>
                         </CardContent>
@@ -169,7 +187,7 @@ const ThematicRankingSection = ({ data, metric, unit, title, onDrillDown, icon: 
 interface OverviewProps {
     data: Delivery[];
     objectives: Objectives;
-    setActiveView?: (view: string) => void;
+    setActiveView: (view: string, detail?: Partial<DetailViewState>) => void;
 }
 
 export function Overview({ data, objectives, setActiveView }: OverviewProps) {
@@ -240,7 +258,8 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
                         icon={Star} 
                         description={`Objectif: > ${objectives.averageRating.toFixed(2)}`} 
                         isBelowObjective={overallStats.ratedDeliveries > 0 && overallStats.averageRating < objectives.averageRating}
-                        onClick={() => handleDrillDown('satisfaction')}
+                        onClick={() => setActiveView('satisfaction')}
+                        tooltipText="Note moyenne donnée par les clients sur les livraisons notées."
                     />
                     <StatCard 
                         title="Taux de ponctualité" 
@@ -249,6 +268,7 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
                         description={`Objectif: > ${objectives.punctualityRate}%`}
                         isBelowObjective={overallStats.punctualityRate < objectives.punctualityRate}
                         onClick={() => setModalMetric('punctualityRate')}
+                        tooltipText="Pourcentage de livraisons effectuées dans la fenêtre de ponctualité de -15 à +15 minutes."
                     />
                     <StatCard 
                         title="Taux d'échec" 
@@ -257,8 +277,14 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
                         description={`Objectif: < ${objectives.failureRate}%`} 
                         isBelowObjective={(100 - overallStats.successRate) > objectives.failureRate}
                         onClick={() => setModalMetric('successRate')}
+                        tooltipText="Pourcentage de livraisons qui n'ont pas pu être effectuées."
                     />
-                     <StatCard title="Commandes 'En attente'" value={`${overallStats.pendingDeliveries}`} icon={PackageSearch} />
+                     <StatCard 
+                        title="Commandes 'En attente'" 
+                        value={`${overallStats.pendingDeliveries}`} 
+                        icon={PackageSearch}
+                        tooltipText="Nombre de commandes qui n'ont pas encore de statut final (Livré ou Non livré)." 
+                     />
                      <StatCard 
                         title="Sur place forcé" 
                         value={`${overallStats.forcedOnSiteRate.toFixed(2)}%`} 
@@ -266,6 +292,7 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
                         description={`Objectif: < ${objectives.forcedOnSiteRate}%`}
                         isBelowObjective={overallStats.forcedOnSiteRate > objectives.forcedOnSiteRate}
                         onClick={() => setModalMetric('forcedOnSiteRate')}
+                        tooltipText="Pourcentage de livraisons où le livreur a forcé la validation 'sur place' via l'application."
                     />
                     <StatCard 
                         title="Sans contact forcé" 
@@ -274,6 +301,7 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
                         description={`Objectif: < ${objectives.forcedNoContactRate}%`}
                         isBelowObjective={overallStats.forcedNoContactRate > objectives.forcedNoContactRate}
                         onClick={() => setModalMetric('forcedNoContactRate')}
+                        tooltipText="Pourcentage de livraisons où le livreur a utilisé la validation 'sans contact' de manière forcée."
                     />
                     <StatCard 
                         title="Validation Web" 
@@ -282,14 +310,20 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
                         description={`Objectif: < ${objectives.webCompletionRate}%`}
                         isBelowObjective={overallStats.webCompletionRate > objectives.webCompletionRate}
                         onClick={() => setModalMetric('webCompletionRate')}
+                        tooltipText="Pourcentage de livraisons finalisées via l'interface web plutôt que l'application mobile du livreur."
                      />
-                    <StatCard title="Taux de notation" value={`${overallStats.ratingRate.toFixed(2)}%`} icon={PenSquare} />
+                    <StatCard 
+                        title="Taux de notation" 
+                        value={`${overallStats.ratingRate.toFixed(2)}%`} 
+                        icon={PenSquare}
+                        tooltipText="Pourcentage de livraisons terminées qui ont reçu une note du client."
+                    />
                 </div>
             </div>
 
             <CustomerFeedbackSummary
               data={data}
-              onClick={() => handleDrillDown('satisfaction')}
+              onClick={() => setActiveView('satisfaction')}
             />
 
             <div className="space-y-12">
@@ -303,6 +337,7 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
                         data={aggregatedData}
                         onDrillDown={handleDrillDown}
                         icon={section.icon}
+                        setActiveView={setActiveView}
                     />
                 ))}
             </div>
@@ -310,5 +345,3 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
         </div>
     );
 }
-
-    
