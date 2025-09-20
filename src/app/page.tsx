@@ -11,7 +11,6 @@ import { WarehouseAnalytics } from "@/components/dashboard/warehouse-analytics";
 import { CarrierAnalytics } from "@/components/dashboard/carrier-analytics";
 import { DriverAnalytics, type DriverStat } from "@/components/dashboard/driver-analytics";
 import { CustomerSatisfaction } from "@/components/dashboard/customer-satisfaction";
-import { ReportDisplay } from "@/components/dashboard/report-display";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, AlertTriangle, Settings, FileText, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,10 +25,6 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { analyzeCustomerFeedback } from "@/ai/flows/analyze-customer-feedback";
-import { analyzeDepotDelivery } from "@/ai/flows/depot-delivery-analysis";
-import { generateOverviewSummary } from "@/ai/flows/generate-overview-summary";
-import { getOverallStats, aggregateStats, getRankings, type RankingMetric } from "@/lib/data-processing";
 
 
 export type Objectives = {
@@ -40,14 +35,6 @@ export type Objectives = {
     forcedNoContactRate: number;
     webCompletionRate: number;
 };
-
-// Central cache for all AI analyses
-export type AICache = {
-    overviewSummary: string | null;
-    depotAnalysis: string | null;
-    carrierAnalysis: Record<string, any>;
-    customerFeedbackAnalysis: any | null;
-}
 
 // State for detailed views
 export type DetailViewState = {
@@ -61,23 +48,10 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState("overview");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isReportOpen, setIsReportOpen] = useState(false);
   const [excludeMagasin, setExcludeMagasin] = useState(false);
-  const [report, setReport] = useState<string | null>(null);
-  const [reportError, setReportError] = useState<string | null>(null);
-  const [isReportLoading, setIsReportLoading] = useState(false);
 
   // State for showing detailed views (like a specific driver)
   const [detailView, setDetailView] = useState<DetailViewState>({ driver: null });
-
-  // AI Caches
-  const [aiCache, setAiCache] = useState<AICache>({
-    overviewSummary: null,
-    depotAnalysis: null,
-    carrierAnalysis: {},
-    customerFeedbackAnalysis: null,
-  });
-  const [loadingAi, setLoadingAi] = useState<Record<string, boolean>>({});
 
   const [objectives, setObjectives] = useState<Objectives>({
     averageRating: 4.8,
@@ -89,18 +63,6 @@ export default function DashboardPage() {
   });
   const overviewRef = useRef<HTMLDivElement>(null);
 
-  const clearCache = () => {
-    setReport(null);
-    setReportError(null);
-    setAiCache({
-        overviewSummary: null,
-        depotAnalysis: null,
-        carrierAnalysis: {},
-        customerFeedbackAnalysis: null,
-    });
-    setLoadingAi({});
-  }
-
   const handleDataUploaded = (processedData: Delivery[], error?: string) => {
     if (error) {
       setError(error);
@@ -108,7 +70,6 @@ export default function DashboardPage() {
     } else {
       setData(processedData);
       setError(null);
-      clearCache();
     }
     setLoading(false);
   };
@@ -117,8 +78,6 @@ export default function DashboardPage() {
     setData(null);
     setError(null);
     setActiveView("overview");
-    setIsReportOpen(false);
-    clearCache();
     setDetailView({ driver: null });
   };
   
@@ -156,79 +115,6 @@ export default function DashboardPage() {
     return data;
   }, [data, excludeMagasin]);
 
-  useEffect(() => {
-    if (!filteredData) return;
-
-    const runBackgroundAnalyses = async () => {
-        // Overview Summary
-        if (!aiCache.overviewSummary) {
-            setLoadingAi(prev => ({ ...prev, overviewSummary: true }));
-            try {
-                 const overallStats = getOverallStats(filteredData);
-                 const aggregatedData = {
-                    depots: getRankings(aggregateStats(filteredData, 'depot'), 'averageRating'),
-                    warehouses: getRankings(aggregateStats(filteredData, 'warehouse'), 'averageRating'),
-                    carriers: getRankings(aggregateStats(filteredData, 'carrier'), 'averageRating'),
-                    drivers: getRankings(aggregateStats(filteredData, 'driver'), 'averageRating'),
-                 };
-                 const result = await generateOverviewSummary({
-                    overallStats: JSON.stringify(overallStats),
-                    rankings: JSON.stringify(aggregatedData),
-                 });
-                setAiCache(prev => ({ ...prev, overviewSummary: result.summary }));
-            } catch (error) {
-                 setAiCache(prev => ({ ...prev, overviewSummary: "L'analyse par IA n'a pas pu être générée." }));
-            } finally {
-                setLoadingAi(prev => ({ ...prev, overviewSummary: false }));
-            }
-        }
-        
-        // Depot Analysis
-        if (!aiCache.depotAnalysis) {
-            setLoadingAi(prev => ({ ...prev, depotAnalysis: true }));
-            try {
-                const relevantData = filteredData.map(d => ({
-                    depot: d.depot,
-                    status: d.status,
-                    delaySeconds: d.delaySeconds,
-                }));
-                const csvHeader = "depot,status,delaySeconds\n";
-                const csvRows = relevantData.map(d => `${d.depot},${d.status},${d.delaySeconds}`).join("\n");
-                const result = await analyzeDepotDelivery({ deliveryData: csvHeader + csvRows });
-                setAiCache(prev => ({ ...prev, depotAnalysis: result.analysisResults }));
-            } catch (error) {
-                setAiCache(prev => ({ ...prev, depotAnalysis: "L'analyse IA des dépôts a échoué." }));
-            } finally {
-                setLoadingAi(prev => ({ ...prev, depotAnalysis: false }));
-            }
-        }
-
-        // Customer Feedback Analysis
-        if (!aiCache.customerFeedbackAnalysis) {
-             const comments = filteredData.map(d => d.feedbackComment!).filter(Boolean);
-             if (comments.length > 0) {
-                setLoadingAi(prev => ({ ...prev, customerFeedback: true }));
-                try {
-                    const result = await analyzeCustomerFeedback({ comments });
-                    setAiCache(prev => ({ ...prev, customerFeedbackAnalysis: result }));
-                } catch (error) {
-                     setAiCache(prev => ({ ...prev, customerFeedbackAnalysis: { categoryCounts: {}, analysisSummary: "L'analyse par IA a échoué." } }));
-                } finally {
-                    setLoadingAi(prev => ({ ...prev, customerFeedback: false }));
-                }
-             } else {
-                 setAiCache(prev => ({ ...prev, customerFeedbackAnalysis: { categoryCounts: {}, analysisSummary: "Aucun commentaire à analyser." } }));
-             }
-        }
-    };
-
-    runBackgroundAnalyses();
-  }, [filteredData, aiCache, setAiCache, setLoadingAi]);
-  
-  const handleGenerateReport = () => {
-    setIsReportOpen(true);
-  }
-
   const renderContent = () => {
     if (loading) {
       return (
@@ -253,35 +139,21 @@ export default function DashboardPage() {
       return <FileUploader onDataUploaded={handleDataUploaded} setLoading={setLoading} />;
     }
 
-    if (isReportOpen) {
-        return <ReportDisplay 
-            data={filteredData} 
-            onBack={() => setIsReportOpen(false)} 
-            storesExcluded={excludeMagasin} 
-            report={report}
-            setReport={setReport}
-            error={reportError}
-            setError={setReportError}
-            isLoading={isReportLoading}
-            setIsLoading={setIsReportLoading}
-        />;
-    }
-
     switch (activeView) {
       case "overview":
-        return <div ref={overviewRef}><Overview data={filteredData} objectives={objectives} setActiveView={handleNavigate} aiCache={aiCache} setAiCache={setAiCache} loadingAi={loadingAi} setLoadingAi={setLoadingAi} /></div>;
+        return <div ref={overviewRef}><Overview data={filteredData} objectives={objectives} setActiveView={handleNavigate} /></div>;
       case "depots":
-        return <DepotAnalytics data={filteredData} objectives={objectives} aiCache={aiCache} setAiCache={setAiCache} loadingAi={loadingAi} setLoadingAi={setLoadingAi} />;
+        return <DepotAnalytics data={filteredData} objectives={objectives} />;
       case "warehouses":
         return <WarehouseAnalytics data={filteredData} />;
       case "carriers":
-        return <CarrierAnalytics data={filteredData} objectives={objectives} aiCache={aiCache} setAiCache={setAiCache} loadingAi={loadingAi} setLoadingAi={setLoadingAi} />;
+        return <CarrierAnalytics data={filteredData} objectives={objectives} />;
       case "drivers":
         return <DriverAnalytics data={filteredData} objectives={objectives} selectedDriver={detailView.driver} onDriverSelect={(driver) => handleNavigate('drivers', { driver })} onBack={() => handleNavigate('drivers', { driver: null })} />;
       case "satisfaction":
-        return <CustomerSatisfaction data={filteredData} objectives={objectives} aiCache={aiCache} setAiCache={setAiCache} loadingAi={loadingAi} setLoadingAi={setLoadingAi} onNavigate={handleNavigate} />;
+        return <CustomerSatisfaction data={filteredData} objectives={objectives} onNavigate={handleNavigate} />;
       default:
-        return <div ref={overviewRef}><Overview data={filteredData} objectives={objectives} setActiveView={handleNavigate} aiCache={aiCache} setAiCache={setAiCache} loadingAi={loadingAi} setLoadingAi={setLoadingAi} /></div>;
+        return <div ref={overviewRef}><Overview data={filteredData} objectives={objectives} setActiveView={handleNavigate} /></div>;
     }
   };
 
@@ -304,10 +176,6 @@ export default function DashboardPage() {
                           <Switch id="exclude-magasin" checked={excludeMagasin} onCheckedChange={setExcludeMagasin} />
                           <Label htmlFor="exclude-magasin">Exclure Magasin</Label>
                         </div>
-                         <Button variant="outline" onClick={handleGenerateReport}>
-                            <FileText className="mr-2 h-4 w-4" />
-                            Générer un rapport
-                        </Button>
                         {activeView === 'overview' && (
                            <Button variant="outline" onClick={handlePrintOverview}>
                                 <Printer className="mr-2 h-4 w-4" />
@@ -372,5 +240,3 @@ export default function DashboardPage() {
     </SidebarProvider>
   );
 }
-
-    

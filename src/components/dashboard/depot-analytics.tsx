@@ -2,11 +2,10 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { type Delivery, type AggregatedStats } from '@/lib/definitions';
-import { type Objectives, type AICache } from '@/app/page';
+import { type Objectives } from '@/app/page';
 import { aggregateStats, getRankings, type Ranking, type RankingMetric } from '@/lib/data-processing';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-// import { analyzeDepotDelivery } from '@/ai/flows/depot-delivery-analysis';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Bot, Loader2, ThumbsUp, ThumbsDown, Download, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -42,13 +41,9 @@ const ObjectiveIndicator = ({ value, objective, higherIsBetter, tooltipLabel, un
 interface DepotAnalyticsProps {
     data: Delivery[];
     objectives: Objectives;
-    aiCache: AICache;
-    setAiCache: React.Dispatch<React.SetStateAction<AICache>>;
-    loadingAi: Record<string, boolean>;
-    setLoadingAi: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 }
 
-export function DepotAnalytics({ data, objectives, aiCache, setAiCache, loadingAi, setLoadingAi }: DepotAnalyticsProps) {
+export function DepotAnalytics({ data, objectives }: DepotAnalyticsProps) {
     
     const depotStats: DepotStat[] = useMemo(() => {
         const stats = aggregateStats(data, 'depot');
@@ -135,31 +130,6 @@ export function DepotAnalytics({ data, objectives, aiCache, setAiCache, loadingA
                 <RankingList title="Taux de 'Sans Contact Forcé'" ranking={rankings.forcedNoContactRate} metric="forcedNoContactRate" unit="%" higherIsBetter={false} />
                 <RankingList title="Taux de 'Validation Web'" ranking={rankings.webCompletionRate} metric="webCompletionRate" unit="%" higherIsBetter={false} />
             </div>
-             <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Bot />
-                        Analyse de dépôt par l'IA
-                    </CardTitle>
-                    <CardDescription>
-                        Une analyse automatisée des performances des dépôts.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                     {loadingAi.depotAnalysis ? (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                            <Loader2 className="animate-spin h-4 w-4" />
-                            <span>Génération de l'analyse...</span>
-                        </div>
-                    ) : (
-                        <Alert>
-                            <AlertDescription className="whitespace-pre-wrap">
-                                {aiCache.depotAnalysis}
-                            </AlertDescription>
-                        </Alert>
-                    )}
-                </CardContent>
-            </Card>
             <Card>
                 <CardHeader>
                     <div className="flex justify-between items-center">

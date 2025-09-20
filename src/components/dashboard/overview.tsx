@@ -4,9 +4,8 @@
 import { useMemo, useState, useEffect } from 'react';
 import ReactMarkdown from "react-markdown";
 import { type Delivery, type AggregatedStats } from '@/lib/definitions';
-import { type Objectives, type AICache } from '@/app/page';
+import { type Objectives } from '@/app/page';
 import { getOverallStats, aggregateStats, getRankings, type Ranking, type RankingMetric } from '@/lib/data-processing';
-// import { generateOverviewSummary } from '@/ai/flows/generate-overview-summary';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -171,13 +170,9 @@ interface OverviewProps {
     data: Delivery[];
     objectives: Objectives;
     setActiveView?: (view: string) => void;
-    aiCache: AICache;
-    setAiCache: React.Dispatch<React.SetStateAction<AICache>>;
-    loadingAi: Record<string, boolean>;
-    setLoadingAi: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 }
 
-export function Overview({ data, objectives, setActiveView, aiCache, setAiCache, loadingAi, setLoadingAi }: OverviewProps) {
+export function Overview({ data, objectives, setActiveView }: OverviewProps) {
     const [modalMetric, setModalMetric] = useState<RankingMetric | null>(null);
 
     const overallStats = useMemo(() => getOverallStats(data), [data]);
@@ -237,24 +232,6 @@ export function Overview({ data, objectives, setActiveView, aiCache, setAiCache,
                     rankings={aggregatedData}
                 />
             )}
-            <div className="print-section">
-                <h2 className="text-2xl font-bold font-headline mb-4">Résumé Exécutif par IA</h2>
-                <Alert>
-                     <Bot className="h-4 w-4" />
-                    <AlertDescription>
-                        {loadingAi.overviewSummary ? (
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                                <Loader2 className="animate-spin h-4 w-4" />
-                                <span>Génération de la synthèse...</span>
-                            </div>
-                        ) : (
-                            <ReactMarkdown className="prose prose-sm max-w-none dark:prose-invert" components={{ p: ({node, ...props}) => <p className="m-0" {...props} /> }}>
-                                {aiCache.overviewSummary || ""}
-                            </ReactMarkdown>
-                        )}
-                    </AlertDescription>
-                </Alert>
-            </div>
 
             <div className="print-section">
                 <h2 className="text-2xl font-bold font-headline mb-4">Indicateurs Clés de Performance (KPIs)</h2>
@@ -311,10 +288,6 @@ export function Overview({ data, objectives, setActiveView, aiCache, setAiCache,
             <CustomerFeedbackSummary
               data={negativeFeedbackDeliveries}
               onClick={() => handleDrillDown('satisfaction')}
-              aiCache={aiCache}
-              setAiCache={setAiCache}
-              loadingAi={loadingAi}
-              setLoadingAi={setLoadingAi}
             />
 
             <div className="space-y-12">

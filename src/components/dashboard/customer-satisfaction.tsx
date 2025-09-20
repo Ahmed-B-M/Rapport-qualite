@@ -2,14 +2,13 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { type Delivery, type AggregatedStats } from '@/lib/definitions';
-import { type Objectives, type AICache, type DetailViewState } from '@/app/page';
+import { type Objectives, type DetailViewState } from '@/app/page';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Star, MessageSquareQuote, ThumbsDown, User, Building, Truck, Warehouse as WarehouseIcon, Bot, Loader2, AlertTriangle, Search, Printer, Download } from 'lucide-react';
+import { Star, MessageSquareQuote, ThumbsDown, User, Building, Truck, Warehouse as WarehouseIcon, AlertTriangle, Search, Printer, Download } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
-import { analyzeCustomerFeedback, type AnalyzeCustomerFeedbackOutput } from '@/ai/flows/analyze-customer-feedback';
 import { Button } from '../ui/button';
 import * as XLSX from 'xlsx';
 import { getRankings, aggregateStats } from '@/lib/data-processing';
@@ -139,97 +138,6 @@ const CommentsList = ({ title, comments, icon }: { title: string; comments: Comm
     )
 };
 
-const NegativeFeedbackAIAnalysis = ({ comments, title, cacheKey, aiCache, setAiCache, loadingAi, setLoadingAi }: { 
-    comments: Comment[], 
-    title?: string,
-    cacheKey: string,
-    aiCache: AICache,
-    setAiCache: React.Dispatch<React.SetStateAction<AICache>>,
-    loadingAi: Record<string, boolean>,
-    setLoadingAi: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
-}) => {
-    const analysis = aiCache.customerFeedbackAnalysis?.[cacheKey] as AnalyzeCustomerFeedbackOutput | undefined;
-    const isLoading = loadingAi[`customerFeedback_${cacheKey}`];
-
-    useEffect(() => {
-        const performAnalysis = async () => {
-            if (analysis || comments.length === 0) return;
-            
-            setLoadingAi(prev => ({ ...prev, [`customerFeedback_${cacheKey}`]: true }));
-            try {
-                const commentTexts = comments.map(c => c.comment);
-                const result = await analyzeCustomerFeedback({ comments: commentTexts });
-                setAiCache(prev => ({
-                    ...prev,
-                    customerFeedbackAnalysis: { ...prev.customerFeedbackAnalysis, [cacheKey]: result }
-                }));
-            } catch (error) {
-                console.error("AI feedback analysis failed:", error);
-                const errorResult = { categoryCounts: {}, analysisSummary: "L'analyse par IA a échoué." };
-                 setAiCache(prev => ({
-                    ...prev,
-                    customerFeedbackAnalysis: { ...prev.customerFeedbackAnalysis, [cacheKey]: errorResult }
-                }));
-            } finally {
-                setLoadingAi(prev => ({ ...prev, [`customerFeedback_${cacheKey}`]: false }));
-            }
-        };
-        performAnalysis();
-    }, [comments, analysis, cacheKey, setAiCache, setLoadingAi]);
-    
-    const analysisData = useMemo(() => (
-        analysis ? Object.entries(analysis.categoryCounts)
-            .map(([name, count]) => ({ name, count }))
-            .filter(item => item.count > 0)
-            .sort((a,b) => b.count - a.count) 
-        : []
-    ), [analysis]);
-
-    if (comments.length === 0) {
-        return null;
-    }
-
-    return (
-        <Card className="mt-6 col-span-full">
-            <CardHeader>
-                 <CardTitle className="flex items-center gap-2">
-                    <Search /> {title || "Analyse des retours négatifs"}
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
-                {isLoading || !analysis ? (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <Loader2 className="animate-spin h-4 w-4" />
-                        <span>Analyse des commentaires en cours...</span>
-                    </div>
-                ) : (
-                    <div className="grid gap-6 md:grid-cols-2">
-                        <div>
-                             <h4 className="font-semibold mb-2">Résumé de l'analyse</h4>
-                             <p className="text-sm text-muted-foreground">{analysis.analysisSummary}</p>
-                        </div>
-                        <div>
-                            <h4 className="font-semibold mb-2">Catégories de problèmes</h4>
-                            {analysisData.length > 0 ? (
-                                <ResponsiveContainer width="100%" height={150}>
-                                    <BarChart data={analysisData} layout="vertical" margin={{ top: 5, right: 20, left: 100, bottom: 5 }}>
-                                        <XAxis type="number" hide />
-                                        <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} width={100} tick={{fontSize: 11}} />
-                                        <RechartsTooltip cursor={{ fill: 'hsl(var(--muted))' }} contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }} />
-                                        <Bar dataKey="count" name="Nombre" fill="hsl(var(--destructive))" barSize={20} radius={[0, 4, 4, 0]} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <p className="text-sm text-muted-foreground">Aucune catégorie spécifique n'a été identifiée.</p>
-                            )}
-                        </div>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-    );
-};
-
 const ObjectiveIndicator = ({ value, objective, higherIsBetter, tooltipLabel, unit = '' }: { value: number, objective: number, higherIsBetter: boolean, tooltipLabel: string, unit?: string }) => {
     const isBelowObjective = higherIsBetter ? value < objective : value > objective;
     if (!isBelowObjective || (higherIsBetter && value <= 0)) return null;
@@ -256,15 +164,11 @@ type EntityWithComments = AggregatedStats & {
     carrier?: string;
 }
 
-const EntitySatisfactionView = ({ stats, objectives, onNavigate, groupBy, ...aiProps }: { 
+const EntitySatisfactionView = ({ stats, objectives, onNavigate, groupBy }: { 
     stats: EntityWithComments[], 
     objectives: Objectives,
     onNavigate: (view: string, detail?: Partial<DetailViewState>) => void;
     groupBy: GroupingKey;
-    aiCache: AICache;
-    setAiCache: React.Dispatch<React.SetStateAction<AICache>>;
-    loadingAi: Record<string, boolean>;
-    setLoadingAi: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 }) => {
     if (stats.length === 0) {
          return (
@@ -339,11 +243,6 @@ const EntitySatisfactionView = ({ stats, objectives, onNavigate, groupBy, ...aiP
                              <RatingChart data={entity.ratingDistribution} />
                         </div>
                        <CommentsList title="Commentaires Négatifs (≤ 3★)" comments={entity.negativeComments} icon={ThumbsDown} />
-                       <NegativeFeedbackAIAnalysis 
-                            comments={entity.negativeComments} 
-                            cacheKey={entity.name}
-                            {...aiProps}
-                        />
                     </CardContent>
                 </Card>
             ))}
@@ -355,14 +254,10 @@ const EntitySatisfactionView = ({ stats, objectives, onNavigate, groupBy, ...aiP
 interface CustomerSatisfactionProps {
     data: Delivery[];
     objectives: Objectives;
-    aiCache: AICache;
-    setAiCache: React.Dispatch<React.SetStateAction<AICache>>;
-    loadingAi: Record<string, boolean>;
-    setLoadingAi: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
     onNavigate: (view: string, detail?: Partial<DetailViewState>) => void;
 }
 
-export function CustomerSatisfaction({ data, objectives, aiCache, setAiCache, loadingAi, setLoadingAi, onNavigate }: CustomerSatisfactionProps) {
+export function CustomerSatisfaction({ data, objectives, onNavigate }: CustomerSatisfactionProps) {
     const [activeTab, setActiveTab] = useState<GroupingKey>("depot");
 
     const satisfactionStats = useMemo(() => {
@@ -411,7 +306,6 @@ export function CustomerSatisfaction({ data, objectives, aiCache, setAiCache, lo
     }, [data]);
     
     const allNegativeComments = useMemo(() => allComments.filter(c => c.rating <= 3), [allComments]);
-    const allPositiveComments = useMemo(() => allComments.filter(c => c.rating > 3), [allComments]);
     
     const tabs : {id: GroupingKey, label: string, icon: React.ElementType}[] = [
         { id: "depot", label: "Par Dépôt", icon: Building },
@@ -497,56 +391,19 @@ export function CustomerSatisfaction({ data, objectives, aiCache, setAiCache, lo
         const carrierSheet = XLSX.utils.json_to_sheet(carrierData);
         XLSX.utils.book_append_sheet(wb, carrierSheet, "Détail par Transporteur");
         
-        // Sheet 4: Analyse des commentaires
-        try {
-            const negativeCommentTexts = allNegativeComments.map(c => c.comment);
-            const analysisResult = await analyzeCustomerFeedback({ comments: negativeCommentTexts });
-            
-            const categoryData = Object.entries(analysisResult.categoryCounts)
-                .map(([name, count]) => ({ "Catégorie": name, "Nombre de commentaires": count }))
-                .sort((a, b) => b["Nombre de commentaires"] - a["Nombre de commentaires"]);
-
-            const negativeCommentExport = allNegativeComments.map(c => ({
-                "Note": c.rating,
-                "Commentaire": c.comment,
-                "Livreur": c.driver,
-                "Dépôt": c.depot,
-            }));
-            
-            const positiveCommentExport = allPositiveComments.map(c => ({
-                "Note": c.rating,
-                "Commentaire": c.comment,
-                "Livreur": c.driver,
-                "Dépôt": c.depot,
-            }));
-
-            const analysisSheetData : any[] = [
-                {"Analyse des Commentaires": "Classement des catégories (commentaires négatifs)"},
-                ...categoryData,
-                {},
-                {"Analyse des Commentaires": `Liste des Commentaires Négatifs (${allNegativeComments.length})`},
-                ...negativeCommentExport,
-                {},
-                {"Analyse des Commentaires": `Liste des Commentaires Positifs (${allPositiveComments.length})`},
-                ...positiveCommentExport
-            ];
-
-            const analysisSheet = XLSX.utils.json_to_sheet(analysisSheetData, {skipHeader: false});
-            XLSX.utils.book_append_sheet(wb, analysisSheet, "Analyse Commentaires");
-
-        } catch (e) {
-            console.error("Failed to generate AI analysis for Excel export:", e);
-            // Optionally add a sheet indicating the failure
-            const errorSheet = XLSX.utils.json_to_sheet([{ Error: "L'analyse IA des commentaires a échoué et n'a pas pu être incluse." }]);
-            XLSX.utils.book_append_sheet(wb, errorSheet, "Erreur Analyse IA");
-        }
-
+        // Sheet 4: Negative comments
+        const negativeCommentExport = allNegativeComments.map(c => ({
+            "Note": c.rating,
+            "Commentaire": c.comment,
+            "Livreur": c.driver,
+            "Dépôt": c.depot,
+        }));
+        const analysisSheet = XLSX.utils.json_to_sheet(negativeCommentExport);
+        XLSX.utils.book_append_sheet(wb, analysisSheet, "Commentaires Négatifs");
 
         XLSX.writeFile(wb, "rapport_satisfaction.xlsx");
     };
     
-    const aiProps = { aiCache, setAiCache, loadingAi, setLoadingAi };
-
     return (
         <>
             <div className="no-print">
@@ -570,16 +427,16 @@ export function CustomerSatisfaction({ data, objectives, aiCache, setAiCache, lo
                         ))}
                     </TabsList>
                     <TabsContent value="depot">
-                        <EntitySatisfactionView stats={satisfactionStats.depot} objectives={objectives} onNavigate={onNavigate} groupBy="depot" {...aiProps} />
+                        <EntitySatisfactionView stats={satisfactionStats.depot} objectives={objectives} onNavigate={onNavigate} groupBy="depot" />
                     </TabsContent>
                     <TabsContent value="warehouse">
-                        <EntitySatisfactionView stats={satisfactionStats.warehouse} objectives={objectives} onNavigate={onNavigate} groupBy="warehouse" {...aiProps} />
+                        <EntitySatisfactionView stats={satisfactionStats.warehouse} objectives={objectives} onNavigate={onNavigate} groupBy="warehouse" />
                     </TabsContent>
                     <TabsContent value="carrier">
-                        <EntitySatisfactionView stats={satisfactionStats.carrier} objectives={objectives} onNavigate={onNavigate} groupBy="carrier" {...aiProps} />
+                        <EntitySatisfactionView stats={satisfactionStats.carrier} objectives={objectives} onNavigate={onNavigate} groupBy="carrier" />
                     </TabsContent>
                     <TabsContent value="driver">
-                        <EntitySatisfactionView stats={satisfactionStats.driver} objectives={objectives} onNavigate={onNavigate} groupBy="driver" {...aiProps} />
+                        <EntitySatisfactionView stats={satisfactionStats.driver} objectives={objectives} onNavigate={onNavigate} groupBy="driver" />
                     </TabsContent>
                 </Tabs>
             </div>
@@ -587,18 +444,14 @@ export function CustomerSatisfaction({ data, objectives, aiCache, setAiCache, lo
                 <div className="print-satisfaction-page">
                     <h1 className="text-2xl font-bold mb-4">Rapport de Satisfaction Client - Global</h1>
                     <CommentsList title={`Commentaires Négatifs (≤ 3★) - Tous les dépôts`} comments={allNegativeComments} icon={ThumbsDown} />
-                    <NegativeFeedbackAIAnalysis comments={allNegativeComments} title="Analyse Globale des Retours Négatifs" cacheKey="global" {...aiProps} />
                 </div>
                 {satisfactionStats.depot.map(depotStat => (
                     <div key={depotStat.name} className="print-satisfaction-page">
                         <h1 className="text-2xl font-bold mb-4">Rapport de Satisfaction Client - Dépôt: {depotStat.name}</h1>
                         <CommentsList title={`Commentaires Négatifs (≤ 3★) - ${depotStat.name}`} comments={depotStat.negativeComments} icon={ThumbsDown} />
-                        <NegativeFeedbackAIAnalysis comments={depotStat.negativeComments} title={`Analyse des Retours Négatifs - ${depotStat.name}`} cacheKey={depotStat.name} {...aiProps} />
                     </div>
                 ))}
             </div>
         </>
     );
 }
-
-    
