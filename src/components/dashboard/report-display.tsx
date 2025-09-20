@@ -10,10 +10,19 @@ import { Loader2, ArrowLeft, Printer, AlertTriangle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-export function ReportDisplay({ data, onBack, storesExcluded }: { data: Delivery[], onBack: () => void, storesExcluded: boolean }) {
-    const [report, setReport] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+interface ReportDisplayProps {
+    data: Delivery[];
+    onBack: () => void;
+    storesExcluded: boolean;
+    report: string | null;
+    setReport: (report: string | null) => void;
+    error: string | null;
+    setError: (error: string | null) => void;
+    isLoading: boolean;
+    setIsLoading: (loading: boolean) => void;
+}
+
+export function ReportDisplay({ data, onBack, storesExcluded, report, setReport, error, setError, isLoading, setIsLoading }: ReportDisplayProps) {
     const printRef = useRef<HTMLDivElement>(null);
 
     const aggregatedData = useMemo(() => {
@@ -43,8 +52,13 @@ export function ReportDisplay({ data, onBack, storesExcluded }: { data: Delivery
     }, [data]);
 
     useEffect(() => {
+        // Only fetch report if it's not already cached
+        if (report) {
+            return;
+        }
+
         const fetchReport = async () => {
-            setLoading(true);
+            setIsLoading(true);
             setError(null);
             try {
                 const overallStats = getOverallStats(data);
@@ -64,12 +78,12 @@ export function ReportDisplay({ data, onBack, storesExcluded }: { data: Delivery
                 console.error("Failed to generate report:", err);
                 setError("La génération du rapport a échoué. L'IA n'a peut-être pas pu traiter la demande. Veuillez réessayer.");
             } finally {
-                setLoading(false);
+                setIsLoading(false);
             }
         };
 
         fetchReport();
-    }, [data, aggregatedData, storesExcluded]);
+    }, [data, aggregatedData, storesExcluded, report, setReport, setError, setIsLoading]);
 
     const handlePrint = () => {
         const printContent = printRef.current;
@@ -121,7 +135,7 @@ export function ReportDisplay({ data, onBack, storesExcluded }: { data: Delivery
         }
     };
 
-    if (loading) {
+    if (isLoading) {
         return (
             <div className="flex flex-col items-center justify-center h-full min-h-[400px]">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />

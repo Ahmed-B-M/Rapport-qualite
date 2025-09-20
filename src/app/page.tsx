@@ -45,6 +45,9 @@ export default function DashboardPage() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [excludeMagasin, setExcludeMagasin] = useState(false);
+  const [report, setReport] = useState<string | null>(null);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [isReportLoading, setIsReportLoading] = useState(false);
   const [objectives, setObjectives] = useState<Objectives>({
     averageRating: 4.8,
     punctualityRate: 95,
@@ -63,6 +66,8 @@ export default function DashboardPage() {
     } else {
       setData(processedData);
       setError(null);
+      setReport(null); // Clear cached report on new data
+      setReportError(null);
     }
     setLoading(false);
   };
@@ -72,6 +77,8 @@ export default function DashboardPage() {
     setError(null);
     setActiveView("overview");
     setIsReportOpen(false);
+    setReport(null);
+    setReportError(null);
   };
 
   const handleSaveSettings = (e: React.FormEvent<HTMLFormElement>) => {
@@ -100,6 +107,10 @@ export default function DashboardPage() {
     }
     return data;
   }, [data, excludeMagasin]);
+  
+  const handleGenerateReport = () => {
+    setIsReportOpen(true);
+  }
 
   const renderContent = () => {
     if (loading) {
@@ -126,7 +137,17 @@ export default function DashboardPage() {
     }
 
     if (isReportOpen) {
-        return <ReportDisplay data={filteredData} onBack={() => setIsReportOpen(false)} storesExcluded={excludeMagasin} />;
+        return <ReportDisplay 
+            data={filteredData} 
+            onBack={() => setIsReportOpen(false)} 
+            storesExcluded={excludeMagasin} 
+            report={report}
+            setReport={setReport}
+            error={reportError}
+            setError={setReportError}
+            isLoading={isReportLoading}
+            setIsLoading={setIsReportLoading}
+        />;
     }
 
     switch (activeView) {
@@ -166,7 +187,7 @@ export default function DashboardPage() {
                           <Switch id="exclude-magasin" checked={excludeMagasin} onCheckedChange={setExcludeMagasin} />
                           <Label htmlFor="exclude-magasin">Exclure Magasin</Label>
                         </div>
-                         <Button variant="outline" onClick={() => setIsReportOpen(true)}>
+                         <Button variant="outline" onClick={handleGenerateReport}>
                             <FileText className="mr-2 h-4 w-4" />
                             Générer un rapport
                         </Button>
