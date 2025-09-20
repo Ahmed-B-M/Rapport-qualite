@@ -182,7 +182,7 @@ export function DepotAnalytics({ data, objectives }: { data: Delivery[], objecti
                 <CardHeader>
                     <div className="flex justify-between items-center">
                         <CardTitle>Données sur la performance des dépôts</CardTitle>
-                        <Button variant="outline" size="sm" onClick={handleExport}><Download className="mr-2 h-4 w-4" /> Exporter en CSV</Button>
+                        <Button variant="outline" size="sm" onClick={handleExport}><Download className="mr-2 h-4 w-4" /> Exporter en Excel</Button>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -251,3 +251,5 @@ export function DepotAnalytics({ data, objectives }: { data: Delivery[], objecti
         </div>
     );
 }
+
+    

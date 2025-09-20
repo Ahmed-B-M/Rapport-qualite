@@ -58,7 +58,7 @@ const CommentsList = ({ comments }: { comments: { comment: string, rating: numbe
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg"><ThumbsDown className="h-5 w-5" /> Tous les commentaires</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-lg"><MessageSquareQuote className="h-5 w-5" /> Tous les commentaires</CardTitle>
                 <CardDescription>{comments.length} commentaire{comments.length > 1 ? 's' : ''} reçu{comments.length > 1 ? 's' : ''}</CardDescription>
             </CardHeader>
             <CardContent>
@@ -247,7 +247,7 @@ export function DriverAnalytics({ data, objectives }: { data: Delivery[], object
                             value={filter}
                             onChange={(e) => setFilter(e.target.value)}
                         />
-                        <Button variant="outline" size="sm" onClick={handleExport}><Download className="mr-2 h-4 w-4" /> Exporter en CSV</Button>
+                        <Button variant="outline" size="sm" onClick={handleExport}><Download className="mr-2 h-4 w-4" /> Exporter en Excel</Button>
                     </div>
                 </div>
             </CardHeader>
@@ -318,3 +318,5 @@ export function DriverAnalytics({ data, objectives }: { data: Delivery[], object
         </Card>
     );
 }
+
+    
