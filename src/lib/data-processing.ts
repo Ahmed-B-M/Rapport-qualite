@@ -1,4 +1,4 @@
-import { type Delivery, type StatsByEntity, type AggregatedStats } from './definitions';
+import { type Delivery, type StatsByEntity, type AggregatedStats, type DeliveryStatus } from './definitions';
 import { WAREHOUSE_DEPOT_MAP, CARRIERS } from './constants';
 
 const HEADER_MAPPING: Record<string, keyof Delivery> = {
@@ -74,14 +74,15 @@ export const processRawData = (rawData: any[]): Delivery[] => {
 
     const driver = driverName ? `${driverName} (${depot})` : `Livreur Inconnu (${depot})`;
     
-    let status = delivery.status;
+    let status: DeliveryStatus = 'En attente';
+    if (delivery.status === 'Livré') status = 'Livré';
+    if (delivery.status === 'Partiellement livré') status = 'Partiellement livré';
+    if (delivery.status === 'Non livré') status = 'Non livré';
+
+
     let failureReason = delivery.failureReason;
-    if (status === 'Livré') {
+    if (status === 'Livré' || status === 'Partiellement livré') {
         failureReason = undefined;
-    } else if (status === 'En attente') {
-        status = 'En attente';
-    } else {
-        status = 'Non livré';
     }
 
     return {
@@ -128,15 +129,9 @@ const createInitialStats = (): AggregatedStats => ({
 });
 
 const updateStats = (stats: AggregatedStats, delivery: Delivery) => {
-    if (delivery.status === 'En attente') {
-        stats.pendingDeliveries++;
-        // Do not process 'En attente' for other stats
-        return; 
-    }
-    
     stats.totalDeliveries++;
     
-    if (delivery.status === 'Livré') {
+    if (delivery.status === 'Livré' || delivery.status === 'Partiellement livré') {
         stats.successfulDeliveries++;
     } else { // 'Non livré'
         stats.failedDeliveries++;
@@ -193,7 +188,12 @@ export const aggregateStats = (data: Delivery[], groupBy: keyof Delivery): Stats
     if (!statsByEntity[entityName]) {
       statsByEntity[entityName] = createInitialStats();
     }
-    updateStats(statsByEntity[entityName], delivery);
+
+    if (delivery.status === 'En attente') {
+      statsByEntity[entityName].pendingDeliveries++;
+    } else {
+      updateStats(statsByEntity[entityName], delivery);
+    }
   });
   
   Object.values(statsByEntity).forEach(finalizeStats);
@@ -203,7 +203,13 @@ export const aggregateStats = (data: Delivery[], groupBy: keyof Delivery): Stats
 
 export const getOverallStats = (data: Delivery[]): AggregatedStats => {
     const overallStats = createInitialStats();
-    data.forEach(delivery => updateStats(overallStats, delivery));
+    data.forEach(delivery => {
+      if (delivery.status === 'En attente') {
+        overallStats.pendingDeliveries++;
+      } else {
+        updateStats(overallStats, delivery);
+      }
+    });
     finalizeStats(overallStats);
     return overallStats;
 }

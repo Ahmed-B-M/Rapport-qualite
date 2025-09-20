@@ -1,4 +1,4 @@
-export type DeliveryStatus = 'Livré' | 'Non livré' | 'En attente';
+export type DeliveryStatus = 'Livré' | 'Non livré' | 'En attente' | 'Partiellement livré';
 export type CompletedBy = 'mobile' | 'web' | 'unknown';
 export type ForcedOnSite = 'No' | 'Yes';
 
