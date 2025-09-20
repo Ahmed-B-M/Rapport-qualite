@@ -37,6 +37,14 @@ export type Objectives = {
     webCompletionRate: number;
 };
 
+// Central cache for all AI analyses
+export type AICache = {
+    overviewSummary: string | null;
+    depotAnalysis: string | null;
+    carrierAnalysis: Record<string, any>;
+    customerFeedbackAnalysis: any | null;
+}
+
 export default function DashboardPage() {
   const [data, setData] = useState<Delivery[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -48,6 +56,16 @@ export default function DashboardPage() {
   const [report, setReport] = useState<string | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
   const [isReportLoading, setIsReportLoading] = useState(false);
+
+  // AI Caches
+  const [aiCache, setAiCache] = useState<AICache>({
+    overviewSummary: null,
+    depotAnalysis: null,
+    carrierAnalysis: {},
+    customerFeedbackAnalysis: null,
+  });
+  const [loadingAi, setLoadingAi] = useState<Record<string, boolean>>({});
+
   const [objectives, setObjectives] = useState<Objectives>({
     averageRating: 4.8,
     punctualityRate: 95,
@@ -58,6 +76,17 @@ export default function DashboardPage() {
   });
   const overviewRef = useRef<HTMLDivElement>(null);
 
+  const clearCache = () => {
+    setReport(null);
+    setReportError(null);
+    setAiCache({
+        overviewSummary: null,
+        depotAnalysis: null,
+        carrierAnalysis: {},
+        customerFeedbackAnalysis: null,
+    });
+    setLoadingAi({});
+  }
 
   const handleDataUploaded = (processedData: Delivery[], error?: string) => {
     if (error) {
@@ -66,8 +95,7 @@ export default function DashboardPage() {
     } else {
       setData(processedData);
       setError(null);
-      setReport(null); // Clear cached report on new data
-      setReportError(null);
+      clearCache();
     }
     setLoading(false);
   };
@@ -77,8 +105,7 @@ export default function DashboardPage() {
     setError(null);
     setActiveView("overview");
     setIsReportOpen(false);
-    setReport(null);
-    setReportError(null);
+    clearCache();
   };
 
   const handleSaveSettings = (e: React.FormEvent<HTMLFormElement>) => {
@@ -152,19 +179,19 @@ export default function DashboardPage() {
 
     switch (activeView) {
       case "overview":
-        return <div ref={overviewRef}><Overview data={filteredData} objectives={objectives} setActiveView={setActiveView} /></div>;
+        return <div ref={overviewRef}><Overview data={filteredData} objectives={objectives} setActiveView={setActiveView} aiCache={aiCache} setAiCache={setAiCache} loadingAi={loadingAi} setLoadingAi={setLoadingAi} /></div>;
       case "depots":
-        return <DepotAnalytics data={filteredData} objectives={objectives} />;
+        return <DepotAnalytics data={filteredData} objectives={objectives} aiCache={aiCache} setAiCache={setAiCache} loadingAi={loadingAi} setLoadingAi={setLoadingAi} />;
       case "warehouses":
         return <WarehouseAnalytics data={filteredData} />;
       case "carriers":
-        return <CarrierAnalytics data={filteredData} objectives={objectives} />;
+        return <CarrierAnalytics data={filteredData} objectives={objectives} aiCache={aiCache} setAiCache={setAiCache} loadingAi={loadingAi} setLoadingAi={setLoadingAi} />;
       case "drivers":
         return <DriverAnalytics data={filteredData} objectives={objectives} />;
       case "satisfaction":
-        return <CustomerSatisfaction data={filteredData} objectives={objectives} />;
+        return <CustomerSatisfaction data={filteredData} objectives={objectives} aiCache={aiCache} setAiCache={setAiCache} loadingAi={loadingAi} setLoadingAi={setLoadingAi} />;
       default:
-        return <div ref={overviewRef}><Overview data={filteredData} objectives={objectives} setActiveView={setActiveView} /></div>;
+        return <div ref={overviewRef}><Overview data={filteredData} objectives={objectives} setActiveView={setActiveView} aiCache={aiCache} setAiCache={setAiCache} loadingAi={loadingAi} setLoadingAi={setLoadingAi} /></div>;
     }
   };
 

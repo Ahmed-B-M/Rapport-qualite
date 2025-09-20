@@ -3,6 +3,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { type Delivery } from '@/lib/definitions';
+import { type AICache } from '@/app/page';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
 import { analyzeCustomerFeedback, type AnalyzeCustomerFeedbackOutput } from '@/ai/flows/analyze-customer-feedback';
@@ -12,47 +13,56 @@ import { ChevronsRight } from 'lucide-react';
 interface CustomerFeedbackSummaryProps {
   data: Delivery[];
   onClick?: () => void;
+  aiCache: AICache;
+  setAiCache: React.Dispatch<React.SetStateAction<AICache>>;
+  loadingAi: Record<string, boolean>;
+  setLoadingAi: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 }
 
-export function CustomerFeedbackSummary({ data, onClick }: CustomerFeedbackSummaryProps) {
-  const [analysis, setAnalysis] = useState<AnalyzeCustomerFeedbackOutput | null>(null);
-  const [loading, setLoading] = useState(true);
-
+export function CustomerFeedbackSummary({ data, onClick, aiCache, setAiCache, loadingAi, setLoadingAi }: CustomerFeedbackSummaryProps) {
+  
   const comments = useMemo(() => data.map(d => d.feedbackComment!).filter(Boolean), [data]);
 
   useEffect(() => {
-    if (comments.length === 0) {
-      setLoading(false);
-      setAnalysis({
-        categoryCounts: {},
-        analysisSummary: "Aucun commentaire négatif à analyser.",
-      });
-      return;
-    }
-
     const performAnalysis = async () => {
-      setLoading(true);
+      if (aiCache.customerFeedbackAnalysis) return;
+
+      if (comments.length === 0) {
+        setAiCache(prev => ({
+          ...prev,
+          customerFeedbackAnalysis: {
+            categoryCounts: {},
+            analysisSummary: "Aucun commentaire négatif à analyser.",
+          }
+        }));
+        return;
+      }
+      
+      setLoadingAi(prev => ({ ...prev, customerFeedback: true }));
       try {
         const result = await analyzeCustomerFeedback({ comments });
-        setAnalysis(result);
+        setAiCache(prev => ({ ...prev, customerFeedbackAnalysis: result }));
       } catch (error) {
         console.error("AI feedback analysis failed:", error);
-        setAnalysis({ categoryCounts: {}, analysisSummary: "L'analyse par IA a échoué." });
+        setAiCache(prev => ({ 
+            ...prev,
+            customerFeedbackAnalysis: { categoryCounts: {}, analysisSummary: "L'analyse par IA a échoué." } 
+        }));
       }
-      setLoading(false);
+      setLoadingAi(prev => ({ ...prev, customerFeedback: false }));
     };
 
     performAnalysis();
-  }, [comments]);
+  }, [comments, aiCache.customerFeedbackAnalysis, setAiCache, setLoadingAi]);
 
   const analysisData = useMemo(() => (
-    analysis ? Object.entries(analysis.categoryCounts)
+    aiCache.customerFeedbackAnalysis ? Object.entries(aiCache.customerFeedbackAnalysis.categoryCounts)
       .map(([name, count]) => ({ name, count }))
       .filter(item => item.count > 0)
       .sort((a, b) => b.count - a.count)
       .slice(0, 5) // Keep top 5
     : []
-  ), [analysis]);
+  ), [aiCache.customerFeedbackAnalysis]);
 
   return (
     <Card onClick={onClick} className={onClick ? 'cursor-pointer hover:bg-muted/20 transition-colors' : ''}>
@@ -72,7 +82,7 @@ export function CustomerFeedbackSummary({ data, onClick }: CustomerFeedbackSumma
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {loading ? (
+        {loadingAi.customerFeedback || !aiCache.customerFeedbackAnalysis ? (
           <div className="flex h-48 items-center justify-center gap-2 text-muted-foreground">
             <Loader2 className="animate-spin h-5 w-5" />
             <span>Analyse des commentaires en cours...</span>
@@ -103,7 +113,7 @@ export function CustomerFeedbackSummary({ data, onClick }: CustomerFeedbackSumma
               </div>
               <div>
                 <h4 className="font-semibold mb-2 text-sm">Synthèse de l'analyse</h4>
-                <p className="text-sm text-muted-foreground italic">"{analysis?.analysisSummary}"</p>
+                <p className="text-sm text-muted-foreground italic">"{aiCache.customerFeedbackAnalysis?.analysisSummary}"</p>
               </div>
             </div>
           )

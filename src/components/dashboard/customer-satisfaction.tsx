@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { type Delivery } from '@/lib/definitions';
-import { type Objectives } from '@/app/page';
+import { type Objectives, type AICache } from '@/app/page';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -181,25 +181,42 @@ const CommentsList = ({ title, comments, icon }: { title: string; comments: Comm
     )
 };
 
-const NegativeFeedbackAIAnalysis = ({ comments, title }: { comments: Comment[], title?: string }) => {
-    const [analysis, setAnalysis] = useState<AnalyzeCustomerFeedbackOutput | null>(null);
-    const [loading, setLoading] = useState(true);
+const NegativeFeedbackAIAnalysis = ({ comments, title, cacheKey, aiCache, setAiCache, loadingAi, setLoadingAi }: { 
+    comments: Comment[], 
+    title?: string,
+    cacheKey: string,
+    aiCache: AICache,
+    setAiCache: React.Dispatch<React.SetStateAction<AICache>>,
+    loadingAi: Record<string, boolean>,
+    setLoadingAi: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
+}) => {
+    const analysis = aiCache.customerFeedbackAnalysis?.[cacheKey] as AnalyzeCustomerFeedbackOutput | undefined;
+    const isLoading = loadingAi[`customerFeedback_${cacheKey}`];
 
     useEffect(() => {
         const performAnalysis = async () => {
-            setLoading(true);
+            if (analysis) return;
+            
+            setLoadingAi(prev => ({ ...prev, [`customerFeedback_${cacheKey}`]: true }));
             try {
                 const commentTexts = comments.map(c => c.comment);
                 const result = await analyzeCustomerFeedback({ comments: commentTexts });
-                setAnalysis(result);
+                setAiCache(prev => ({
+                    ...prev,
+                    customerFeedbackAnalysis: { ...prev.customerFeedbackAnalysis, [cacheKey]: result }
+                }));
             } catch (error) {
                 console.error("AI feedback analysis failed:", error);
-                setAnalysis({ categoryCounts: {}, analysisSummary: "L'analyse par IA a échoué." });
+                const errorResult = { categoryCounts: {}, analysisSummary: "L'analyse par IA a échoué." };
+                 setAiCache(prev => ({
+                    ...prev,
+                    customerFeedbackAnalysis: { ...prev.customerFeedbackAnalysis, [cacheKey]: errorResult }
+                }));
             }
-            setLoading(false);
+            setLoadingAi(prev => ({ ...prev, [`customerFeedback_${cacheKey}`]: false }));
         };
         performAnalysis();
-    }, [comments]);
+    }, [comments, analysis, cacheKey, setAiCache, setLoadingAi]);
     
     const analysisData = useMemo(() => (
         analysis ? Object.entries(analysis.categoryCounts)
@@ -221,12 +238,12 @@ const NegativeFeedbackAIAnalysis = ({ comments, title }: { comments: Comment[], 
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                {loading ? (
+                {isLoading || !analysis ? (
                     <div className="flex items-center gap-2 text-muted-foreground">
                         <Loader2 className="animate-spin h-4 w-4" />
                         <span>Analyse des commentaires en cours...</span>
                     </div>
-                ) : analysis && (
+                ) : (
                     <div className="grid gap-6 md:grid-cols-2">
                         <div>
                              <h4 className="font-semibold mb-2">Résumé de l'analyse</h4>
@@ -273,7 +290,14 @@ const ObjectiveIndicator = ({ value, objective, higherIsBetter, tooltipLabel, un
 };
 
 
-const EntitySatisfactionView = ({ stats, objectives }: { stats: EntitySatisfactionStats[], objectives: Objectives }) => {
+const EntitySatisfactionView = ({ stats, objectives, ...aiProps }: { 
+    stats: EntitySatisfactionStats[], 
+    objectives: Objectives,
+    aiCache: AICache;
+    setAiCache: React.Dispatch<React.SetStateAction<AICache>>;
+    loadingAi: Record<string, boolean>;
+    setLoadingAi: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+}) => {
     if (stats.length === 0) {
          return (
             <div className="flex h-96 flex-col items-center justify-center text-center text-muted-foreground">
@@ -309,7 +333,11 @@ const EntitySatisfactionView = ({ stats, objectives }: { stats: EntitySatisfacti
                              <RatingChart data={entity.ratingDistribution} />
                         </div>
                        <CommentsList title="Commentaires Négatifs (≤ 3★)" comments={entity.negativeComments} icon={ThumbsDown} />
-                       <NegativeFeedbackAIAnalysis comments={entity.negativeComments} />
+                       <NegativeFeedbackAIAnalysis 
+                            comments={entity.negativeComments} 
+                            cacheKey={entity.name}
+                            {...aiProps}
+                        />
                     </CardContent>
                 </Card>
             ))}
@@ -318,7 +346,16 @@ const EntitySatisfactionView = ({ stats, objectives }: { stats: EntitySatisfacti
     )
 };
 
-export function CustomerSatisfaction({ data, objectives }: { data: Delivery[], objectives: Objectives }) {
+interface CustomerSatisfactionProps {
+    data: Delivery[];
+    objectives: Objectives;
+    aiCache: AICache;
+    setAiCache: React.Dispatch<React.SetStateAction<AICache>>;
+    loadingAi: Record<string, boolean>;
+    setLoadingAi: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+}
+
+export function CustomerSatisfaction({ data, objectives, aiCache, setAiCache, loadingAi, setLoadingAi }: CustomerSatisfactionProps) {
     const [activeTab, setActiveTab] = useState<GroupingKey>("depot");
 
     const satisfactionStats = useMemo(() => ({
@@ -474,6 +511,8 @@ export function CustomerSatisfaction({ data, objectives }: { data: Delivery[], o
 
         XLSX.writeFile(wb, "rapport_satisfaction.xlsx");
     };
+    
+    const aiProps = { aiCache, setAiCache, loadingAi, setLoadingAi };
 
     return (
         <>
@@ -498,16 +537,16 @@ export function CustomerSatisfaction({ data, objectives }: { data: Delivery[], o
                         ))}
                     </TabsList>
                     <TabsContent value="depot">
-                        <EntitySatisfactionView stats={satisfactionStats.depot} objectives={objectives} />
+                        <EntitySatisfactionView stats={satisfactionStats.depot} objectives={objectives} {...aiProps} />
                     </TabsContent>
                     <TabsContent value="warehouse">
-                        <EntitySatisfactionView stats={satisfactionStats.warehouse} objectives={objectives} />
+                        <EntitySatisfactionView stats={satisfactionStats.warehouse} objectives={objectives} {...aiProps} />
                     </TabsContent>
                     <TabsContent value="carrier">
-                        <EntitySatisfactionView stats={satisfactionStats.carrier} objectives={objectives} />
+                        <EntitySatisfactionView stats={satisfactionStats.carrier} objectives={objectives} {...aiProps} />
                     </TabsContent>
                     <TabsContent value="driver">
-                        <EntitySatisfactionView stats={satisfactionStats.driver} objectives={objectives} />
+                        <EntitySatisfactionView stats={satisfactionStats.driver} objectives={objectives} {...aiProps} />
                     </TabsContent>
                 </Tabs>
             </div>
@@ -515,13 +554,13 @@ export function CustomerSatisfaction({ data, objectives }: { data: Delivery[], o
                 <div className="print-satisfaction-page">
                     <h1 className="text-2xl font-bold mb-4">Rapport de Satisfaction Client - Global</h1>
                     <CommentsList title={`Commentaires Négatifs (≤ 3★) - Tous les dépôts`} comments={allNegativeComments} icon={ThumbsDown} />
-                    <NegativeFeedbackAIAnalysis comments={allNegativeComments} title="Analyse Globale des Retours Négatifs" />
+                    <NegativeFeedbackAIAnalysis comments={allNegativeComments} title="Analyse Globale des Retours Négatifs" cacheKey="global" {...aiProps} />
                 </div>
                 {satisfactionStats.depot.map(depotStat => (
                     <div key={depotStat.name} className="print-satisfaction-page">
                         <h1 className="text-2xl font-bold mb-4">Rapport de Satisfaction Client - Dépôt: {depotStat.name}</h1>
                         <CommentsList title={`Commentaires Négatifs (≤ 3★) - ${depotStat.name}`} comments={depotStat.negativeComments} icon={ThumbsDown} />
-                        <NegativeFeedbackAIAnalysis comments={depotStat.negativeComments} title={`Analyse des Retours Négatifs - ${depotStat.name}`} />
+                        <NegativeFeedbackAIAnalysis comments={depotStat.negativeComments} title={`Analyse des Retours Négatifs - ${depotStat.name}`} cacheKey={depotStat.name} {...aiProps} />
                     </div>
                 ))}
             </div>

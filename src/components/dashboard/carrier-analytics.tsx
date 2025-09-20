@@ -3,7 +3,7 @@
 
 import { useMemo, useState } from 'react';
 import { type Delivery } from '@/lib/definitions';
-import { type Objectives } from '@/app/page';
+import { type Objectives, type AICache } from '@/app/page';
 import { aggregateStats } from '@/lib/data-processing';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -227,10 +227,16 @@ const CarrierRadarChart = ({ stats }: { stats: (ReturnType<typeof aggregateStats
     );
 };
 
+interface CarrierAnalyticsProps {
+    data: Delivery[];
+    objectives: Objectives;
+    aiCache: AICache;
+    setAiCache: React.Dispatch<React.SetStateAction<AICache>>;
+    loadingAi: Record<string, boolean>;
+    setLoadingAi: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+}
 
-export function CarrierAnalytics({ data, objectives }: { data: Delivery[], objectives: Objectives }) {
-    const [aiAnalysisCache, setAiAnalysisCache] = useState<Record<string, CarrierAIAnalysis>>({});
-    const [loadingAi, setLoadingAi] = useState<Record<string, boolean>>({});
+export function CarrierAnalytics({ data, objectives, aiCache, setAiCache, loadingAi, setLoadingAi }: CarrierAnalyticsProps) {
     const [showUnknownDetail, setShowUnknownDetail] = useState(false);
     const [selectedCarrier, setSelectedCarrier] = useState<(ReturnType<typeof aggregateStats>[string] & { name: string }) | null>(null);
 
@@ -255,7 +261,7 @@ export function CarrierAnalytics({ data, objectives }: { data: Delivery[], objec
 
         setSelectedCarrier(carrier);
         
-        if (aiAnalysisCache[carrier.name] || loadingAi[carrier.name]) return;
+        if (aiCache.carrierAnalysis[carrier.name] || loadingAi[carrier.name]) return;
 
         setLoadingAi(prev => ({...prev, [carrier.name]: true}));
         
@@ -265,18 +271,18 @@ export function CarrierAnalytics({ data, objectives }: { data: Delivery[], objec
         
         if (failureReasons.length === 0) {
             const noFailureResult = { worstFailureReason: "Aucun échec enregistré.", analysisSummary: "Ce transporteur a un historique de livraison parfait dans cet ensemble de données.", correctiveAction: "Aucune action nécessaire." };
-            setAiAnalysisCache(prev => ({ ...prev, [carrier.name]: noFailureResult }));
+            setAiCache(prev => ({ ...prev, carrierAnalysis: { ...prev.carrierAnalysis, [carrier.name]: noFailureResult }}));
             setLoadingAi(prev => ({...prev, [carrier.name]: false}));
             return;
         }
 
         try {
             const result = await analyzeCarrierFailureModes({ carrierName: carrier.name, deliveryFailureReasons: failureReasons });
-            setAiAnalysisCache(prev => ({ ...prev, [carrier.name]: result }));
+            setAiCache(prev => ({ ...prev, carrierAnalysis: { ...prev.carrierAnalysis, [carrier.name]: result }}));
         } catch (error) {
             console.error(`L'analyse IA a échoué pour ${carrier.name}:`, error);
             const errorResult = { worstFailureReason: "Erreur", analysisSummary: "Impossible de générer l'analyse IA.", correctiveAction: "Impossible de générer une suggestion." };
-            setAiAnalysisCache(prev => ({ ...prev, [carrier.name]: errorResult }));
+            setAiCache(prev => ({ ...prev, carrierAnalysis: { ...prev.carrierAnalysis, [carrier.name]: errorResult }}));
         } finally {
             setLoadingAi(prev => ({...prev, [carrier.name]: false}));
         }
@@ -292,7 +298,7 @@ export function CarrierAnalytics({ data, objectives }: { data: Delivery[], objec
             {selectedCarrier && (
                 <CarrierAnalysisModal 
                     carrier={selectedCarrier}
-                    analysis={aiAnalysisCache[selectedCarrier.name]}
+                    analysis={aiCache.carrierAnalysis[selectedCarrier.name]}
                     isLoading={!!loadingAi[selectedCarrier.name]}
                     onClose={() => setSelectedCarrier(null)}
                 />

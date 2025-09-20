@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { type Delivery, type AggregatedStats } from '@/lib/definitions';
-import { type Objectives } from '@/app/page';
+import { type Objectives, type AICache } from '@/app/page';
 import { aggregateStats, getRankings, type Ranking, type RankingMetric } from '@/lib/data-processing';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -39,10 +39,17 @@ const ObjectiveIndicator = ({ value, objective, higherIsBetter, tooltipLabel, un
     );
 };
 
-export function DepotAnalytics({ data, objectives }: { data: Delivery[], objectives: Objectives }) {
-    const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
-    const [loadingAi, setLoadingAi] = useState(true);
+interface DepotAnalyticsProps {
+    data: Delivery[];
+    objectives: Objectives;
+    aiCache: AICache;
+    setAiCache: React.Dispatch<React.SetStateAction<AICache>>;
+    loadingAi: Record<string, boolean>;
+    setLoadingAi: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+}
 
+export function DepotAnalytics({ data, objectives, aiCache, setAiCache, loadingAi, setLoadingAi }: DepotAnalyticsProps) {
+    
     const depotStats: DepotStat[] = useMemo(() => {
         const stats = aggregateStats(data, 'depot');
         return Object.entries(stats).map(([name, stat]) => ({ name, ...stat }));
@@ -59,7 +66,9 @@ export function DepotAnalytics({ data, objectives }: { data: Delivery[], objecti
 
     useEffect(() => {
         const generateAnalysis = async () => {
-            setLoadingAi(true);
+            if (aiCache.depotAnalysis) return;
+
+            setLoadingAi(prev => ({ ...prev, depotAnalysis: true }));
             try {
                 const relevantData = data.map(d => ({
                     depot: d.depot,
@@ -72,15 +81,15 @@ export function DepotAnalytics({ data, objectives }: { data: Delivery[], objecti
                 const csvData = csvHeader + csvRows;
 
                 const result = await analyzeDepotDelivery({ deliveryData: csvData });
-                setAiAnalysis(result.analysisResults);
+                setAiCache(prev => ({ ...prev, depotAnalysis: result.analysisResults }));
             } catch (error) {
                 console.error("L'analyse IA a échoué:", error);
-                setAiAnalysis("Nous n'avons pas pu générer d'analyse IA pour le moment. Veuillez réessayer plus tard.");
+                setAiCache(prev => ({ ...prev, depotAnalysis: "Nous n'avons pas pu générer d'analyse IA pour le moment. Veuillez réessayer plus tard." }));
             }
-            setLoadingAi(false);
+            setLoadingAi(prev => ({ ...prev, depotAnalysis: false }));
         };
         generateAnalysis();
-    }, [data]);
+    }, [data, aiCache.depotAnalysis, setAiCache, setLoadingAi]);
     
     const handleExport = () => {
         const dataToExport = depotStats.map(stat => ({
@@ -164,7 +173,7 @@ export function DepotAnalytics({ data, objectives }: { data: Delivery[], objecti
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                     {loadingAi ? (
+                     {loadingAi.depotAnalysis ? (
                         <div className="flex items-center gap-2 text-muted-foreground">
                             <Loader2 className="animate-spin h-4 w-4" />
                             <span>Génération de l'analyse...</span>
@@ -172,7 +181,7 @@ export function DepotAnalytics({ data, objectives }: { data: Delivery[], objecti
                     ) : (
                         <Alert>
                             <AlertDescription className="whitespace-pre-wrap">
-                                {aiAnalysis}
+                                {aiCache.depotAnalysis}
                             </AlertDescription>
                         </Alert>
                     )}
@@ -251,5 +260,3 @@ export function DepotAnalytics({ data, objectives }: { data: Delivery[], objecti
         </div>
     );
 }
-
-    

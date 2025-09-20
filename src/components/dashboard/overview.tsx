@@ -4,7 +4,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import ReactMarkdown from "react-markdown";
 import { type Delivery, type AggregatedStats } from '@/lib/definitions';
-import { type Objectives } from '@/app/page';
+import { type Objectives, type AICache } from '@/app/page';
 import { getOverallStats, aggregateStats, getRankings, type Ranking, type RankingMetric } from '@/lib/data-processing';
 import { generateOverviewSummary } from '@/ai/flows/generate-overview-summary';
 import { StatCard } from '@/components/dashboard/stat-card';
@@ -167,9 +167,17 @@ const ThematicRankingSection = ({ data, metric, unit, title, onDrillDown }: {
 };
 
 
-export function Overview({ data, objectives, setActiveView }: { data: Delivery[], objectives: Objectives, setActiveView?: (view: string) => void }) {
-    const [summary, setSummary] = useState<string | null>(null);
-    const [loadingSummary, setLoadingSummary] = useState(true);
+interface OverviewProps {
+    data: Delivery[];
+    objectives: Objectives;
+    setActiveView?: (view: string) => void;
+    aiCache: AICache;
+    setAiCache: React.Dispatch<React.SetStateAction<AICache>>;
+    loadingAi: Record<string, boolean>;
+    setLoadingAi: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+}
+
+export function Overview({ data, objectives, setActiveView, aiCache, setAiCache, loadingAi, setLoadingAi }: OverviewProps) {
     const [modalMetric, setModalMetric] = useState<RankingMetric | null>(null);
 
     const overallStats = useMemo(() => getOverallStats(data), [data]);
@@ -202,22 +210,24 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
     
     useEffect(() => {
         const fetchSummary = async () => {
-            setLoadingSummary(true);
+            if (aiCache.overviewSummary) return;
+
+            setLoadingAi(prev => ({ ...prev, overviewSummary: true }));
             try {
                 const result = await generateOverviewSummary({
                     overallStats: JSON.stringify(overallStats),
                     rankings: JSON.stringify(aggregatedData),
                 });
-                setSummary(result.summary);
+                setAiCache(prev => ({ ...prev, overviewSummary: result.summary }));
             } catch (error) {
                 console.error("Failed to generate overview summary:", error);
-                setSummary("L'analyse par IA n'a pas pu être générée pour le moment.");
+                setAiCache(prev => ({ ...prev, overviewSummary: "L'analyse par IA n'a pas pu être générée pour le moment." }));
             }
-            setLoadingSummary(false);
+            setLoadingAi(prev => ({ ...prev, overviewSummary: false }));
         };
 
         fetchSummary();
-    }, [overallStats, aggregatedData]);
+    }, [overallStats, aggregatedData, aiCache.overviewSummary, setAiCache, setLoadingAi]);
 
     const handleDrillDown = (view: string) => {
         if(setActiveView) {
@@ -253,14 +263,14 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
                 <Alert>
                      <Bot className="h-4 w-4" />
                     <AlertDescription>
-                        {loadingSummary ? (
+                        {loadingAi.overviewSummary ? (
                             <div className="flex items-center gap-2 text-muted-foreground">
                                 <Loader2 className="animate-spin h-4 w-4" />
                                 <span>Génération de la synthèse...</span>
                             </div>
                         ) : (
                             <ReactMarkdown className="prose prose-sm max-w-none dark:prose-invert" components={{ p: ({node, ...props}) => <p className="m-0" {...props} /> }}>
-                                {summary || ""}
+                                {aiCache.overviewSummary || ""}
                             </ReactMarkdown>
                         )}
                     </AlertDescription>
@@ -322,6 +332,10 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
             <CustomerFeedbackSummary
               data={negativeFeedbackDeliveries}
               onClick={() => handleDrillDown('satisfaction')}
+              aiCache={aiCache}
+              setAiCache={setAiCache}
+              loadingAi={loadingAi}
+              setLoadingAi={setLoadingAi}
             />
 
             <div className="space-y-12">
