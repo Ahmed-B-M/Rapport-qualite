@@ -49,7 +49,7 @@ export function StatCard({ title, value, icon: Icon, description, isBelowObjecti
         </div>
       </CardHeader>
       <CardContent>
-        <div className={cn("text-2xl font-bold flex items-center gap-2", isBelowObjective && "text-destructive")}>
+        <div className={cn("text-2xl font-bold font-mono flex items-center gap-2", isBelowObjective && "text-destructive")}>
             {value}
         </div>
         {description && <p className="text-xs text-muted-foreground">{description}</p>}

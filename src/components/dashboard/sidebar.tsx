@@ -34,47 +34,29 @@ const menuItems = [
 ];
 
 const CarrefourIcon = () => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 100 100"
-      className="w-8 h-8"
-      fill="none"
-    >
-      <path
-        d="M50 15C36.2 15 25 26.2 25 40C25 53.8 36.2 65 50 65C63.8 65 75 53.8 75 40C75 26.2 63.8 15 50 15Z"
-        fill="hsl(var(--primary))"
-      />
-      <path
-        d="M50 15C36.2 15 25 26.2 25 40L50 65V15Z"
-        fill="hsl(var(--accent))"
-      />
-      <text
-        x="50"
-        y="85"
-        fontFamily="sans-serif"
-        fontSize="20"
-        fill="hsl(var(--primary))"
-        textAnchor="middle"
-        fontWeight="bold"
-      >
-        C
-      </text>
-    </svg>
-  );
+    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            className="h-5 w-5"
+        >
+            <path d="M12 2C17.52 2 22 6.48 22 12C22 17.52 17.52 22 12 22C6.48 22 2 17.52 2 12C2 6.48 6.48 2 12 2ZM12 4C7.58 4 4 7.58 4 12C4 16.42 7.58 20 12 20C16.42 20 20 16.42 20 12C20 7.58 16.42 4 12 4Z" />
+            <path d="M12 4C9.79 4 8 5.79 8 8L12 14V4Z" fill="hsl(var(--accent))" />
+        </svg>
+    </div>
+);
   
 
 export function DashboardSidebar({ activeView, setActiveView }: DashboardSidebarProps) {
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 p-1">
             <CarrefourIcon />
-            <div className="flex flex-col">
-                <h2 className="text-lg font-semibold font-headline">Carrefour</h2>
-            </div>
+            <h2 className="text-xl font-bold font-headline">Carrefour</h2>
         </div>
       </SidebarHeader>
-      <Separator />
       <SidebarMenu>
         {menuItems.map((item) => (
           <SidebarMenuItem key={item.id}>
