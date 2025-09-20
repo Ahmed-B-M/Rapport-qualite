@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useMemo, useState } from 'react';
@@ -28,7 +29,7 @@ export function WarehouseAnalytics({ data }: { data: Delivery[] }) {
             "Entrepôt": stat.name,
             "Dépôt": data.find(d => d.warehouse === stat.name)?.depot,
             "Total Livraisons": stat.totalDeliveries,
-            "Note Moyenne": stat.averageRating > 0 ? stat.averageRating.toFixed(2) : 'N/A',
+            "Note Moyenne": stat.ratedDeliveries > 0 ? stat.averageRating.toFixed(2) : 'N/A',
             "Ponctualité (%)": stat.punctualityRate.toFixed(2),
             "Taux d'échec (%)": (100 - stat.successRate).toFixed(2),
             "Sur place forcé (%)": stat.forcedOnSiteRate.toFixed(2),
@@ -81,7 +82,7 @@ export function WarehouseAnalytics({ data }: { data: Delivery[] }) {
                                 <TableCell className="font-medium">{stat.name}</TableCell>
                                 <TableCell className="text-muted-foreground">{data.find(d => d.warehouse === stat.name)?.depot}</TableCell>
                                 <TableCell className="text-right">{stat.totalDeliveries}</TableCell>
-                                <TableCell className="text-right">{stat.averageRating > 0 ? stat.averageRating.toFixed(2) : 'N/A'}</TableCell>
+                                <TableCell className="text-right">{stat.ratedDeliveries > 0 ? stat.averageRating.toFixed(2) : 'N/A'}</TableCell>
                                 <TableCell className="text-right">{stat.punctualityRate.toFixed(2)}%</TableCell>
                                 <TableCell className="text-right">{(100 - stat.successRate).toFixed(2)}%</TableCell>
                                 <TableCell className="text-right">{stat.forcedOnSiteRate.toFixed(2)}%</TableCell>
@@ -103,4 +104,5 @@ export function WarehouseAnalytics({ data }: { data: Delivery[] }) {
     );
 }
 
+    
     

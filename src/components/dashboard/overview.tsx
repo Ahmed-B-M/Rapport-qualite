@@ -238,10 +238,10 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <StatCard 
                         title="Note moyenne" 
-                        value={overallStats.averageRating > 0 ? `${overallStats.averageRating.toFixed(2)} / 5` : 'N/A'}
+                        value={overallStats.ratedDeliveries > 0 ? `${overallStats.averageRating.toFixed(2)} / 5` : 'N/A'}
                         icon={Star} 
                         description={`Objectif: > ${objectives.averageRating.toFixed(2)}`} 
-                        isBelowObjective={overallStats.averageRating > 0 && overallStats.averageRating < objectives.averageRating}
+                        isBelowObjective={overallStats.ratedDeliveries > 0 && overallStats.averageRating < objectives.averageRating}
                         onClick={() => handleDrillDown('satisfaction')}
                     />
                     <StatCard 
@@ -307,3 +307,5 @@ export function Overview({ data, objectives, setActiveView }: OverviewProps) {
         </div>
     );
 }
+
+    

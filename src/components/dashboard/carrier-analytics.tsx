@@ -316,7 +316,7 @@ export function CarrierAnalytics({ data, objectives }: CarrierAnalyticsProps) {
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
                                             <ObjectiveIndicator value={carrier.averageRating} objective={objectives.averageRating} higherIsBetter={true} tooltipLabel="Note moyenne" />
-                                            {carrier.averageRating > 0 ? carrier.averageRating.toFixed(2) : 'N/A'}
+                                            {carrier.ratedDeliveries > 0 ? carrier.averageRating.toFixed(2) : 'N/A'}
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -327,7 +327,7 @@ export function CarrierAnalytics({ data, objectives }: CarrierAnalyticsProps) {
                                     <TableCell className="text-right">{unknownCarrierStat.totalDeliveries}</TableCell>
                                     <TableCell className="text-right">{(100 - unknownCarrierStat.successRate).toFixed(2)}%</TableCell>
                                     <TableCell className="text-right">{unknownCarrierStat.punctualityRate.toFixed(2)}%</TableCell>
-                                    <TableCell className="text-right">{unknownCarrierStat.averageRating > 0 ? unknownCarrierStat.averageRating.toFixed(2) : 'N/A'}</TableCell>
+                                    <TableCell className="text-right">{unknownCarrierStat.ratedDeliveries > 0 ? unknownCarrierStat.averageRating.toFixed(2) : 'N/A'}</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
@@ -337,3 +337,5 @@ export function CarrierAnalytics({ data, objectives }: CarrierAnalyticsProps) {
         </>
     );
 }
+
+    
