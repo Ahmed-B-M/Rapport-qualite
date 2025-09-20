@@ -6,6 +6,7 @@ import { type Delivery } from '@/lib/definitions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { MessageSquareQuote, ChevronsRight } from 'lucide-react';
 import { aggregateStats } from '@/lib/data-processing';
+import { cn } from '@/lib/utils';
 
 interface CustomerFeedbackSummaryProps {
   data: Delivery[];
@@ -18,7 +19,7 @@ export function CustomerFeedbackSummary({ data, onClick }: CustomerFeedbackSumma
   const negativeCommentCount = useMemo(() => data.filter(d => d.deliveryRating && d.deliveryRating <= 3 && d.feedbackComment).length, [data]);
 
   return (
-    <Card onClick={onClick} className={onClick ? 'cursor-pointer hover:bg-muted/20 transition-colors' : ''}>
+    <Card onClick={onClick} className={cn(onClick && 'cursor-pointer hover:bg-muted/20 transition-colors')}>
       <CardHeader>
         <div className="flex justify-between items-center">
             <CardTitle className="flex items-center gap-2">
