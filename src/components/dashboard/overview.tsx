@@ -11,7 +11,7 @@ import { StatCard } from '@/components/dashboard/stat-card';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Star, Timer, Ban, Globe, Target, PenSquare, PackageSearch, Building2, Truck, User, Warehouse as WarehouseIcon, ChevronsRight, ThumbsUp, ThumbsDown, Bot, Loader2 } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { KpiDetailModal } from '@/components/dashboard/kpi-detail-modal';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 
 type RankingEntity = { name: string } & AggregatedStats;
@@ -76,7 +76,7 @@ const RankingChart = ({ rankings, metric, unit, isFlop }: {
         <div>
             {chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={160}>
-                    <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 120, left: 120, bottom: 0 }}>
+                    <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 20, left: 120, bottom: 0 }}>
                         <XAxis type="number" dataKey="value" hide />
                         <YAxis 
                             type="category" 
@@ -89,7 +89,7 @@ const RankingChart = ({ rankings, metric, unit, isFlop }: {
                             interval={0}
                         />
                         <Tooltip content={<CustomTooltip metric={metric} unit={unit} isFlop={isFlop} />} cursor={{fill: 'hsl(var(--muted))'}} />
-                        <Bar dataKey="value" barSize={16}>
+                        <Bar dataKey="value" barSize={16} >
                              {chartData.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={isFlop ? "hsl(var(--destructive))" : "hsl(var(--primary))"} radius={[0, 4, 4, 0]} />
                             ))}
@@ -169,6 +169,7 @@ const ThematicRankingSection = ({ data, metric, unit, title, onDrillDown }: {
 export function Overview({ data, objectives, setActiveView }: { data: Delivery[], objectives: Objectives, setActiveView?: (view: string) => void }) {
     const [summary, setSummary] = useState<string | null>(null);
     const [loadingSummary, setLoadingSummary] = useState(true);
+    const [modalMetric, setModalMetric] = useState<RankingMetric | null>(null);
 
     const overallStats = useMemo(() => getOverallStats(data), [data]);
     
@@ -232,8 +233,18 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
         { title: "'Validation Web'", metric: "webCompletionRate" as RankingMetric, unit: "%", icon: Globe },
     ];
 
+    const failureDeliveries = useMemo(() => data.filter(d => d.status === 'Non livré'), [data]);
+
     return (
         <div className="space-y-8">
+            {modalMetric && (
+                <KpiDetailModal
+                    metric={modalMetric}
+                    onClose={() => setModalMetric(null)}
+                    data={modalMetric === 'successRate' ? failureDeliveries : data}
+                    rankings={aggregatedData}
+                />
+            )}
             <div className="print-section">
                 <h2 className="text-2xl font-bold font-headline mb-4">Résumé Exécutif par IA</h2>
                 <Alert>
@@ -276,6 +287,7 @@ export function Overview({ data, objectives, setActiveView }: { data: Delivery[]
                         icon={AlertCircle} 
                         description={`Objectif: < ${objectives.failureRate}%`} 
                         isBelowObjective={(100 - overallStats.successRate) > objectives.failureRate}
+                        onClick={() => setModalMetric('successRate')}
                     />
                      <StatCard title="Commandes 'En attente'" value={`${overallStats.pendingDeliveries}`} icon={PackageSearch} />
                     <StatCard 
