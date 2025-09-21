@@ -23,7 +23,7 @@ import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { DateRange } from "react-day-picker";
 import { genererRapportPerformance } from '@/lib/analysis';
 import { generateSynthesis } from '@/lib/synthesis';
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function DashboardPage() {
@@ -235,7 +235,3 @@ export default function DashboardPage() {
     </SidebarProvider>
   );
 }
-
-    
-
-    
