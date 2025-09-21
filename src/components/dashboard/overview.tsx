@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -65,7 +66,7 @@ export function Overview({ data }: OverviewProps) {
         />
         <StatCard
           title="Taux de succès"
-          value={`${currentStats.successRate.toFixed(1)}%`}
+          value={`${currentStats.successRate.toFixed(2)}%`}
           description="Livraisons réussies"
           icon={<TrendingUp className="text-green-500" />}
           previousValue={previousStats.successRate}
@@ -91,7 +92,7 @@ export function Overview({ data }: OverviewProps) {
        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Ponctualité"
-          value={`${currentStats.punctualityRate.toFixed(1)}%`}
+          value={`${currentStats.punctualityRate.toFixed(2)}%`}
           description="Livraisons à l'heure"
           icon={<Timer />}
           previousValue={previousStats.punctualityRate}
@@ -99,7 +100,7 @@ export function Overview({ data }: OverviewProps) {
         />
         <StatCard
           title="Taux de Notation"
-          value={`${currentStats.ratingRate.toFixed(1)}%`}
+          value={`${currentStats.ratingRate.toFixed(2)}%`}
           description="Pourcentage de livraisons notées"
           icon={<Percent />}
           previousValue={previousStats.ratingRate}
@@ -107,7 +108,7 @@ export function Overview({ data }: OverviewProps) {
         />
         <StatCard
           title="'Sans Contact' Forcé"
-          value={`${currentStats.forcedNoContactRate.toFixed(1)}%`}
+          value={`${currentStats.forcedNoContactRate.toFixed(2)}%`}
           description="Complétion forcée sans contact"
           icon={<UserX />}
           previousValue={previousStats.forcedNoContactRate}
@@ -115,7 +116,7 @@ export function Overview({ data }: OverviewProps) {
         />
         <StatCard
           title="'Validation Web'"
-          value={`${currentStats.webCompletionRate.toFixed(1)}%`}
+          value={`${currentStats.webCompletionRate.toFixed(2)}%`}
           description="Utilisation de la validation web"
           icon={<Link2Off />}
           previousValue={previousStats.webCompletionRate}

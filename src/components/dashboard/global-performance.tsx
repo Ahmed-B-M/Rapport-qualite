@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -116,11 +117,11 @@ export function GlobalPerformance({ data }: GlobalPerformanceProps) {
                   <TableCell className="text-right">{item.totalDeliveries}</TableCell>
                   <TableCell className="text-right">
                     <Badge className={getSuccessRateColor(item.successRate)}>
-                      {item.successRate.toFixed(1)}%
+                      {item.successRate.toFixed(2)}%
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">{item.averageRating ? item.averageRating.toFixed(2) : 'N/A'}</TableCell>
-                  <TableCell className="text-right">{item.punctualityRate.toFixed(1)}%</TableCell>
+                  <TableCell className="text-right">{item.punctualityRate.toFixed(2)}%</TableCell>
                 </TableRow>
               ))}
             </TableBody>

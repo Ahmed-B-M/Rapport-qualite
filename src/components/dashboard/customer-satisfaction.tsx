@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useMemo } from 'react';
@@ -21,7 +22,7 @@ const CommentCard = ({ title, comments, icon: Icon, colorClass }: { title: strin
             {comments.length > 0 ? comments.map((c, index) => (
                 <div key={index} className="border-l-4 pl-3" style={{ borderColor: colorClass.split(' ')[0].replace('text-', 'border-') }}>
                     <p className="text-sm italic">"{c.comment}"</p>
-                    <p className="text-xs text-muted-foreground mt-1">- {c.driver} (Note: {c.score.toFixed(1)}/10)</p>
+                    <p className="text-xs text-muted-foreground mt-1">- {c.driver} (Note: {c.score.toFixed(2)}/10)</p>
                 </div>
             )) : <p className="text-sm text-muted-foreground italic">Aucun commentaire pertinent.</p>}
         </div>

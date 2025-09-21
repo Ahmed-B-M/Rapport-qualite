@@ -26,14 +26,14 @@ const KpiCard = ({ title, value, objective, higherIsBetter, unit = '%' }: { titl
             <h4 className="text-sm text-muted-foreground">{title}</h4>
             <div className="flex items-center justify-between mt-2">
                 <p className="text-2xl font-bold">N/A</p>
-                { objective && <Badge variant="secondary">Objectif: {objective}{unit}</Badge> }
+                { objective && <Badge variant="secondary">Objectif: {objective.toFixed(2)}{unit}</Badge> }
             </div>
         </div>
     );
   }
 
   const meetsObjective = higherIsBetter ? value >= objective : value <= objective;
-  const displayValue = value.toFixed(1);
+  const displayValue = value.toFixed(2);
 
   return (
     <div className="flex flex-col p-4 border rounded-lg">
@@ -42,7 +42,7 @@ const KpiCard = ({ title, value, objective, higherIsBetter, unit = '%' }: { titl
         <p className="text-2xl font-bold">{displayValue}{unit}</p>
         <Badge variant={meetsObjective ? 'default' : 'destructive'} className="flex items-center gap-1">
           {meetsObjective ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-          Objectif: {objective}{unit}
+          Objectif: {objective.toFixed(2)}{unit}
         </Badge>
       </div>
     </div>
@@ -121,7 +121,7 @@ const CommentExamples = ({ top, flop }: { top: CommentExample[], flop: CommentEx
                 {top.map((c, i) => (
                     <div key={i} className="border-l-2 border-green-600 pl-3 mb-3 text-sm">
                         <p className="italic">"{c.comment}"</p>
-                        <p className="text-xs text-muted-foreground mt-1">- {c.driver} (Note: {c.score.toFixed(1)}/10)</p>
+                        <p className="text-xs text-muted-foreground mt-1">- {c.driver} (Note: {c.score.toFixed(2)}/10)</p>
                     </div>
                 ))}
             </div>
@@ -130,7 +130,7 @@ const CommentExamples = ({ top, flop }: { top: CommentExample[], flop: CommentEx
                 {flop.map((c, i) => (
                     <div key={i} className="border-l-2 border-red-600 pl-3 mb-3 text-sm">
                         <p className="italic">"{c.comment}"</p>
-                        <p className="text-xs text-muted-foreground mt-1">- {c.driver} (Note: {c.score.toFixed(1)}/10)</p>
+                        <p className="text-xs text-muted-foreground mt-1">- {c.driver} (Note: {c.score.toFixed(2)}/10)</p>
                     </div>
                 ))}
             </div>
@@ -194,6 +194,10 @@ export function PerformanceReport({ data, objectives }: PerformanceReportProps) 
 
   return (
     <div>
+        <div className="mb-6 print-only">
+            <h1 className="text-2xl font-bold font-headline text-primary mb-2 print-title">Rapport de Performance des Livraisons</h1>
+            <p className="text-muted-foreground">Analyse globale et par dépôt pour la période sélectionnée.</p>
+        </div>
       <div className="mb-8">
         <SynthesisReport synthesis={synthesisData} />
       </div>
