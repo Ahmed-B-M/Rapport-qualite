@@ -23,6 +23,8 @@ import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { DateRange } from "react-day-picker";
 import { genererRapportPerformance } from '@/lib/analysis';
 import { generateSynthesis } from '@/lib/synthesis';
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function DashboardPage() {
   const [donnees, setDonnees] = useState<Livraison[]>([]);
@@ -30,6 +32,7 @@ export default function DashboardPage() {
   const [erreur, setErreur] = useState<string | null>(null);
   const [vueActive, setVueActive] = useState("overview");
   const [parametresOuverts, setParametresOuverts] = useState(false);
+  const [modalLivreursOuvert, setModalLivreursOuvert] = useState(false);
   const [exclureMagasin, setExclureMagasin] = useState(false);
   const [plageDates, setPlageDates] = useState<DateRange | undefined>();
 
@@ -94,6 +97,32 @@ export default function DashboardPage() {
     return donneesFiltreMagasin;
   }, [donnees, exclureMagasin, plageDates]);
 
+  const livreursNonAssocies = useMemo(() => {
+    const livreurs = donnees.filter(d => d.transporteur === 'Inconnu');
+    const livreursUniques = Array.from(new Set(livreurs.map(l => l.chauffeur)));
+    return livreurs.filter(l => livreursUniques.includes(l.chauffeur));
+  }, [donnees]);
+
+  const livreursNonAssociesParDepot = useMemo(() => {
+    const groupes: Record<string, string[]> = {};
+    const livreursUniques = new Set(livreursNonAssocies.map(l => l.chauffeur));
+    
+    livreursUniques.forEach(chauffeur => {
+        const livraison = livreursNonAssocies.find(l => l.chauffeur === chauffeur);
+        if(livraison) {
+            if (!groupes[livraison.depot]) {
+                groupes[livraison.depot] = [];
+            }
+            groupes[livraison.depot].push(livraison.chauffeur);
+        }
+    });
+
+    for(const depot in groupes) {
+        groupes[depot].sort();
+    }
+    return groupes;
+  }, [livreursNonAssocies]);
+
   // Mémoriser la génération du rapport
   const donneesRapport = useMemo(() => genererRapportPerformance(donneesFiltrees), [donneesFiltrees]);
   const donneesSynthese = useMemo(() => generateSynthesis(donneesRapport, objectifs), [donneesRapport, objectifs]);
@@ -140,6 +169,15 @@ export default function DashboardPage() {
                      <Button variant="ghost" size="icon" onClick={() => setParametresOuverts(true)}><Settings /></Button>
                 </div>
             </header>
+            {livreursNonAssocies.length > 0 && (
+                <Alert variant="destructive" className="mb-6 cursor-pointer hover:bg-destructive/10" onClick={() => setModalLivreursOuvert(true)}>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Attention !</AlertTitle>
+                    <AlertDescription>
+                        {new Set(livreursNonAssocies.map(l => l.chauffeur)).size} livreur(s) n'ont pas de transporteur associé. Cliquez ici pour voir la liste.
+                    </AlertDescription>
+                </Alert>
+            )}
             <main id="main-content" className="non-printable">
               {renderContent()}
             </main>
@@ -163,8 +201,41 @@ export default function DashboardPage() {
               </form>
           </DialogContent>
       </Dialog>
+      <Dialog open={modalLivreursOuvert} onOpenChange={setModalLivreursOuvert}>
+        <DialogContent className="max-w-4xl">
+            <DialogHeader>
+                <DialogTitle>Livreurs sans transporteur associé</DialogTitle>
+                <DialogDescription>
+                    La liste suivante montre les livreurs qui n'ont pas pu être automatiquement associés à un transporteur. Veuillez vérifier leurs noms dans le fichier source.
+                </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="h-[60vh] mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-1">
+                    {Object.entries(livreursNonAssociesParDepot).sort(([depotA], [depotB]) => depotA.localeCompare(depotB)).map(([depot, livreurs]) => (
+                        <Card key={depot}>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-lg">{depot}</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <ul className="list-disc pl-5 space-y-1 text-sm">
+                                    {livreurs.map((livreur) => (
+                                        <li key={livreur}>{livreur.replace(`(${depot})`, '').trim()}</li>
+                                    ))}
+                                </ul>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            </ScrollArea>
+             <DialogFooter>
+                <Button onClick={() => setModalLivreursOuvert(false)}>Fermer</Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
     </SidebarProvider>
   );
 }
+
+    
 
     
