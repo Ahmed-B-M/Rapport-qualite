@@ -231,20 +231,30 @@ const MOTS_CLES_CATEGORIES: { categorie: CategorieProbleme, motsCles: string[] }
         categorie: "attitude livreur", 
         motsCles: [
             "pas aimable", "agressif", "impoli", "désagréable", "pas bonjour", "comportement", 
-            "odieux", "odieuse", "incorrecte", "mal poli", "catastrophe", "horrible", "pas serviable", "agressive", "pressé", "impatient"
+            "odieux", "odieuse", "incorrecte", "mal poli", "catastrophe", "horrible", "pas serviable", 
+            "agressive", "pressé", "impatient", "sur le trottoir"
         ]
     },
     { 
         categorie: "casse articles", 
-        motsCles: ["casse", "cassé", "abimé", "abîmé", "endommagé", "ecrasé", "écrasé", "produit ouvert", "huevos rotos", "état lamentable", "bouteille ouverte"]
+        motsCles: [
+            "casse", "cassé", "abimé", "abîmé", "endommagé", "ecrasé", "écrasé", "produit ouvert", 
+            "huevos rotos", "état lamentable", "bouteille ouverte", "trempés"
+        ]
     },
     { 
         categorie: "article manquant", 
-        motsCles: ["manquant", "manque", "oubli", "pas tout", "pas reçu", "incomplet", "pas eu", "produit manquant", "sac qui ne nous a pas été livré", "manquait"]
+        motsCles: [
+            "manquant", "manque", "oubli", "pas tout", "pas reçu", "incomplet", "pas eu", 
+            "produit manquant", "sac qui ne nous a pas été livré", "manquait", "pris"
+        ]
     },
     { 
         categorie: "ponctualité", 
-        motsCles: ["retard", "tard", "tôt", "en avance", "pas à l'heure", "attente", "attendu", "jamais arrivé", "pas prévenu", "pas prévenue"]
+        motsCles: [
+            "retard", "tard", "tôt", "en avance", "pas à l'heure", "attente", "attendu", 
+            "jamais arrivé", "pas prévenu", "pas prévenue", "non livrée", "ponctualité"
+        ]
     },
     { 
         categorie: "rupture chaine de froid", 
@@ -317,6 +327,9 @@ export function getCategorizedNegativeComments(livraisons: Livraison[]): Record<
     }
 
     categorizedComments.forEach(comment => {
+        if (!groupedComments[comment.categorie]) {
+            groupedComments[comment.categorie] = [];
+        }
         groupedComments[comment.categorie].push(comment);
     });
 
@@ -458,6 +471,7 @@ export const filtrerDonneesParDepot = (donnees: Livraison[], depot: string): Liv
     if (depot === 'all') return donnees;
     return donnees.filter(l => l.depot === depot);
 };
+
 
 
 

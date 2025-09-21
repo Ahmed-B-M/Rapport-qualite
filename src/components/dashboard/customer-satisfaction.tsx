@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useMemo } from 'react';
@@ -62,7 +63,7 @@ const NegativeCommentsSection = ({ comments }: { comments: Record<string, Commen
                 </Button>
             </CardHeader>
             <CardContent>
-                <Accordion type="single" collapsible className="w-full">
+                <Accordion type="single" collapsible className="w-full" defaultValue={categoriesWithComments.length > 0 ? categoriesWithComments[0] : undefined}>
                     {categoriesWithComments.map(categorie => (
                         <AccordionItem value={categorie} key={categorie}>
                             <AccordionTrigger>
