@@ -119,7 +119,7 @@ export const traiterDonneesBrutes = (donneesBrutes: any[]): Livraison[] => {
       sequence: Number(livraison.sequence) || 0,
       retardSecondes: Number(livraison.retardSecondes) || 0,
       forceSansContact: String(livraison.forceSansContact).toLowerCase() === 'true',
-      forceSurSite: String(livraison.forceSurSite).trim().toLowerCase() === 'oui' ? 'Oui' : 'Non',
+      forceSurSite: String(livraison.forceSurSite).trim().toLowerCase() === 'yes' ? 'Oui' : 'Non',
       terminePar: terminePar,
       noteLivraison: (note && note >= 1 && note <= 5) ? note : undefined,
       commentaireRetour: livraison.commentaireRetour ? String(livraison.commentaireRetour) : undefined,
