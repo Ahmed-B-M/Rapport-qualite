@@ -1,5 +1,4 @@
 
-
 'use client';
 import React from "react";
 import Image from "next/image";
@@ -248,7 +247,7 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
                     <div className="page-break">
                         <h2 className="text-2xl font-bold mb-4 flex items-center">
                            <LogoDepotImpression nomDepot={depot.nom} entrepot={depot.entrepot} />
-                           {titreDepot}
+                           {titreDepot} - Analyse Détaillée
                         </h2>
                         <Card>
                             <CardHeader className="p-3">
@@ -263,6 +262,7 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
                                 <AnalyseCategorielleImpression 
                                     resultats={depot.resultatsCategorisation} 
                                     totalCommentairesNegatifs={depot.totalCommentairesNegatifs}
+                                    afficherDetailsCommentaires={true}
                                 />
                             </CardContent>
                         </Card>
