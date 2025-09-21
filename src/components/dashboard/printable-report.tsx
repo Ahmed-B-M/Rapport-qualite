@@ -141,45 +141,12 @@ const AnalyseCategorielleImpression = ({ resultats }: { resultats: ResultatsCate
     </div>
 );
 
-
-const SectionAnalyseDetailleeImpression = ({ donneesRapport }: { donneesRapport: DonneesSectionRapport }) => (
-    <Card className="mb-4 break-inside-avoid">
-        <CardHeader className="p-3">
-            <CardTitle className="text-base">Analyse Détaillée</CardTitle>
-            <CardDescription className="text-xs">{donneesRapport.statistiques.totalLivraisons} livraisons analysées.</CardDescription>
-        </CardHeader>
-        <CardContent className="p-3 space-y-3">
-            <div className="grid grid-cols-4 gap-2">
-                <CarteKpiImpression titre="Taux de Succès" valeur={donneesRapport.statistiques.tauxReussite} unite="%" />
-                <CarteKpiImpression titre="Note Moyenne" valeur={donneesRapport.statistiques.noteMoyenne} unite="/5" />
-                <CarteKpiImpression titre="Note Comms" valeur={donneesRapport.statistiques.sentimentMoyen} unite="/10" />
-                <CarteKpiImpression titre="Ponctualité" valeur={donneesRapport.statistiques.tauxPonctualite} unite="%" />
-            </div>
-            <Separator/>
-            <ClassementsNotesChauffeurImpression top={donneesRapport.chauffeursMieuxNotes} flop={donneesRapport.chauffeursMoinsBienNotes} />
-            <Separator/>
-            <div>
-                 <h4 className="text-base font-semibold mb-2">Classements par Indicateur Clé (KPI)</h4>
-                 <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                    <TableauClassementSimpleImpression titre="Note Moyenne (Livreurs)" donnees={donneesRapport.classementsKpi.chauffeurs.noteMoyenne.top} unite="/5" />
-                    <TableauClassementSimpleImpression titre="Note Moyenne (Transporteurs)" donnees={donneesRapport.classementsKpi.transporteurs.noteMoyenne.top} unite="/5" />
-                    <TableauClassementSimpleImpression titre="Taux de Succès (Livreurs)" donnees={donneesRapport.classementsKpi.chauffeurs.tauxReussite.top} unite="%" />
-                    <TableauClassementSimpleImpression titre="Taux de Succès (Transporteurs)" donnees={donneesRapport.classementsKpi.transporteurs.tauxReussite.top} unite="%" />
-                 </div>
-            </div>
-            <ExemplesCommentairesImpression top={donneesRapport.meilleursCommentaires} flop={donneesRapport.piresCommentaires} />
-            <AnalyseCategorielleImpression resultats={donneesRapport.resultatsCategorisation} />
-        </CardContent>
-    </Card>
-);
-
 // --- Composant principal imprimable ---
 
 export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: RapportImprimableProps) {
   return (
     <div className="printable-content">
-        {/* Page de Titre */}
-        <div className="flex flex-col items-center justify-center h-screen text-center break-after-page">
+        <div className="page-break flex flex-col items-center justify-center h-screen text-center">
             <Image src="/logos/logo-crf.jpg" alt="Logo CLCV" width={120} height={120} className="rounded-lg mb-6"/>
             <h1 className="text-4xl font-bold text-primary">Rapport Qualité des Livraisons</h1>
             <p className="text-lg text-muted-foreground mt-2">Analyse détaillée pour la période sélectionnée</p>
@@ -187,7 +154,7 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
         </div>
 
         {/* Section globale - Page 1 */}
-        <div className="break-after-page">
+        <div className="page-break">
             <h2 className="text-2xl font-bold mb-4">Vision d'Ensemble - Page 1/2</h2>
             <SectionSyntheseImpression titre="Synthèse Globale" synthese={donneesSynthese.global} />
             <Card className="break-inside-avoid">
@@ -206,9 +173,21 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
         </div>
 
         {/* Section globale - Page 2 */}
-        <div>
+        <div className="page-break">
              <h2 className="text-2xl font-bold mb-4">Vision d'Ensemble - Page 2/2</h2>
-             <SectionAnalyseDetailleeImpression donneesRapport={donneesRapport.global} />
+             <Card>
+                <CardHeader className="p-3">
+                    <CardTitle className="text-base">Analyse Détaillée</CardTitle>
+                    <CardDescription className="text-xs">{donneesRapport.global.statistiques.totalLivraisons} livraisons analysées.</CardDescription>
+                </CardHeader>
+                <CardContent className="p-3 space-y-3">
+                    <ClassementsNotesChauffeurImpression top={donneesRapport.global.chauffeursMieuxNotes} flop={donneesRapport.global.chauffeursMoinsBienNotes} />
+                    <Separator/>
+                    <ExemplesCommentairesImpression top={donneesRapport.global.meilleursCommentaires} flop={donneesRapport.global.piresCommentaires} />
+                    <Separator/>
+                    <AnalyseCategorielleImpression resultats={donneesRapport.global.resultatsCategorisation} />
+                </CardContent>
+            </Card>
         </div>
 
         {/* Sections par dépôt */}
@@ -219,7 +198,7 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
             return (
                 <React.Fragment key={depot.nom}>
                     {/* Dépôt - Page 1 */}
-                    <div className="page-break break-after-page">
+                    <div className="page-break">
                         <h2 className="text-2xl font-bold mb-4 flex items-center">
                             <LogoDepotImpression nomDepot={depot.nom} />
                             Analyse du Dépôt: {depot.nom} - Page 1/2
@@ -241,12 +220,24 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
                     </div>
 
                     {/* Dépôt - Page 2 */}
-                    <div>
+                    <div className="page-break">
                         <h2 className="text-2xl font-bold mb-4 flex items-center">
                            <LogoDepotImpression nomDepot={depot.nom} />
                            Analyse du Dépôt: {depot.nom} - Page 2/2
                         </h2>
-                        <SectionAnalyseDetailleeImpression donneesRapport={depot} />
+                        <Card>
+                            <CardHeader className="p-3">
+                                <CardTitle className="text-base">Analyse Détaillée - {depot.nom}</CardTitle>
+                                <CardDescription className="text-xs">{depot.statistiques.totalLivraisons} livraisons analysées.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-3 space-y-3">
+                                 <ClassementsNotesChauffeurImpression top={depot.chauffeursMieuxNotes} flop={depot.chauffeursMoinsBienNotes} />
+                                <Separator/>
+                                <ExemplesCommentairesImpression top={depot.meilleursCommentaires} flop={depot.piresCommentaires} />
+                                <Separator/>
+                                <AnalyseCategorielleImpression resultats={depot.resultatsCategorisation} />
+                            </CardContent>
+                        </Card>
                     </div>
                 </React.Fragment>
             );
@@ -254,3 +245,5 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
     </div>
   );
 }
+
+    
