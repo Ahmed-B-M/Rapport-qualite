@@ -152,3 +152,5 @@ export interface ResultatSynthese {
 }
 
 export type ClassementMetrique = keyof Omit<StatistiquesAgregees, 'totalLivraisons' | 'nombreNotes' | 'sentimentMoyen' | 'nombreLivraisonsReussies' | 'nombreRetards' | 'nombreForceSurSite' | 'nombreForceSansContact' | 'nombreCompletionWeb'>;
+
+    

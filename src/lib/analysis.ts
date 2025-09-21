@@ -5,7 +5,7 @@ import {
     type DonneesRapportPerformance, type ClassementsKpiParEntite, type EntiteClassement, 
     type RapportDepot, type StatutLivraison, type DonneesSectionRapport, 
     type EntiteClassementNoteChauffeur,
-    type CategorieProbleme, type CommentaireCategorise, type ResultatsCategorisation, CATEGORIES_PROBLEMES
+    type CategorieProbleme, type CommentaireCategorise, type ResultatsCategorisation, CATEGORIES_PROBLEMES, ForceSurSite, TerminePar
 } from './definitions';
 import { CARTE_ENTREPOT_DEPOT, TRANSPORTEURS } from '@/lib/constants';
 import { parse, isValid, format } from 'date-fns';
@@ -96,6 +96,16 @@ export const traiterDonneesBrutes = (donneesBrutes: any[]): Livraison[] => {
     }
 
     const note = livraison.noteLivraison ? Number(livraison.noteLivraison) : undefined;
+    
+    const termineParBrut = String(livraison.terminePar).toLowerCase();
+    let terminePar: TerminePar;
+    if (termineParBrut.includes('web')) {
+        terminePar = 'web';
+    } else if (termineParBrut.includes('mobile')) {
+        terminePar = 'mobile';
+    } else {
+        terminePar = 'inconnu';
+    }
 
     return {
       ...livraison,
@@ -109,8 +119,8 @@ export const traiterDonneesBrutes = (donneesBrutes: any[]): Livraison[] => {
       sequence: Number(livraison.sequence) || 0,
       retardSecondes: Number(livraison.retardSecondes) || 0,
       forceSansContact: String(livraison.forceSansContact).toLowerCase() === 'true',
-      forceSurSite: livraison.forceSurSite === 'Oui' ? 'Oui' : 'Non',
-      terminePar: String(livraison.terminePar).toLowerCase() === 'web' ? 'mobile' : 'mobile',
+      forceSurSite: String(livraison.forceSurSite).toLowerCase() === 'oui' ? 'Oui' : 'Non',
+      terminePar: terminePar,
       noteLivraison: (note && note >= 1 && note <= 5) ? note : undefined,
       commentaireRetour: livraison.commentaireRetour ? String(livraison.commentaireRetour) : undefined,
       depot,
@@ -483,3 +493,6 @@ export const filtrerDonneesParDepot = (donnees: Livraison[], depot: string): Liv
 
 
 
+
+
+    
