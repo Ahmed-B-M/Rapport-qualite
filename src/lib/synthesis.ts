@@ -81,13 +81,16 @@ function generatePointsForScope(
         }
 
         if (value !== undefined) {
-             const formattedValue = `${value.toFixed(1)}${['successRate', 'punctualityRate', 'failureRate', 'forcedOnSiteRate', 'forcedNoContactRate', 'webCompletionRate'].includes(kpi) ? '%' : ''}`;
+             const formattedValue = `${value.toFixed(1)}${['successRate', 'punctualityRate', 'failureRate', 'forcedOnSiteRate', 'forcedNoContactRate', 'webCompletionRate'].includes(kpi) ? '%' : kpi === 'averageRating' ? '/5' : ''}`;
             if (result === 'strength') {
                 points.strengths.push(`Le **${kpiName}** (${formattedValue}) est un point fort, dépassant l'objectif.`);
                 overallScore++;
             } else if (result === 'weakness') {
                 points.weaknesses.push(`Le **${kpiName}** (${formattedValue}) est un point à améliorer, n'atteignant pas l'objectif.`);
                 overallScore--;
+            } else if (kpi === 'punctualityRate' || kpi === 'averageRating') {
+                // Force display for these important KPIs even if neutral
+                points.strengths.push(`La performance pour le **${kpiName}** est de **${formattedValue}**, proche de l'objectif.`);
             }
         }
     }
