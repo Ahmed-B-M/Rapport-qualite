@@ -177,26 +177,37 @@ const SectionAnalyseDetailleeImpression = ({ donneesRapport }: { donneesRapport:
 export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: RapportImprimableProps) {
   return (
     <div className="printable-content">
-        <div className="text-center mb-4 break-after-avoid flex items-center justify-center">
-            <Image src="/logos/logo-crf.jpg" alt="Logo CLCV" width={80} height={80} className="rounded-lg mr-4"/>
-            <div>
-                <h1 className="text-2xl font-bold text-primary">Rapport Qualité des Livraisons</h1>
-                <p className="text-sm text-muted-foreground">Analyse détaillée pour la période sélectionnée</p>
-            </div>
+        {/* Page de Titre */}
+        <div className="flex flex-col items-center justify-center h-screen text-center break-after-page">
+            <Image src="/logos/logo-crf.jpg" alt="Logo CLCV" width={120} height={120} className="rounded-lg mb-6"/>
+            <h1 className="text-4xl font-bold text-primary">Rapport Qualité des Livraisons</h1>
+            <p className="text-lg text-muted-foreground mt-2">Analyse détaillée pour la période sélectionnée</p>
+            <p className="text-sm text-muted-foreground mt-8">Généré le: {new Date().toLocaleDateString('fr-FR')}</p>
         </div>
 
-        <div className="break-inside-avoid">
-            <h2 className="text-xl font-bold mb-2">Conclusion & Recommandations</h2>
-            <ReactMarkdown components={{ p: ({ children }) => <p className="text-sm mb-2">{children}</p> }}>{donneesSynthese.conclusion}</ReactMarkdown>
-        </div>
-        
-        <Separator className="my-4"/>
-
-        {/* Section globale */}
-        <div className="mb-4 break-inside-avoid">
-            <h2 className="text-xl font-bold mb-2">Vision d'Ensemble</h2>
+        {/* Section globale - Page 1 */}
+        <div className="break-after-page">
+            <h2 className="text-2xl font-bold mb-4">Vision d'Ensemble - Page 1/2</h2>
             <SectionSyntheseImpression titre="Synthèse Globale" synthese={donneesSynthese.global} />
-            <SectionAnalyseDetailleeImpression donneesRapport={donneesRapport.global} />
+            <Card className="break-inside-avoid">
+                 <CardHeader className="p-3">
+                    <CardTitle className="text-base">Indicateurs de Performance Clés (KPIs)</CardTitle>
+                 </CardHeader>
+                 <CardContent className="p-3">
+                    <div className="grid grid-cols-4 gap-2">
+                        <CarteKpiImpression titre="Taux de Succès" valeur={donneesRapport.global.statistiques.tauxReussite} unite="%" />
+                        <CarteKpiImpression titre="Note Moyenne" valeur={donneesRapport.global.statistiques.noteMoyenne} unite="/5" />
+                        <CarteKpiImpression titre="Note Comms" valeur={donneesRapport.global.statistiques.sentimentMoyen} unite="/10" />
+                        <CarteKpiImpression titre="Ponctualité" valeur={donneesRapport.global.statistiques.tauxPonctualite} unite="%" />
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+
+        {/* Section globale - Page 2 */}
+        <div>
+             <h2 className="text-2xl font-bold mb-4">Vision d'Ensemble - Page 2/2</h2>
+             <SectionAnalyseDetailleeImpression donneesRapport={donneesRapport.global} />
         </div>
 
         {/* Sections par dépôt */}
@@ -205,16 +216,42 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
             if (!syntheseDepot) return null;
             
             return (
-                <div key={depot.nom} className="page-break mb-4 break-inside-avoid">
-                    <h2 className="text-xl font-bold mb-2 flex items-center">
-                        <LogoDepotImpression nomDepot={depot.nom} />
-                        Analyse du Dépôt: {depot.nom}
-                    </h2>
-                    <SectionSyntheseImpression titre={`Synthèse ${depot.nom}`} synthese={syntheseDepot} />
-                    <SectionAnalyseDetailleeImpression donneesRapport={depot} />
-                </div>
+                <React.Fragment key={depot.nom}>
+                    {/* Dépôt - Page 1 */}
+                    <div className="page-break break-after-page">
+                        <h2 className="text-2xl font-bold mb-4 flex items-center">
+                            <LogoDepotImpression nomDepot={depot.nom} />
+                            Analyse du Dépôt: {depot.nom} - Page 1/2
+                        </h2>
+                        <SectionSyntheseImpression titre={`Synthèse ${depot.nom}`} synthese={syntheseDepot} />
+                        <Card className="break-inside-avoid">
+                             <CardHeader className="p-3">
+                                <CardTitle className="text-base">Indicateurs de Performance Clés (KPIs) - {depot.nom}</CardTitle>
+                             </CardHeader>
+                             <CardContent className="p-3">
+                                <div className="grid grid-cols-4 gap-2">
+                                    <CarteKpiImpression titre="Taux de Succès" valeur={depot.statistiques.tauxReussite} unite="%" />
+                                    <CarteKpiImpression titre="Note Moyenne" valeur={depot.statistiques.noteMoyenne} unite="/5" />
+                                    <CarteKpiImpression titre="Note Comms" valeur={depot.statistiques.sentimentMoyen} unite="/10" />
+                                    <CarteKpiImpression titre="Ponctualité" valeur={depot.statistiques.tauxPonctualite} unite="%" />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Dépôt - Page 2 */}
+                    <div>
+                        <h2 className="text-2xl font-bold mb-4 flex items-center">
+                           <LogoDepotImpression nomDepot={depot.nom} />
+                           Analyse du Dépôt: {depot.nom} - Page 2/2
+                        </h2>
+                        <SectionAnalyseDetailleeImpression donneesRapport={depot} />
+                    </div>
+                </React.Fragment>
             );
         })}
     </div>
   );
 }
+
+    
