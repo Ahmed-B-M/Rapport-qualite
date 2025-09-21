@@ -1,6 +1,12 @@
 
 
-import { type Livraison, type StatistiquesAgregees, type PerformanceChauffeur, type DonneesRapportPerformance, type ClassementsKpiParEntite, type EntiteClassement, type RapportDepot, type StatutLivraison, type DonneesSectionRapport, type EntiteClassementNoteChauffeur } from './definitions';
+import { 
+    type Livraison, type StatistiquesAgregees, type PerformanceChauffeur, 
+    type DonneesRapportPerformance, type ClassementsKpiParEntite, type EntiteClassement, 
+    type RapportDepot, type StatutLivraison, type DonneesSectionRapport, 
+    type EntiteClassementNoteChauffeur,
+    type CategorieProbleme, type CommentaireCategorise, type ResultatsCategorisation, CATEGORIES_PROBLEMES
+} from './definitions';
 import { CARTE_ENTREPOT_DEPOT, TRANSPORTEURS } from '@/lib/constants';
 import { parse, isValid, format } from 'date-fns';
 import { analyzeSentiment, getTopComments } from './sentiment';
@@ -218,6 +224,64 @@ export const getDonneesPerformanceChauffeur = (donnees: Livraison[] | undefined,
     });
 };
 
+// --- Analyse sémantique et catégorisation des commentaires ---
+
+const MOTS_CLES_CATEGORIES: Record<CategorieProbleme, string[]> = {
+    "casse articles": ["casse", "cassé", "abimé", "abîmé", "endommagé", "ecrasé", "écrasé", "produit ouvert"],
+    "article manquant": ["manquant", "manque", "oubli", "pas tout", "pas reçu", "incomplet", "pas eu"],
+    "ponctualité": ["retard", "tard", "tôt", "en avance", "pas à l'heure", "attente", "attendu"],
+    "rupture chaine de froid": ["chaud", "pas frais", "pas froid", "congelé", "décongelé"],
+    "attitude livreur": ["pas aimable", "agressif", "impoli", "désagréable", "pas bonjour", "comportement"],
+    "autre": [] 
+};
+
+
+function categoriserCommentaire(commentaire: string): CategorieProbleme {
+    const texte = commentaire.toLowerCase();
+    for (const categorie in MOTS_CLES_CATEGORIES) {
+        if (categorie === 'autre') continue;
+        const motsCles = MOTS_CLES_CATEGORIES[categorie as CategorieProbleme];
+        if (motsCles.some(mot => texte.includes(mot))) {
+            return categorie as CategorieProbleme;
+        }
+    }
+    return "autre";
+}
+
+function analyserCommentairesNegatifs(livraisons: Livraison[]): ResultatsCategorisation {
+    const commentairesNegatifs = livraisons.filter(l => 
+        l.commentaireRetour && 
+        l.commentaireRetour.trim().length > 5 &&
+        analyzeSentiment(l.commentaireRetour, l.noteLivraison).score < 5
+    );
+
+    const commentairesCategorises: CommentaireCategorise[] = commentairesNegatifs.map(l => ({
+        categorie: categoriserCommentaire(l.commentaireRetour!),
+        commentaire: l.commentaireRetour!,
+        chauffeur: l.chauffeur
+    }));
+
+    const resultats: ResultatsCategorisation = {
+        "casse articles": [], "article manquant": [], "ponctualité": [], 
+        "rupture chaine de froid": [], "attitude livreur": [], "autre": []
+    };
+
+    CATEGORIES_PROBLEMES.forEach(cat => {
+        const commentairesDeLaCategorie = commentairesCategorises.filter(c => c.categorie === cat);
+        const chauffeursConcernes: Record<string, number> = {};
+
+        commentairesDeLaCategorie.forEach(c => {
+            chauffeursConcernes[c.chauffeur] = (chauffeursConcernes[c.chauffeur] || 0) + 1;
+        });
+
+        resultats[cat] = Object.entries(chauffeursConcernes)
+            .map(([nom, recurrence]) => ({ nom, recurrence }))
+            .sort((a, b) => b.recurrence - a.recurrence);
+    });
+
+    return resultats;
+}
+
 // --- Génération de rapport ---
 
 const getDonneesSectionRapport = (donnees: Livraison[], noteMoyenneGlobale: number): DonneesSectionRapport => {
@@ -296,6 +360,7 @@ const getDonneesSectionRapport = (donnees: Livraison[], noteMoyenneGlobale: numb
         piresCommentaires: getTopComments(donnees, 'négatif', 3),
         chauffeursMieuxNotes: classementsNotesChauffeur.top,
         chauffeursMoinsBienNotes: classementsNotesChauffeur.flop,
+        resultatsCategorisation: analyserCommentairesNegatifs(donnees),
     };
 };
 

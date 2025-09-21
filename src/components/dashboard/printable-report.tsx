@@ -7,11 +7,15 @@ import {
     type DonneesSectionRapport,
     type Objectifs,
     type EntiteClassementNoteChauffeur,
+    type ExempleCommentaire,
+    type ResultatsCategorisation,
+    type CategorieProbleme,
+    CATEGORIES_PROBLEMES
 } from '@/lib/definitions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
-    ThumbsUp, ThumbsDown, ArrowRightCircle, Target, Smile, Frown
+    ThumbsUp, ThumbsDown, ArrowRightCircle, Target, Smile, Frown, MessageSquare, ClipboardList
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import ReactMarkdown from 'react-markdown';
@@ -97,6 +101,46 @@ const ClassementsNotesChauffeurImpression = ({ top, flop }: { top: EntiteClassem
     </div>
 );
 
+const ExemplesCommentairesImpression = ({ top, flop }: { top: ExempleCommentaire[], flop: ExempleCommentaire[] }) => (
+    <div className="break-inside-avoid mt-4">
+        <h4 className="text-base font-semibold mb-2 flex items-center"><MessageSquare className="h-4 w-4 mr-2"/>Exemples de Commentaires</h4>
+        <div className="grid grid-cols-2 gap-x-4">
+            <div>
+                <h5 className="font-semibold flex items-center text-green-600 mb-1 text-sm"><ThumbsUp className="h-4 w-4 mr-2" /> Positifs</h5>
+                {top.slice(0, 2).map((c, i) => (<div key={i} className="border-l-2 border-green-500 pl-2 mb-2 text-xs italic">"{c.commentaire}"<p className="text-xs text-gray-500 mt-1 not-italic">- {c.chauffeur}</p></div>))}
+            </div>
+            <div>
+                <h5 className="font-semibold flex items-center text-red-600 mb-1 text-sm"><ThumbsDown className="h-4 w-4 mr-2" /> Négatifs</h5>
+                 {flop.slice(0, 2).map((c, i) => (<div key={i} className="border-l-2 border-red-500 pl-2 mb-2 text-xs italic">"{c.commentaire}"<p className="text-xs text-gray-500 mt-1 not-italic">- {c.chauffeur}</p></div>))}
+            </div>
+        </div>
+    </div>
+);
+
+const AnalyseCategorielleImpression = ({ resultats }: { resultats: ResultatsCategorisation }) => (
+    <div className="mt-4 break-inside-avoid">
+        <h4 className="text-base font-semibold mb-2 flex items-center"><ClipboardList className="h-4 w-4 mr-2"/>Analyse des Commentaires Négatifs</h4>
+        <div className="space-y-3">
+            {CATEGORIES_PROBLEMES.map(cat => {
+                const chauffeurs = resultats[cat];
+                if (chauffeurs.length === 0) return null;
+
+                return (
+                    <div key={cat} className="p-2 border rounded-md text-xs">
+                        <h5 className="font-bold capitalize mb-1">{cat}</h5>
+                        <ul className="list-disc pl-4">
+                            {chauffeurs.map(chauffeur => (
+                                <li key={chauffeur.nom}>{chauffeur.nom} <span className="text-gray-500">({chauffeur.recurrence} cas)</span></li>
+                            ))}
+                        </ul>
+                    </div>
+                );
+            })}
+        </div>
+    </div>
+);
+
+
 const SectionAnalyseDetailleeImpression = ({ donneesRapport }: { donneesRapport: DonneesSectionRapport }) => (
     <Card className="mb-4 break-inside-avoid">
         <CardHeader className="p-3">
@@ -122,6 +166,8 @@ const SectionAnalyseDetailleeImpression = ({ donneesRapport }: { donneesRapport:
                     <TableauClassementSimpleImpression titre="Taux de Succès (Transporteurs)" donnees={donneesRapport.classementsKpi.transporteurs.tauxReussite.top} unite="%" />
                  </div>
             </div>
+            <ExemplesCommentairesImpression top={donneesRapport.meilleursCommentaires} flop={donneesRapport.piresCommentaires} />
+            <AnalyseCategorielleImpression resultats={donneesRapport.resultatsCategorisation} />
         </CardContent>
     </Card>
 );
