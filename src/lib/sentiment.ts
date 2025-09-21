@@ -86,8 +86,8 @@ export function getTopComments(
     sentimentType: 'positive' | 'negative',
     count: number = 3
   ): { comment: string; score: number; driver: string }[] {
-    const commentedDeliveries = deliveries
-      .filter(d => d.feedbackComment && d.feedbackComment.trim().length > 1) // Lowered threshold to include "OK" etc.
+    const allComments = deliveries
+      .filter(d => d.feedbackComment && d.feedbackComment.trim().length > 1)
       .map(d => ({
         comment: d.feedbackComment!,
         score: analyzeSentiment(d.feedbackComment!, d.deliveryRating).score,
@@ -95,10 +95,12 @@ export function getTopComments(
       }));
   
     if (sentimentType === 'positive') {
-      commentedDeliveries.sort((a, b) => b.score - a.score);
+      const positiveComments = allComments.filter(c => c.score > 7);
+      positiveComments.sort((a, b) => b.score - a.score);
+      return positiveComments.slice(0, count);
     } else {
-      commentedDeliveries.sort((a, b) => a.score - b.score);
+      const negativeComments = allComments.filter(c => c.score < 4);
+      negativeComments.sort((a, b) => a.score - b.score);
+      return negativeComments.slice(0, count);
     }
-  
-    return commentedDeliveries.slice(0, count);
 }
