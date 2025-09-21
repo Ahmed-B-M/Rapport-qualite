@@ -240,14 +240,15 @@ const MOTS_CLES_CATEGORIES: { categorie: CategorieProbleme, motsCles: string[] }
         categorie: "casse articles", 
         motsCles: [
             "casse", "cassé", "abimé", "abîmé", "endommagé", "ecrasé", "écrasé", "produit ouvert", 
-            "huevos rotos", "état lamentable", "bouteille ouverte", "trempés", "mal préparée", "mal preparée"
+            "huevos rotos", "état lamentable", "bouteille ouverte", "trempés", "mal préparée", "mal preparée",
+            "endommagés"
         ]
     },
     { 
         categorie: "article manquant", 
         motsCles: [
             "manquant", "manque", "oubli", "pas tout", "pas reçu", "incomplet", "pas eu", 
-            "produit manquant", "sac qui ne nous a pas été livré", "manquait", "pris"
+            "produit manquant", "sac qui ne nous a pas été livré", "manquait", "pris", "mauvaise commande"
         ]
     },
     { 
@@ -472,6 +473,7 @@ export const filtrerDonneesParDepot = (donnees: Livraison[], depot: string): Liv
     if (depot === 'all') return donnees;
     return donnees.filter(l => l.depot === depot);
 };
+
 
 
 
