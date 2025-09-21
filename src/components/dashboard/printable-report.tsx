@@ -5,21 +5,21 @@ import Image from "next/image";
 import { 
     type DonneesRapportPerformance, 
     type ResultatSynthese,
-    type DonneesSectionRapport,
     type Objectifs,
     type EntiteClassementNoteChauffeur,
     type ExempleCommentaire,
     type ResultatsCategorisation,
-    type CategorieProbleme,
     CATEGORIES_PROBLEMES
 } from '@/lib/definitions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
-    ThumbsUp, ThumbsDown, ArrowRightCircle, Target, Smile, Frown, MessageSquare, ClipboardList
+    ThumbsUp, ThumbsDown, ArrowRightCircle, Target, Smile, Frown, MessageSquare, ClipboardList, CheckCircle, XCircle
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import ReactMarkdown from 'react-markdown';
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 interface RapportImprimableProps {
   donneesRapport: DonneesRapportPerformance;
@@ -37,52 +37,80 @@ const LogoDepotImpression = ({ nomDepot, entrepot }: { nomDepot: string, entrepo
 
 // --- Composants d'aide réutilisables pour l'impression ---
 
-const rendrePoints = (points: string[], icone: React.ReactNode) => (
-    <ul className="space-y-2">
-        {points.map((point, index) => (
-            <li key={index} className="flex items-start">
-                <div className="flex-shrink-0 mr-2 mt-1">{icone}</div>
-                <ReactMarkdown components={{ p: ({ children }) => <p className="mb-0 text-sm">{children}</p> }}>{point}</ReactMarkdown>
-            </li>
-        ))}
-    </ul>
-);
+const KpiBar = ({ titre, valeur, objectif, meilleurSiEleve, unite = '%' }: { titre: string, valeur: number | undefined, objectif: number, meilleurSiEleve: boolean, unite?: string }) => {
+    if (valeur === undefined) return null;
 
-const SectionSyntheseImpression = ({ titre, synthese }: { titre: string, synthese: { forces: string[], faiblesses: string[] } }) => (
+    const atteintObjectif = meilleurSiEleve ? valeur >= objectif : valeur <= objectif;
+    const progression = meilleurSiEleve ? (valeur / objectif) * 100 : (objectif / valeur) * 100;
+
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-1">
+                <span className="text-xs font-medium">{titre}</span>
+                <span className={cn("text-xs font-bold", atteintObjectif ? "text-green-600" : "text-red-600")}>
+                    {valeur.toFixed(2)}{unite}
+                </span>
+            </div>
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Progress value={Math.min(100, progression)} className={cn("h-2", !atteintObjectif && "[&>div]:bg-red-500")} />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>Objectif: {objectif.toFixed(2)}{unite}</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        </div>
+    )
+}
+
+const SectionSyntheseKPIs = ({ titre, synthese, donneesRapport, objectifs }: { 
+    titre: string, 
+    synthese: { forces: string[], faiblesses: string[] },
+    donneesRapport: {
+        statistiques: {
+            tauxReussite: number | undefined;
+            noteMoyenne: number | undefined;
+            sentimentMoyen: number | undefined;
+            tauxPonctualite: number | undefined;
+        }
+    },
+    objectifs: Objectifs
+}) => (
     <Card className="mb-4 break-inside-avoid">
         <CardHeader className="p-3"><CardTitle className="flex items-center text-base"><Target className="h-4 w-4 mr-2" />{titre}</CardTitle></CardHeader>
-        <CardContent className="p-3">
-            <h4 className="font-semibold text-green-700 flex items-center mb-2 text-sm"><ThumbsUp className="h-4 w-4 mr-2" />Points forts</h4>
-            {synthese.forces.length > 0 ? rendrePoints(synthese.forces, <ArrowRightCircle className="h-4 w-4 text-green-500" />) : <p className="text-xs text-muted-foreground">Aucun.</p>}
-            <Separator className="my-2"/>
-            <h4 className="font-semibold text-red-700 flex items-center mb-2 text-sm"><ThumbsDown className="h-4 w-4 mr-2" />Axes d'amélioration</h4>
-            {synthese.faiblesses.length > 0 ? rendrePoints(synthese.faiblesses, <ArrowRightCircle className="h-4 w-4 text-red-500" />) : <p className="text-xs text-muted-foreground">Aucun.</p>}
+        <CardContent className="p-3 space-y-3">
+            <div>
+                 <h4 className="font-semibold mb-2 text-sm">Indicateurs de Performance Clés (KPIs)</h4>
+                 <div className="space-y-2">
+                    <KpiBar titre="Taux de Succès" valeur={donneesRapport.statistiques.tauxReussite} objectif={100 - objectifs.tauxEchec} meilleurSiEleve={true} />
+                    <KpiBar titre="Note Moyenne" valeur={donneesRapport.statistiques.noteMoyenne} objectif={objectifs.noteMoyenne} meilleurSiEleve={true} unite="/5" />
+                    <KpiBar titre="Note des Commentaires" valeur={donneesRapport.statistiques.sentimentMoyen} objectif={objectifs.sentimentMoyen} meilleurSiEleve={true} unite="/10" />
+                    <KpiBar titre="Ponctualité" valeur={donneesRapport.statistiques.tauxPonctualite} objectif={objectifs.tauxPonctualite} meilleurSiEleve={true} />
+                 </div>
+            </div>
+             <Separator/>
+            <div>
+                <h4 className="font-semibold text-green-700 flex items-center mb-2 text-sm"><ThumbsUp className="h-4 w-4 mr-2" />Points forts</h4>
+                {synthese.forces.length > 0 ? (
+                    <ul className="list-disc pl-4 space-y-1">
+                        {synthese.forces.map((point, index) => <li key={index} className="text-xs">{point}</li>)}
+                    </ul>
+                ) : <p className="text-xs text-muted-foreground">Aucun.</p>}
+            </div>
+            <div>
+                <h4 className="font-semibold text-red-700 flex items-center mb-2 text-sm"><ThumbsDown className="h-4 w-4 mr-2" />Axes d'amélioration</h4>
+                 {synthese.faiblesses.length > 0 ? (
+                    <ul className="list-disc pl-4 space-y-1">
+                        {synthese.faiblesses.map((point, index) => <li key={index} className="text-xs">{point}</li>)}
+                    </ul>
+                ) : <p className="text-xs text-muted-foreground">Aucun.</p>}
+            </div>
         </CardContent>
     </Card>
 );
 
-const CarteKpiImpression = ({ titre, valeur, unite = '%' }: { titre: string, valeur: number | undefined, unite?: string }) => (
-    <div className="p-2 border rounded-md bg-gray-50">
-      <h4 className="text-xs text-muted-foreground">{titre}</h4>
-      <p className="text-lg font-bold mt-1">{valeur !== undefined ? `${valeur.toFixed(2)}${unite}` : 'N/A'}</p>
-    </div>
-);
-
-const TableauClassementSimpleImpression = ({ titre, donnees, unite }: { titre: string, donnees: any[], unite: string }) => (
-    <div className="break-inside-avoid">
-        <h5 className="font-semibold mb-1 text-sm">{titre}</h5>
-        <Table>
-            <TableBody>
-                {donnees.length > 0 ? donnees.map(item => (
-                    <TableRow key={item.nom}>
-                        <TableCell className="text-xs p-1">{item.nom}</TableCell>
-                        <TableCell className="text-right font-bold text-xs p-1">{item.valeur.toFixed(2)}{unite}</TableCell>
-                    </TableRow>
-                )) : <TableRow><TableCell colSpan={2} className="text-muted-foreground text-center text-xs">Aucune donnée</TableCell></TableRow>}
-            </TableBody>
-        </Table>
-    </div>
-);
 
 const ClassementsNotesChauffeurImpression = ({ top, flop }: { top: EntiteClassementNoteChauffeur[], flop: EntiteClassementNoteChauffeur[] }) => (
     <div className="break-inside-avoid">
@@ -160,6 +188,7 @@ const AnalyseCategorielleImpression = ({ resultats, totalCommentairesNegatifs, a
 
 
 // --- Composant principal imprimable ---
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: RapportImprimableProps) {
   return (
@@ -171,45 +200,34 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
             <p className="text-sm text-muted-foreground mt-8">Généré le: {new Date().toLocaleDateString('fr-FR')}</p>
         </div>
 
-        {/* Section globale - Page 1 */}
+        {/* Section globale */}
         <div className="page-break">
-            <h2 className="text-2xl font-bold mb-4">Vision d'Ensemble - Page 1/2</h2>
-            <SectionSyntheseImpression titre="Synthèse Globale" synthese={donneesSynthese.global} />
-            <Card className="break-inside-avoid">
-                 <CardHeader className="p-3">
-                    <CardTitle className="text-base">Indicateurs de Performance Clés (KPIs)</CardTitle>
-                 </CardHeader>
-                 <CardContent className="p-3">
-                    <div className="grid grid-cols-4 gap-2">
-                        <CarteKpiImpression titre="Taux de Succès" valeur={donneesRapport.global.statistiques.tauxReussite} unite="%" />
-                        <CarteKpiImpression titre="Note Moyenne" valeur={donneesRapport.global.statistiques.noteMoyenne} unite="/5" />
-                        <CarteKpiImpression titre="Note Comms" valeur={donneesRapport.global.statistiques.sentimentMoyen} unite="/10" />
-                        <CarteKpiImpression titre="Ponctualité" valeur={donneesRapport.global.statistiques.tauxPonctualite} unite="%" />
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-
-        {/* Section globale - Page 2 */}
-        <div className="page-break">
-             <h2 className="text-2xl font-bold mb-4">Vision d'Ensemble - Page 2/2</h2>
-             <Card>
-                <CardHeader className="p-3">
-                    <CardTitle className="text-base">Analyse Détaillée</CardTitle>
-                    <CardDescription className="text-xs">{donneesRapport.global.statistiques.totalLivraisons} livraisons analysées.</CardDescription>
-                </CardHeader>
-                <CardContent className="p-3 space-y-3">
-                    <ClassementsNotesChauffeurImpression top={donneesRapport.global.chauffeursMieuxNotes} flop={donneesRapport.global.chauffeursMoinsBienNotes} />
-                    <Separator/>
-                    <ExemplesCommentairesImpression top={donneesRapport.global.meilleursCommentaires} flop={donneesRapport.global.piresCommentaires} />
-                    <Separator/>
-                    <AnalyseCategorielleImpression 
-                        resultats={donneesRapport.global.resultatsCategorisation} 
-                        totalCommentairesNegatifs={donneesRapport.global.totalCommentairesNegatifs}
-                        afficherDetailsCommentaires={false}
-                    />
-                </CardContent>
-            </Card>
+            <h2 className="text-2xl font-bold mb-4">Vision d'Ensemble</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                 <SectionSyntheseKPIs 
+                    titre="Synthèse Globale"
+                    synthese={donneesSynthese.global}
+                    donneesRapport={donneesRapport.global}
+                    objectifs={objectifs}
+                />
+                <Card>
+                    <CardHeader className="p-3">
+                        <CardTitle className="text-base">Analyse Détaillée</CardTitle>
+                        <CardDescription className="text-xs">{donneesRapport.global.statistiques.totalLivraisons} livraisons analysées.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-3 space-y-3">
+                        <ClassementsNotesChauffeurImpression top={donneesRapport.global.chauffeursMieuxNotes} flop={donneesRapport.global.chauffeursMoinsBienNotes} />
+                        <Separator/>
+                        <ExemplesCommentairesImpression top={donneesRapport.global.meilleursCommentaires} flop={donneesRapport.global.piresCommentaires} />
+                        <Separator/>
+                        <AnalyseCategorielleImpression 
+                            resultats={donneesRapport.global.resultatsCategorisation} 
+                            totalCommentairesNegatifs={donneesRapport.global.totalCommentairesNegatifs}
+                            afficherDetailsCommentaires={false}
+                        />
+                    </CardContent>
+                </Card>
+            </div>
         </div>
 
         {/* Sections par dépôt */}
@@ -220,36 +238,19 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
             const titreDepot = depot.nom === 'Magasin' ? `Magasin (${depot.entrepot})` : depot.nom;
 
             return (
-                <React.Fragment key={titreDepot}>
-                    {/* Dépôt - Page 1 */}
-                    <div className="page-break">
-                        <h2 className="text-2xl font-bold mb-4 flex items-center">
-                            <LogoDepotImpression nomDepot={depot.nom} entrepot={depot.entrepot} />
-                            {titreDepot}
-                        </h2>
-                        <SectionSyntheseImpression titre={`Synthèse ${titreDepot}`} synthese={syntheseDepot} />
-                        <Card className="break-inside-avoid">
-                             <CardHeader className="p-3">
-                                <CardTitle className="text-base">Indicateurs de Performance Clés (KPIs) - {titreDepot}</CardTitle>
-                             </CardHeader>
-                             <CardContent className="p-3">
-                                <div className="grid grid-cols-4 gap-2">
-                                    <CarteKpiImpression titre="Taux de Succès" valeur={depot.statistiques.tauxReussite} unite="%" />
-                                    <CarteKpiImpression titre="Note Moyenne" valeur={depot.statistiques.noteMoyenne} unite="/5" />
-                                    <CarteKpiImpression titre="Note Comms" valeur={depot.statistiques.sentimentMoyen} unite="/10" />
-                                    <CarteKpiImpression titre="Ponctualité" valeur={depot.statistiques.tauxPonctualite} unite="%" />
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    {/* Dépôt - Page 2 */}
-                    <div className="page-break">
-                        <h2 className="text-2xl font-bold mb-4 flex items-center">
-                           <LogoDepotImpression nomDepot={depot.nom} entrepot={depot.entrepot} />
-                           {titreDepot} - Analyse Détaillée
-                        </h2>
-                        <Card>
+                <div className="page-break" key={titreDepot}>
+                    <h2 className="text-2xl font-bold mb-4 flex items-center">
+                        <LogoDepotImpression nomDepot={depot.nom} entrepot={depot.entrepot} />
+                        {titreDepot}
+                    </h2>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                        <SectionSyntheseKPIs 
+                            titre={`Synthèse ${titreDepot}`}
+                            synthese={syntheseDepot}
+                            donneesRapport={depot}
+                            objectifs={objectifs}
+                        />
+                         <Card>
                             <CardHeader className="p-3">
                                 <CardTitle className="text-base">Analyse Détaillée - {titreDepot}</CardTitle>
                                 <CardDescription className="text-xs">{depot.statistiques.totalLivraisons} livraisons analysées.</CardDescription>
@@ -267,7 +268,7 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
                             </CardContent>
                         </Card>
                     </div>
-                </React.Fragment>
+                </div>
             );
         })}
     </div>
