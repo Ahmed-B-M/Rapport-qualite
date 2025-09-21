@@ -233,14 +233,14 @@ const MOTS_CLES_CATEGORIES: { categorie: CategorieProbleme, motsCles: string[] }
             "pas aimable", "agressif", "impoli", "désagréable", "pas bonjour", "comportement", 
             "odieux", "odieuse", "incorrecte", "mal poli", "catastrophe", "horrible", "pas serviable", 
             "agressive", "pressé", "impatient", "sur le trottoir", "expéditif", "fait le signe pour avoir la pièce",
-            "pas professionnel", "pas très aimable", "débrouillez vous"
+            "pas professionnel", "pas très aimable", "débrouillez vous", "davantage d'aide"
         ]
     },
     { 
         categorie: "casse articles", 
         motsCles: [
             "casse", "cassé", "abimé", "abîmé", "endommagé", "ecrasé", "écrasé", "produit ouvert", 
-            "huevos rotos", "état lamentable", "bouteille ouverte", "trempés", "mal préparée"
+            "huevos rotos", "état lamentable", "bouteille ouverte", "trempés", "mal préparée", "mal preparée"
         ]
     },
     { 
@@ -472,6 +472,7 @@ export const filtrerDonneesParDepot = (donnees: Livraison[], depot: string): Liv
     if (depot === 'all') return donnees;
     return donnees.filter(l => l.depot === depot);
 };
+
 
 
 
