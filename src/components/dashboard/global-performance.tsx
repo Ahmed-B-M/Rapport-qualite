@@ -75,13 +75,20 @@ export function GlobalPerformance({ data, depotsUniques, depotActif, setDepotAct
         <div className="text-xs text-muted-foreground">({nombre})</div>
     </div>
   );
+
+  const renderNoteCell = (note: number | undefined, nombre: number) => (
+    <div className="text-right">
+        <div>{note ? note.toFixed(2) : 'N/A'}</div>
+        <div className="text-xs text-muted-foreground">({nombre})</div>
+    </div>
+  );
   
   return (
     <Card className="col-span-full">
       <CardHeader>
         <div className="flex justify-between items-start md:items-center flex-col md:flex-row gap-4">
             <div>
-                <CardTitle>Performance Globale Détaillée</CardTitle>
+                <CardTitle>Performance Détaillée par Livreur</CardTitle>
                 <CardDescription>
                 Analysez et croisez les données par dépôt, transporteur et livreur.
                 </CardDescription>
@@ -90,13 +97,7 @@ export function GlobalPerformance({ data, depotsUniques, depotActif, setDepotAct
                 <Download className="mr-2 h-4 w-4" /> Exporter en Excel
             </Button>
         </div>
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Select value={depotActif} onValueChange={setDepotActif}>
-                <SelectTrigger><SelectValue placeholder="Filtrer par dépôt..." /></SelectTrigger>
-                <SelectContent>
-                {depotsUniques.map(d => <SelectItem key={d} value={d}>{d === 'all' ? 'Tous les dépôts' : d}</SelectItem>)}
-                </SelectContent>
-            </Select>
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select value={filtreTransporteur} onValueChange={setFiltreTransporteur}>
                 <SelectTrigger><SelectValue placeholder="Filtrer par transporteur..." /></SelectTrigger>
                 <SelectContent>
@@ -113,7 +114,6 @@ export function GlobalPerformance({ data, depotsUniques, depotActif, setDepotAct
               <TableRow>
                 <TableHead className="w-[200px]">Livreur</TableHead>
                 <TableHead>Transporteur</TableHead>
-                <TableHead>Dépôt</TableHead>
                 <TableHead className="text-right">Total Liv.</TableHead>
                 <TableHead className="text-right">Succès</TableHead>
                 <TableHead className="text-right">Note Moy.</TableHead>
@@ -129,10 +129,9 @@ export function GlobalPerformance({ data, depotsUniques, depotActif, setDepotAct
                 <TableRow key={item.chauffeur}>
                   <TableCell className="font-medium truncate max-w-[200px]">{item.chauffeur}</TableCell>
                   <TableCell>{item.transporteur}</TableCell>
-                  <TableCell>{item.depot}</TableCell>
                   <TableCell className="text-right">{item.totalLivraisons}</TableCell>
                   <TableCell>{renderCell(item.tauxReussite, item.nombreLivraisonsReussies)}</TableCell>
-                  <TableCell>{renderCell(item.noteMoyenne || 0, item.nombreNotes)}</TableCell>
+                  <TableCell>{renderNoteCell(item.noteMoyenne, item.nombreNotes)}</TableCell>
                   <TableCell>{renderCell(item.tauxPonctualite, item.totalLivraisons - item.nombreRetards)}</TableCell>
                   <TableCell>{renderCell(item.tauxNotation, item.nombreNotes)}</TableCell>
                   <TableCell>{renderCell(item.tauxForceSurSite, item.nombreForceSurSite)}</TableCell>
@@ -140,6 +139,13 @@ export function GlobalPerformance({ data, depotsUniques, depotActif, setDepotAct
                   <TableCell>{renderCell(item.tauxCompletionWeb, item.nombreCompletionWeb)}</TableCell>
                 </TableRow>
               ))}
+               {donneesFiltrees.length === 0 && (
+                <TableRow>
+                    <TableCell colSpan={10} className="h-24 text-center">
+                        Aucun livreur trouvé pour cette sélection.
+                    </TableCell>
+                </TableRow>
+               )}
             </TableBody>
           </Table>
         </ScrollArea>
