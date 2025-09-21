@@ -43,25 +43,32 @@ export function GlobalPerformance({ data, depotsUniques, depotActif, setDepotAct
   }, [donneesPerformance, filtreTransporteur, filtreChauffeur]);
   
   const gererExportation = () => {
-      const donneesAExporter = donneesFiltrees.map(item => ({
-        "Livreur": item.chauffeur,
-        "Transporteur": item.transporteur,
-        "Dépôt": item.depot,
-        "Total Livraisons": item.totalLivraisons,
-        "Taux de Succès (%)": item.tauxReussite.toFixed(2),
-        "Nb Livraisons Réussies": item.nombreLivraisonsReussies,
-        "Note Moyenne": item.noteMoyenne ? item.noteMoyenne.toFixed(2) : 'N/A',
-        "Nb Notes": item.nombreNotes,
-        "Ponctualité (%)": item.tauxPonctualite.toFixed(2),
-        "Nb Retards": item.nombreRetards,
-        "Taux de Notation (%)": item.tauxNotation.toFixed(2),
-        "Taux Forcé sur site (%)": item.tauxForceSurSite.toFixed(2),
-        "Nb Forcé sur site": item.nombreForceSurSite,
-        "Taux Forcé sans contact (%)": item.tauxForceSansContact.toFixed(2),
-        "Nb Forcé sans contact": item.nombreForceSansContact,
-        "Taux Validation Web (%)": item.tauxCompletionWeb.toFixed(2),
-        "Nb Validation Web": item.nombreCompletionWeb,
-      }));
+      const donneesAExporter = donneesFiltrees.map(item => {
+        const livraisonPourChauffeur = data?.find(d => d.chauffeur === item.chauffeur);
+        const depotAAfficher = item.depot === 'Magasin' && livraisonPourChauffeur
+            ? `${item.depot} (${livraisonPourChauffeur.entrepot})`
+            : item.depot;
+
+        return {
+            "Livreur": item.chauffeur,
+            "Transporteur": item.transporteur,
+            "Dépôt": depotAAfficher,
+            "Total Livraisons": item.totalLivraisons,
+            "Taux de Succès (%)": item.tauxReussite.toFixed(2),
+            "Nb Livraisons Réussies": item.nombreLivraisonsReussies,
+            "Note Moyenne": item.noteMoyenne ? item.noteMoyenne.toFixed(2) : 'N/A',
+            "Nb Notes": item.nombreNotes,
+            "Ponctualité (%)": item.tauxPonctualite.toFixed(2),
+            "Nb Retards": item.nombreRetards,
+            "Taux de Notation (%)": item.tauxNotation.toFixed(2),
+            "Taux Forcé sur site (%)": item.tauxForceSurSite.toFixed(2),
+            "Nb Forcé sur site": item.nombreForceSurSite,
+            "Taux Forcé sans contact (%)": item.tauxForceSansContact.toFixed(2),
+            "Nb Forcé sans contact": item.nombreForceSansContact,
+            "Taux Validation Web (%)": item.tauxCompletionWeb.toFixed(2),
+            "Nb Validation Web": item.nombreCompletionWeb,
+        }
+      });
 
       const feuilleCalcul = XLSX.utils.json_to_sheet(donneesAExporter);
       const classeur = XLSX.utils.book_new();
@@ -82,6 +89,16 @@ export function GlobalPerformance({ data, depotsUniques, depotActif, setDepotAct
         <div className="text-xs text-muted-foreground">({nombre})</div>
     </div>
   );
+
+  const getDepotDisplay = (item: PerformanceChauffeur) => {
+    if (item.depot === 'Magasin') {
+      const delivery = data?.find(d => d.chauffeur === item.chauffeur);
+      if (delivery) {
+        return `${item.depot} (${delivery.entrepot})`;
+      }
+    }
+    return item.depot;
+  };
   
   return (
     <Card className="col-span-full">
@@ -113,6 +130,7 @@ export function GlobalPerformance({ data, depotsUniques, depotActif, setDepotAct
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[200px]">Livreur</TableHead>
+                <TableHead>Dépôt</TableHead>
                 <TableHead>Transporteur</TableHead>
                 <TableHead className="text-right">Total Liv.</TableHead>
                 <TableHead className="text-right">Succès</TableHead>
@@ -128,6 +146,7 @@ export function GlobalPerformance({ data, depotsUniques, depotActif, setDepotAct
               {donneesFiltrees.map(item => (
                 <TableRow key={item.chauffeur}>
                   <TableCell className="font-medium truncate max-w-[200px]">{item.chauffeur}</TableCell>
+                  <TableCell className="truncate max-w-[200px]">{getDepotDisplay(item)}</TableCell>
                   <TableCell>{item.transporteur}</TableCell>
                   <TableCell className="text-right">{item.totalLivraisons}</TableCell>
                   <TableCell>{renderCell(item.tauxReussite, item.nombreLivraisonsReussies)}</TableCell>
@@ -141,7 +160,7 @@ export function GlobalPerformance({ data, depotsUniques, depotActif, setDepotAct
               ))}
                {donneesFiltrees.length === 0 && (
                 <TableRow>
-                    <TableCell colSpan={10} className="h-24 text-center">
+                    <TableCell colSpan={11} className="h-24 text-center">
                         Aucun livreur trouvé pour cette sélection.
                     </TableCell>
                 </TableRow>
