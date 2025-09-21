@@ -46,12 +46,9 @@ function analyzeKpi(
     if (value === undefined) return 'neutral';
 
     const meetsObjective = config.higherIsBetter ? value >= objective : value <= objective;
-    const difference = Math.abs(value - objective);
-    const significanceThreshold = 0.05 * objective; // 5% threshold for significance
 
-    if (meetsObjective && difference > significanceThreshold) return 'strength';
-    if (!meetsObjective && difference > significanceThreshold) return 'weakness';
-    return 'neutral';
+    if (meetsObjective) return 'strength';
+    return 'weakness';
 }
 
 function generatePointsForScope(
@@ -76,21 +73,20 @@ function generatePointsForScope(
             value = data.stats.punctualityRate;
         } else if (kpi === 'averageRating') {
             value = data.stats.averageRating;
+        } else if (kpi === 'averageSentiment') {
+            value = data.stats.averageSentiment;
         } else {
             value = data.stats[kpi as keyof typeof data.stats] as number | undefined;
         }
 
         if (value !== undefined) {
-             const formattedValue = `${value.toFixed(1)}${['successRate', 'punctualityRate', 'failureRate', 'forcedOnSiteRate', 'forcedNoContactRate', 'webCompletionRate'].includes(kpi) ? '%' : kpi === 'averageRating' ? '/5' : ''}`;
+             const formattedValue = `${value.toFixed(1)}${['successRate', 'punctualityRate', 'failureRate', 'forcedOnSiteRate', 'forcedNoContactRate', 'webCompletionRate'].includes(kpi) ? '%' : kpi === 'averageRating' ? '/5' : kpi === 'averageSentiment' ? '/10' : ''}`;
             if (result === 'strength') {
-                points.strengths.push(`Le **${kpiName}** (${formattedValue}) est un point fort, dépassant l'objectif.`);
+                points.strengths.push(`Le **${kpiName}** (${formattedValue}) est un point fort, atteignant ou dépassant l'objectif.`);
                 overallScore++;
             } else if (result === 'weakness') {
                 points.weaknesses.push(`Le **${kpiName}** (${formattedValue}) est un point à améliorer, n'atteignant pas l'objectif.`);
                 overallScore--;
-            } else if (kpi === 'punctualityRate' || kpi === 'averageRating') {
-                // Force display for these important KPIs even if neutral
-                points.strengths.push(`La performance pour le **${kpiName}** est de **${formattedValue}**, proche de l'objectif.`);
             }
         }
     }
