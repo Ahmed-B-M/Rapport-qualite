@@ -228,19 +228,12 @@ export const getDonneesPerformanceChauffeur = (donnees: Livraison[] | undefined,
 
 const MOTS_CLES_CATEGORIES: { categorie: CategorieProbleme, motsCles: string[] }[] = [
     { 
-        categorie: "attitude livreur", 
-        motsCles: [
-            "pas aimable", "agressif", "impoli", "désagréable", "pas bonjour", "comportement", 
-            "odieux", "odieuse", "incorrecte", "mal poli", "catastrophe", "horrible", "pas serviable", "agressive"
-        ]
-    },
-    { 
         categorie: "casse articles", 
-        motsCles: ["casse", "cassé", "abimé", "abîmé", "endommagé", "ecrasé", "écrasé", "produit ouvert", "huevos rotos"]
+        motsCles: ["casse", "cassé", "abimé", "abîmé", "endommagé", "ecrasé", "écrasé", "produit ouvert", "huevos rotos", "état lamentable"]
     },
     { 
         categorie: "article manquant", 
-        motsCles: ["manquant", "manque", "oubli", "pas tout", "pas reçu", "incomplet", "pas eu", "produit manquant"]
+        motsCles: ["manquant", "manque", "oubli", "pas tout", "pas reçu", "incomplet", "pas eu", "produit manquant", "sac qui ne nous a pas été livré"]
     },
     { 
         categorie: "ponctualité", 
@@ -249,6 +242,13 @@ const MOTS_CLES_CATEGORIES: { categorie: CategorieProbleme, motsCles: string[] }
     { 
         categorie: "rupture chaine de froid", 
         motsCles: ["chaud", "pas frais", "pas froid", "congelé", "décongelé", "pas respecter la chaîne du froid"]
+    },
+    { 
+        categorie: "attitude livreur", 
+        motsCles: [
+            "pas aimable", "agressif", "impoli", "désagréable", "pas bonjour", "comportement", 
+            "odieux", "odieuse", "incorrecte", "mal poli", "catastrophe", "horrible", "pas serviable", "agressive", "pressé"
+        ]
     },
 ];
 
@@ -458,5 +458,6 @@ export const filtrerDonneesParDepot = (donnees: Livraison[], depot: string): Liv
     if (depot === 'all') return donnees;
     return donnees.filter(l => l.depot === depot);
 };
+
 
 
