@@ -1,5 +1,6 @@
 
-import { type Delivery, type AggregatedStats, type DriverPerformance, type PerformanceReportData, type KpiRankingsByEntity, type RankingEntity, type DepotReport, DeliveryStatus, ReportSectionData } from './definitions';
+
+import { type Delivery, type AggregatedStats, type DriverPerformance, type PerformanceReportData, type KpiRankingsByEntity, type RankingEntity, type DepotReport, DeliveryStatus, ReportSectionData, DriverRatingRankingEntity } from './definitions';
 import { WAREHOUSE_DEPOT_MAP, CARRIERS } from '@/lib/constants';
 import { parse, isValid, format } from 'date-fns';
 import { analyzeSentiment, getTopComments } from './sentiment';
@@ -238,6 +239,37 @@ const getKpiRankings = (performances: (DriverPerformance | (AggregatedStats & { 
     return { top, flop };
 };
 
+const getDriverRatingRankings = (data: Delivery[]): { top: DriverRatingRankingEntity[], flop: DriverRatingRankingEntity[] } => {
+    const ratingsByDriver: { [driver: string]: { positive: number, negative: number } } = {};
+
+    data.forEach(d => {
+        if (d.deliveryRating) {
+            if (!ratingsByDriver[d.driver]) {
+                ratingsByDriver[d.driver] = { positive: 0, negative: 0 };
+            }
+            if (d.deliveryRating >= 4) {
+                ratingsByDriver[d.driver].positive++;
+            } else if (d.deliveryRating <= 2) {
+                ratingsByDriver[d.driver].negative++;
+            }
+        }
+    });
+
+    const topRated = Object.entries(ratingsByDriver)
+        .map(([name, counts]) => ({ name, count: counts.positive }))
+        .filter(d => d.count > 0)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3);
+
+    const flopRated = Object.entries(ratingsByDriver)
+        .map(([name, counts]) => ({ name, count: counts.negative }))
+        .filter(d => d.count > 0)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3);
+
+    return { top: topRated, flop: flopRated };
+}
+
 const getReportSectionData = (data: Delivery[]): ReportSectionData => {
     const driverPerformances = getDriverPerformanceData(data);
     
@@ -263,11 +295,15 @@ const getReportSectionData = (data: Delivery[]): ReportSectionData => {
         }
     };
     
+    const driverRatingRankings = getDriverRatingRankings(data);
+
     return {
         stats: getOverallStats(data),
         kpiRankings: kpiRankings,
         topComments: getTopComments(data, 'positive', 3),
-        flopComments: getTopComments(data, 'negative', 3)
+        flopComments: getTopComments(data, 'negative', 3),
+        topRatedDrivers: driverRatingRankings.top,
+        flopRatedDrivers: driverRatingRankings.flop,
     };
 };
 

@@ -1,4 +1,5 @@
 
+
 export type DeliveryStatus = 'Livré' | 'Non livré' | 'En attente' | 'Partiellement livré';
 export type CompletedBy = 'mobile' | 'web' | 'unknown';
 export type ForcedOnSite = 'No' | 'Yes';
@@ -59,6 +60,11 @@ export type RankingEntity = {
   totalDeliveries: number;
 };
 
+export type DriverRatingRankingEntity = {
+    name: string;
+    count: number;
+};
+
 export type KpiRanking = {
   top: RankingEntity[];
   flop: RankingEntity[];
@@ -90,6 +96,8 @@ export type ReportSectionData = {
     kpiRankings: KpiRankingsByEntity;
     topComments: CommentExample[];
     flopComments: CommentExample[];
+    topRatedDrivers: DriverRatingRankingEntity[];
+    flopRatedDrivers: DriverRatingRankingEntity[];
 };
 
 export type DepotReport = ReportSectionData & {
@@ -117,3 +125,4 @@ export interface SynthesisResult {
   depots: DepotSynthesis[];
   conclusion: string;
 }
+

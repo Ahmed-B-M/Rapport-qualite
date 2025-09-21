@@ -1,15 +1,16 @@
 
+
 'use client';
 
 import { useMemo, useState } from 'react';
-import { type Delivery, type PerformanceReportData, type Objectives, type ReportSectionData, type CommentExample } from '@/lib/definitions';
+import { type Delivery, type PerformanceReportData, type Objectives, type ReportSectionData, type CommentExample, type DriverRatingRankingEntity } from '@/lib/definitions';
 import { generatePerformanceReport } from '@/lib/analysis';
 import { generateSynthesis } from '@/lib/synthesis';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { TrendingUp, TrendingDown, Award, UserX, CheckCircle, XCircle, Clock, Star, MessageCircle, Truck, ThumbsUp, ThumbsDown, FileText, Bot } from 'lucide-react';
+import { TrendingUp, TrendingDown, Award, UserX, CheckCircle, XCircle, Clock, Star, MessageCircle, Truck, ThumbsUp, ThumbsDown, FileText, Bot, Smile, Frown } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { SynthesisReport } from './synthesis-report';
 
@@ -78,6 +79,39 @@ const RankingTable = ({ top, flop, kpiName, unit = '%' }: { top: any[], flop: an
     </div>
 );
 
+const DriverRatingRankings = ({ top, flop }: { top: DriverRatingRankingEntity[], flop: DriverRatingRankingEntity[] }) => (
+    <div>
+        <h3 className="text-lg font-semibold mb-4">Classement des Livreurs par Notes</h3>
+        <div className="grid md:grid-cols-2 gap-6">
+            <div>
+                <h4 className="font-semibold flex items-center text-green-600 mb-2"><Smile className="h-4 w-4 mr-2" /> Top Notes Positives (4-5 étoiles)</h4>
+                <Table>
+                    <TableHeader>
+                        <TableHead>Livreur</TableHead>
+                        <TableHead className="text-right">Nombre de notes</TableHead>
+                    </TableHeader>
+                    <TableBody>
+                        {top.map((item, i) => <TableRow key={i}><TableCell>{item.name}</TableCell><TableCell className="text-right font-bold">{item.count}</TableCell></TableRow>)}
+                    </TableBody>
+                </Table>
+            </div>
+            <div>
+                <h4 className="font-semibold flex items-center text-red-600 mb-2"><Frown className="h-4 w-4 mr-2" /> Top Notes Négatives (1-2 étoiles)</h4>
+                <Table>
+                    <TableHeader>
+                        <TableHead>Livreur</TableHead>
+                        <TableHead className="text-right">Nombre de notes</TableHead>
+                    </TableHeader>
+                    <TableBody>
+                        {flop.map((item, i) => <TableRow key={i}><TableCell>{item.name}</TableCell><TableCell className="text-right font-bold">{item.count}</TableCell></TableRow>)}
+                    </TableBody>
+                </Table>
+            </div>
+        </div>
+    </div>
+);
+
+
 const CommentExamples = ({ top, flop }: { top: CommentExample[], flop: CommentExample[] }) => (
     <div>
         <h3 className="text-lg font-semibold mb-4">Exemples de Commentaires</h3>
@@ -120,12 +154,15 @@ const ReportSection = ({ title, reportData, objectives }: { title: string, repor
             </div>
 
             <Separator className="my-6" />
+            <DriverRatingRankings top={reportData.topRatedDrivers} flop={reportData.flopRatedDrivers} />
+            
+            <Separator className="my-6" />
             <CommentExamples top={reportData.topComments} flop={reportData.flopComments} />
             
             <Separator className="my-6" />
 
             <div>
-                <h3 className="text-lg font-semibold mb-4">Classements des Livreurs</h3>
+                <h3 className="text-lg font-semibold mb-4">Classements des Livreurs par KPI</h3>
                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <RankingTable top={reportData.kpiRankings.drivers.successRate.top} flop={reportData.kpiRankings.drivers.successRate.flop} kpiName="Taux de Succès" />
                     <RankingTable top={reportData.kpiRankings.drivers.averageRating.top} flop={reportData.kpiRankings.drivers.averageRating.flop} kpiName="Note Moyenne" unit="/5" />
@@ -137,7 +174,7 @@ const ReportSection = ({ title, reportData, objectives }: { title: string, repor
             <Separator className="my-6" />
 
             <div>
-                <h3 className="text-lg font-semibold mb-4 flex items-center"><Truck className="h-5 w-5 mr-2" /> Classements des Transporteurs</h3>
+                <h3 className="text-lg font-semibold mb-4 flex items-center"><Truck className="h-5 w-5 mr-2" /> Classements des Transporteurs par KPI</h3>
                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <RankingTable top={reportData.kpiRankings.carriers.successRate.top} flop={reportData.kpiRankings.carriers.successRate.flop} kpiName="Taux de Succès" />
                     <RankingTable top={reportData.kpiRankings.carriers.averageRating.top} flop={reportData.kpiRankings.carriers.averageRating.flop} kpiName="Note Moyenne" unit="/5" />
