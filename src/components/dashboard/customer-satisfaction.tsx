@@ -8,7 +8,9 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList } 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { analyzeSentiment } from '@/lib/sentiment';
 import { getCategorizedNegativeComments } from '@/lib/analysis';
-import { AlertCircle, ThumbsDown, MessageSquare } from 'lucide-react';
+import { AlertCircle, ThumbsDown, MessageSquare, Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import * as XLSX from 'xlsx';
 
 interface SatisfactionClientProps {
   data?: Livraison[];
@@ -16,6 +18,28 @@ interface SatisfactionClientProps {
 
 const NegativeCommentsSection = ({ comments }: { comments: Record<string, CommentaireCategorise[]> }) => {
     const categoriesWithComments = CATEGORIES_PROBLEMES.filter(cat => comments[cat] && comments[cat].length > 0);
+
+    const handleExport = () => {
+        const dataToExport: { Catégorie: string, Commentaire: string, Livreur: string }[] = [];
+        
+        categoriesWithComments.forEach(categorie => {
+            comments[categorie].forEach(item => {
+                dataToExport.push({
+                    Catégorie: categorie,
+                    Commentaire: item.commentaire,
+                    Livreur: item.chauffeur,
+                });
+            });
+        });
+
+        if (dataToExport.length > 0) {
+            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Commentaires Négatifs');
+            XLSX.writeFile(workbook, 'commentaires_negatifs.xlsx');
+        }
+    };
+
 
     if (categoriesWithComments.length === 0) {
         return (
@@ -28,9 +52,14 @@ const NegativeCommentsSection = ({ comments }: { comments: Record<string, Commen
     
     return (
         <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center"><ThumbsDown className="mr-2"/> Analyse des Commentaires Négatifs</CardTitle>
-                <CardDescription>Retours clients négatifs classés par type de problème.</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                    <CardTitle className="flex items-center"><ThumbsDown className="mr-2"/> Analyse des Commentaires Négatifs</CardTitle>
+                    <CardDescription>Retours clients négatifs classés par type de problème.</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleExport}>
+                    <Download className="mr-2 h-4 w-4" /> Exporter en Excel
+                </Button>
             </CardHeader>
             <CardContent>
                 <Accordion type="single" collapsible className="w-full">
