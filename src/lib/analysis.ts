@@ -232,14 +232,15 @@ const MOTS_CLES_CATEGORIES: { categorie: CategorieProbleme, motsCles: string[] }
         motsCles: [
             "pas aimable", "agressif", "impoli", "désagréable", "pas bonjour", "comportement", 
             "odieux", "odieuse", "incorrecte", "mal poli", "catastrophe", "horrible", "pas serviable", 
-            "agressive", "pressé", "impatient", "sur le trottoir", "expéditif", "fait le signe pour avoir la pièce"
+            "agressive", "pressé", "impatient", "sur le trottoir", "expéditif", "fait le signe pour avoir la pièce",
+            "pas professionnel", "pas très aimable", "débrouillez vous"
         ]
     },
     { 
         categorie: "casse articles", 
         motsCles: [
             "casse", "cassé", "abimé", "abîmé", "endommagé", "ecrasé", "écrasé", "produit ouvert", 
-            "huevos rotos", "état lamentable", "bouteille ouverte", "trempés"
+            "huevos rotos", "état lamentable", "bouteille ouverte", "trempés", "mal préparée"
         ]
     },
     { 
@@ -253,7 +254,7 @@ const MOTS_CLES_CATEGORIES: { categorie: CategorieProbleme, motsCles: string[] }
         categorie: "ponctualité", 
         motsCles: [
             "retard", "tard", "tôt", "en avance", "pas à l'heure", "attente", "attendu", 
-            "jamais arrivé", "pas prévenu", "pas prévenue", "non livrée", "ponctualité"
+            "jamais arrivé", "pas prévenu", "pas prévenue", "non livrée", "ponctualité", "avant le créneau"
         ]
     },
     { 
@@ -471,6 +472,7 @@ export const filtrerDonneesParDepot = (donnees: Livraison[], depot: string): Liv
     if (depot === 'all') return donnees;
     return donnees.filter(l => l.depot === depot);
 };
+
 
 
 
