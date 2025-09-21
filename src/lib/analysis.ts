@@ -110,7 +110,7 @@ export const traiterDonneesBrutes = (donneesBrutes: any[]): Livraison[] => {
       retardSecondes: Number(livraison.retardSecondes) || 0,
       forceSansContact: String(livraison.forceSansContact).toLowerCase() === 'true',
       forceSurSite: livraison.forceSurSite === 'Oui' ? 'Oui' : 'Non',
-      terminePar: String(livraison.terminePar).toLowerCase() === 'web' ? 'web' : 'mobile',
+      terminePar: String(livraison.terminePar).toLowerCase() === 'web' ? 'mobile' : 'mobile',
       noteLivraison: (note && note >= 1 && note <= 5) ? note : undefined,
       commentaireRetour: livraison.commentaireRetour ? String(livraison.commentaireRetour) : undefined,
       depot,
@@ -228,27 +228,27 @@ export const getDonneesPerformanceChauffeur = (donnees: Livraison[] | undefined,
 
 const MOTS_CLES_CATEGORIES: { categorie: CategorieProbleme, motsCles: string[] }[] = [
     { 
+        categorie: "attitude livreur", 
+        motsCles: [
+            "pas aimable", "agressif", "impoli", "désagréable", "pas bonjour", "comportement", 
+            "odieux", "odieuse", "incorrecte", "mal poli", "catastrophe", "horrible", "pas serviable", "agressive", "pressé", "impatient"
+        ]
+    },
+    { 
         categorie: "casse articles", 
-        motsCles: ["casse", "cassé", "abimé", "abîmé", "endommagé", "ecrasé", "écrasé", "produit ouvert", "huevos rotos", "état lamentable"]
+        motsCles: ["casse", "cassé", "abimé", "abîmé", "endommagé", "ecrasé", "écrasé", "produit ouvert", "huevos rotos", "état lamentable", "bouteille ouverte"]
     },
     { 
         categorie: "article manquant", 
-        motsCles: ["manquant", "manque", "oubli", "pas tout", "pas reçu", "incomplet", "pas eu", "produit manquant", "sac qui ne nous a pas été livré"]
+        motsCles: ["manquant", "manque", "oubli", "pas tout", "pas reçu", "incomplet", "pas eu", "produit manquant", "sac qui ne nous a pas été livré", "manquait"]
     },
     { 
         categorie: "ponctualité", 
-        motsCles: ["retard", "tard", "tôt", "en avance", "pas à l'heure", "attente", "attendu", "jamais arrivé"]
+        motsCles: ["retard", "tard", "tôt", "en avance", "pas à l'heure", "attente", "attendu", "jamais arrivé", "pas prévenu", "pas prévenue"]
     },
     { 
         categorie: "rupture chaine de froid", 
         motsCles: ["chaud", "pas frais", "pas froid", "congelé", "décongelé", "pas respecter la chaîne du froid"]
-    },
-    { 
-        categorie: "attitude livreur", 
-        motsCles: [
-            "pas aimable", "agressif", "impoli", "désagréable", "pas bonjour", "comportement", 
-            "odieux", "odieuse", "incorrecte", "mal poli", "catastrophe", "horrible", "pas serviable", "agressive", "pressé"
-        ]
     },
 ];
 
@@ -458,6 +458,7 @@ export const filtrerDonneesParDepot = (donnees: Livraison[], depot: string): Liv
     if (depot === 'all') return donnees;
     return donnees.filter(l => l.depot === depot);
 };
+
 
 
 
