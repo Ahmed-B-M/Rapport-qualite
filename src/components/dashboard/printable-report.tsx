@@ -41,21 +41,21 @@ const renderPoints = (points: string[], icon: React.ReactNode) => (
 
 const SynthesisSectionPrint = ({ title, synthesis }: { title: string, synthesis: { strengths: string[], weaknesses: string[] } }) => (
     <Card className="mb-4 break-inside-avoid">
-        <CardHeader><CardTitle className="flex items-center text-lg"><Target className="h-5 w-5 mr-2" />{title}</CardTitle></CardHeader>
-        <CardContent>
-            <h4 className="font-semibold text-green-700 flex items-center mb-2"><ThumbsUp className="h-4 w-4 mr-2" />Points forts</h4>
+        <CardHeader className="p-3"><CardTitle className="flex items-center text-base"><Target className="h-4 w-4 mr-2" />{title}</CardTitle></CardHeader>
+        <CardContent className="p-3">
+            <h4 className="font-semibold text-green-700 flex items-center mb-2 text-sm"><ThumbsUp className="h-4 w-4 mr-2" />Points forts</h4>
             {synthesis.strengths.length > 0 ? renderPoints(synthesis.strengths, <ArrowRightCircle className="h-4 w-4 text-green-500" />) : <p className="text-xs text-muted-foreground">Aucun.</p>}
-            <Separator className="my-3"/>
-            <h4 className="font-semibold text-red-700 flex items-center mb-2"><ThumbsDown className="h-4 w-4 mr-2" />Axes d'amélioration</h4>
+            <Separator className="my-2"/>
+            <h4 className="font-semibold text-red-700 flex items-center mb-2 text-sm"><ThumbsDown className="h-4 w-4 mr-2" />Axes d'amélioration</h4>
             {synthesis.weaknesses.length > 0 ? renderPoints(synthesis.weaknesses, <ArrowRightCircle className="h-4 w-4 text-red-500" />) : <p className="text-xs text-muted-foreground">Aucun.</p>}
         </CardContent>
     </Card>
 );
 
 const KpiCardPrint = ({ title, value, unit = '%' }: { title: string, value: number | undefined, unit?: string }) => (
-    <div className="p-3 border rounded-lg bg-gray-50">
+    <div className="p-2 border rounded-md bg-gray-50">
       <h4 className="text-xs text-muted-foreground">{title}</h4>
-      <p className="text-xl font-bold mt-1">{value !== undefined ? `${value.toFixed(2)}${unit}` : 'N/A'}</p>
+      <p className="text-lg font-bold mt-1">{value !== undefined ? `${value.toFixed(2)}${unit}` : 'N/A'}</p>
     </div>
 );
 
@@ -69,7 +69,7 @@ const SingleRankingTablePrint = ({ title, data, unit }: { title: string, data: a
                         <TableCell className="text-xs p-1">{item.name}</TableCell>
                         <TableCell className="text-right font-bold text-xs p-1">{item.value.toFixed(2)}{unit}</TableCell>
                     </TableRow>
-                )) : <TableRow><TableCell className="text-muted-foreground text-center text-xs">Aucune donnée</TableCell></TableRow>}
+                )) : <TableRow><TableCell colSpan={2} className="text-muted-foreground text-center text-xs">Aucune donnée</TableCell></TableRow>}
             </TableBody>
         </Table>
     </div>
@@ -97,11 +97,11 @@ const DriverRatingRankingsPrint = ({ top, flop }: { top: DriverRatingRankingEnti
 
 const DetailedAnalysisSectionPrint = ({ reportData }: { reportData: ReportSectionData }) => (
     <Card className="mb-4 break-inside-avoid">
-        <CardHeader>
-            <CardTitle className="text-lg">Analyse Détaillée</CardTitle>
+        <CardHeader className="p-3">
+            <CardTitle className="text-base">Analyse Détaillée</CardTitle>
             <CardDescription className="text-xs">{reportData.stats.totalDeliveries} livraisons analysées.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="p-3 space-y-3">
             <div className="grid grid-cols-4 gap-2">
                 <KpiCardPrint title="Taux de Succès" value={reportData.stats.successRate} unit="%" />
                 <KpiCardPrint title="Note Moyenne" value={reportData.stats.averageRating} unit="/5" />
@@ -113,7 +113,7 @@ const DetailedAnalysisSectionPrint = ({ reportData }: { reportData: ReportSectio
             <Separator/>
             <div>
                  <h4 className="text-base font-semibold mb-2">Classements par Indicateur Clé (KPI)</h4>
-                 <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                 <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                     <SingleRankingTablePrint title="Note Moyenne (Livreurs)" data={reportData.kpiRankings.drivers.averageRating.top} unit="/5" />
                     <SingleRankingTablePrint title="Note Moyenne (Transporteurs)" data={reportData.kpiRankings.carriers.averageRating.top} unit="/5" />
                     <SingleRankingTablePrint title="Taux de Succès (Livreurs)" data={reportData.kpiRankings.drivers.successRate.top} unit="%" />
@@ -129,19 +129,21 @@ const DetailedAnalysisSectionPrint = ({ reportData }: { reportData: ReportSectio
 export function PrintableReport({ reportData, synthesisData, objectives }: PrintableReportProps) {
   return (
     <div className="printable-content">
-        <div className="text-center mb-6 break-after-avoid">
-            <h1 className="text-3xl font-bold text-primary">Rapport Qualité des Livraisons</h1>
-            <p className="text-muted-foreground">Analyse détaillée pour la période sélectionnée</p>
+        <div className="text-center mb-4 break-after-avoid">
+            <h1 className="text-2xl font-bold text-primary">Rapport Qualité des Livraisons</h1>
+            <p className="text-sm text-muted-foreground">Analyse détaillée pour la période sélectionnée</p>
         </div>
 
-        <Card className="mb-4 bg-gray-50 break-inside-avoid">
-            <CardHeader><CardTitle className="flex items-center text-xl"><GraduationCap className="h-6 w-6 mr-3" />Conclusion & Recommandations</CardTitle></CardHeader>
-            <CardContent><ReactMarkdown components={{ p: ({ children }) => <p className="text-sm">{children}</p> }}>{synthesisData.conclusion}</ReactMarkdown></CardContent>
-        </Card>
+        <div className="break-inside-avoid">
+            <h2 className="text-xl font-bold mb-2">Conclusion & Recommandations</h2>
+            <ReactMarkdown components={{ p: ({ children }) => <p className="text-sm mb-2">{children}</p> }}>{synthesisData.conclusion}</ReactMarkdown>
+        </div>
+        
+        <Separator className="my-4"/>
 
         {/* Global Section */}
-        <div className="mb-6">
-            <h2 className="text-2xl font-bold mb-3">Vision d'Ensemble</h2>
+        <div className="mb-4 break-inside-avoid">
+            <h2 className="text-xl font-bold mb-2">Vision d'Ensemble</h2>
             <SynthesisSectionPrint title="Synthèse Globale" synthesis={synthesisData.global} />
             <DetailedAnalysisSectionPrint reportData={reportData.global} />
         </div>
@@ -152,8 +154,8 @@ export function PrintableReport({ reportData, synthesisData, objectives }: Print
             if (!depotSynthesis) return null;
             
             return (
-                <div key={depot.name} className="page-break mb-6">
-                    <h2 className="text-2xl font-bold mb-3">Analyse du Dépôt: {depot.name}</h2>
+                <div key={depot.name} className="page-break mb-4 break-inside-avoid">
+                    <h2 className="text-xl font-bold mb-2">Analyse du Dépôt: {depot.name}</h2>
                     <SynthesisSectionPrint title={`Synthèse ${depot.name}`} synthesis={depotSynthesis} />
                     <DetailedAnalysisSectionPrint reportData={depot} />
                 </div>

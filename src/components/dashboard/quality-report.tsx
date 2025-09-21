@@ -155,7 +155,11 @@ const DriverRatingRankings = ({ top, flop }: { top: DriverRatingRankingEntity[],
             <div>
                 <h4 className="font-semibold flex items-center text-green-600 mb-2"><Smile className="h-4 w-4 mr-2" /> Top Notes Positives (4-5 étoiles)</h4>
                 <Table>
-                    <TableHeader><TableHead>Livreur</TableHead></TableHeader>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Livreur</TableHead>
+                        </TableRow>
+                    </TableHeader>
                     <TableBody>{top.map((item, i) => 
                         <TableRow key={i}>
                             <TableCell>
@@ -169,7 +173,11 @@ const DriverRatingRankings = ({ top, flop }: { top: DriverRatingRankingEntity[],
             <div>
                 <h4 className="font-semibold flex items-center text-red-600 mb-2"><Frown className="h-4 w-4 mr-2" /> Top Notes Négatives (1-2 étoiles)</h4>
                 <Table>
-                    <TableHeader><TableHead>Livreur</TableHead></TableHeader>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Livreur</TableHead>
+                        </TableRow>
+                    </TableHeader>
                     <TableBody>{flop.map((item, i) => 
                         <TableRow key={i}>
                              <TableCell>
