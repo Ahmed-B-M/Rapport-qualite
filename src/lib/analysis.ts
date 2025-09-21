@@ -226,23 +226,38 @@ export const getDonneesPerformanceChauffeur = (donnees: Livraison[] | undefined,
 
 // --- Analyse sémantique et catégorisation des commentaires ---
 
-const MOTS_CLES_CATEGORIES: Record<CategorieProbleme, string[]> = {
-    "casse articles": ["casse", "cassé", "abimé", "abîmé", "endommagé", "ecrasé", "écrasé", "produit ouvert"],
-    "article manquant": ["manquant", "manque", "oubli", "pas tout", "pas reçu", "incomplet", "pas eu"],
-    "ponctualité": ["retard", "tard", "tôt", "en avance", "pas à l'heure", "attente", "attendu"],
-    "rupture chaine de froid": ["chaud", "pas frais", "pas froid", "congelé", "décongelé"],
-    "attitude livreur": ["pas aimable", "agressif", "impoli", "désagréable", "pas bonjour", "comportement"],
-    "autre": [] 
-};
+const MOTS_CLES_CATEGORIES: { categorie: CategorieProbleme, motsCles: string[] }[] = [
+    { 
+        categorie: "attitude livreur", 
+        motsCles: [
+            "pas aimable", "agressif", "impoli", "désagréable", "pas bonjour", "comportement", 
+            "odieux", "odieuse", "incorrecte", "mal poli", "catastrophe", "horrible", "pas serviable", "agressive"
+        ]
+    },
+    { 
+        categorie: "casse articles", 
+        motsCles: ["casse", "cassé", "abimé", "abîmé", "endommagé", "ecrasé", "écrasé", "produit ouvert", "huevos rotos"]
+    },
+    { 
+        categorie: "article manquant", 
+        motsCles: ["manquant", "manque", "oubli", "pas tout", "pas reçu", "incomplet", "pas eu", "produit manquant"]
+    },
+    { 
+        categorie: "ponctualité", 
+        motsCles: ["retard", "tard", "tôt", "en avance", "pas à l'heure", "attente", "attendu", "jamais arrivé"]
+    },
+    { 
+        categorie: "rupture chaine de froid", 
+        motsCles: ["chaud", "pas frais", "pas froid", "congelé", "décongelé", "pas respecter la chaîne du froid"]
+    },
+];
 
 
 function categoriserCommentaire(commentaire: string): CategorieProbleme {
     const texte = commentaire.toLowerCase();
-    for (const categorie in MOTS_CLES_CATEGORIES) {
-        if (categorie === 'autre') continue;
-        const motsCles = MOTS_CLES_CATEGORIES[categorie as CategorieProbleme];
-        if (motsCles.some(mot => texte.includes(mot))) {
-            return categorie as CategorieProbleme;
+    for (const item of MOTS_CLES_CATEGORIES) {
+        if (item.motsCles.some(mot => texte.includes(mot))) {
+            return item.categorie;
         }
     }
     return "autre";
@@ -443,4 +458,5 @@ export const filtrerDonneesParDepot = (donnees: Livraison[], depot: string): Liv
     if (depot === 'all') return donnees;
     return donnees.filter(l => l.depot === depot);
 };
+
 
