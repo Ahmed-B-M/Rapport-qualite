@@ -34,6 +34,9 @@ function analyzeKpi(
     } else if (kpi === 'averageSentiment') {
         value = stats.averageSentiment;
         objective = objectives.averageSentiment;
+     } else if (kpi === 'punctualityRate') {
+        value = stats.punctualityRate;
+        objective = objectives.punctualityRate;
     } else {
         value = stats[kpi as keyof typeof stats] as number;
         objective = objectives[kpi as keyof typeof objectives] as number;
@@ -62,7 +65,11 @@ function generatePointsForScope(
         const kpi = key as KpiKey;
         const result = analyzeKpi(kpi, data.stats, objectives);
         const kpiName = KPI_CONFIG[kpi].name;
-        const value = (kpi === 'successRate' ? data.stats.successRate : (kpi === 'failureRate' ? 100 - data.stats.successRate : data.stats[kpi as keyof typeof data.stats])) as number | undefined;
+        let value = (kpi === 'successRate' ? data.stats.successRate : (kpi === 'failureRate' ? 100 - data.stats.successRate : data.stats[kpi as keyof typeof data.stats])) as number | undefined;
+        
+        if (kpi === 'punctualityRate') {
+            value = data.stats.punctualityRate;
+        }
 
         if (value !== undefined) {
              const formattedValue = `${value.toFixed(1)}${['successRate', 'punctualityRate', 'failureRate', 'forcedOnSiteRate', 'forcedNoContactRate', 'webCompletionRate'].includes(kpi) ? '%' : ''}`;

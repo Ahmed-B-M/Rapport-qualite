@@ -187,8 +187,6 @@ const ReportSection = ({ title, reportData, objectives }: { title: string, repor
 );
 
 export function PerformanceReport({ data, objectives }: PerformanceReportProps) {
-  const [view, setView] = useState<'detailed' | 'synthesis'>('detailed');
-  
   const reportData = useMemo(() => generatePerformanceReport(data), [data]);
   const synthesisData = useMemo(() => generateSynthesis(reportData, objectives), [reportData, objectives]);
 
@@ -196,34 +194,27 @@ export function PerformanceReport({ data, objectives }: PerformanceReportProps) 
 
   return (
     <div>
-      <div className="flex justify-end mb-4">
-        <Button variant="outline" onClick={() => setView(view === 'detailed' ? 'synthesis' : 'detailed')}>
-            {view === 'detailed' ? <Bot className="mr-2 h-4 w-4" /> : <FileText className="mr-2 h-4 w-4" />}
-            {view === 'detailed' ? 'Voir la synthèse IA' : 'Voir le rapport détaillé'}
-        </Button>
-      </div>
-
-      {view === 'detailed' ? (
-        <>
-          <ReportSection 
-            title="Synthèse Globale"
-            reportData={reportData.global}
-            objectives={objectives}
-          />
-          
-          <h2 className="text-2xl font-bold mt-8 mb-4">Analyse par Dépôt</h2>
-          {reportData.depots.map(depotReport => (
-            <ReportSection 
-              key={depotReport.name}
-              title={`Dépôt: ${depotReport.name}`}
-              reportData={depotReport}
-              objectives={objectives}
-            />
-          ))}
-        </>
-      ) : (
+      <div className="mb-8">
         <SynthesisReport synthesis={synthesisData} />
-      )}
+      </div>
+      
+      <Separator className="my-8" />
+      
+      <ReportSection 
+        title="Analyse Détaillée Globale"
+        reportData={reportData.global}
+        objectives={objectives}
+      />
+      
+      <h2 className="text-2xl font-bold mt-8 mb-4">Analyses Détaillées par Dépôt</h2>
+      {reportData.depots.map(depotReport => (
+        <ReportSection 
+          key={depotReport.name}
+          title={`Dépôt: ${depotReport.name}`}
+          reportData={depotReport}
+          objectives={objectives}
+        />
+      ))}
     </div>
   );
 }
