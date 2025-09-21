@@ -11,6 +11,8 @@ import {
     type EntiteClassementNoteChauffeur,
     type ResultatSynthese,
     type SyntheseDepot,
+    type ResultatsCategorisation,
+    CATEGORIES_PROBLEMES
 } from '@/lib/definitions';
 import { genererRapportPerformance } from '@/lib/analysis';
 import { generateSynthesis } from '@/lib/synthesis';
@@ -19,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
     ThumbsUp, ThumbsDown, GraduationCap, ArrowRightCircle, Target, CheckCircle, XCircle, 
-    Clock, Star, MessageCircle, Truck, Award, UserX, Smile, Frown, Users, Percent, BarChart
+    Clock, Star, MessageCircle, Truck, Award, UserX, Smile, Frown, Users, Percent, BarChart, ClipboardList
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import ReactMarkdown from 'react-markdown';
@@ -215,6 +217,53 @@ const ExemplesCommentaires = ({ top, flop }: { top: ExempleCommentaire[], flop: 
     </div>
 )
 
+const AnalyseCategorielle = ({ resultats }: { resultats: ResultatsCategorisation }) => {
+    const hasData = useMemo(() => CATEGORIES_PROBLEMES.some(cat => resultats[cat] && resultats[cat].length > 0), [resultats]);
+
+    if (!hasData) {
+        return null;
+    }
+
+    return (
+        <div>
+            <h3 className="text-lg font-semibold mb-4 flex items-center"><ClipboardList className="h-5 w-5 mr-2" />Analyse des Commentaires Négatifs</h3>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {CATEGORIES_PROBLEMES.map(cat => {
+                    const chauffeurs = resultats[cat];
+                    if (!chauffeurs || chauffeurs.length === 0) return null;
+
+                    return (
+                        <Card key={cat} className="flex flex-col">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-base capitalize">{cat}</CardTitle>
+                            </CardHeader>
+                            <CardContent className="flex-grow">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Livreur</TableHead>
+                                            <TableHead className="text-right">Cas</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {chauffeurs.slice(0, 5).map(chauffeur => (
+                                            <TableRow key={chauffeur.nom}>
+                                                <TableCell className="text-sm truncate max-w-[150px]">{chauffeur.nom}</TableCell>
+                                                <TableCell className="text-right font-bold">{chauffeur.recurrence}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+
 const SectionAnalyseDetaillee = ({ donneesRapport, objectifs }: { donneesRapport: DonneesSectionRapport, objectifs: Objectifs }) => (
     <Card>
         <CardHeader>
@@ -232,6 +281,8 @@ const SectionAnalyseDetaillee = ({ donneesRapport, objectifs }: { donneesRapport
             <ClassementsNotesChauffeur top={donneesRapport.chauffeursMieuxNotes} flop={donneesRapport.chauffeursMoinsBienNotes} />
             <Separator />
             <ExemplesCommentaires top={donneesRapport.meilleursCommentaires} flop={donneesRapport.piresCommentaires} />
+            <Separator />
+            <AnalyseCategorielle resultats={donneesRapport.resultatsCategorisation} />
             <Separator />
             <OngletsClassementKpi donneesRapport={donneesRapport} />
         </CardContent>
