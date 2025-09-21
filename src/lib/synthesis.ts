@@ -74,6 +74,8 @@ function generatePointsForScope(
             value = 100 - data.stats.successRate;
         } else if (kpi === 'punctualityRate') {
             value = data.stats.punctualityRate;
+        } else if (kpi === 'averageRating') {
+            value = data.stats.averageRating;
         } else {
             value = data.stats[kpi as keyof typeof data.stats] as number | undefined;
         }
