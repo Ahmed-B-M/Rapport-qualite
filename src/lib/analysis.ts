@@ -1,4 +1,5 @@
 
+
 import { 
     type Livraison, type StatistiquesAgregees, type PerformanceChauffeur, 
     type DonneesRapportPerformance, type ClassementsKpiParEntite, type EntiteClassement, 
@@ -313,20 +314,18 @@ function analyserCommentairesNegatifs(livraisons: Livraison[]): ResultatsCategor
 
     CATEGORIES_PROBLEMES.forEach(cat => {
         const commentairesDeLaCategorie = commentairesCategorises.filter(c => c.categorie === cat);
-        const chauffeursConcernes: Record<string, { recurrence: number, exemples: string[] }> = {};
+        const chauffeursConcernes: Record<string, { recurrence: number, exemplesCommentaires: string[] }> = {};
 
         commentairesDeLaCategorie.forEach(c => {
             if (!chauffeursConcernes[c.chauffeur]) {
-                chauffeursConcernes[c.chauffeur] = { recurrence: 0, exemples: [] };
+                chauffeursConcernes[c.chauffeur] = { recurrence: 0, exemplesCommentaires: [] };
             }
             chauffeursConcernes[c.chauffeur].recurrence++;
-            if (chauffeursConcernes[c.chauffeur].exemples.length < 1) { // On garde un exemple
-                chauffeursConcernes[c.chauffeur].exemples.push(c.commentaire);
-            }
+            chauffeursConcernes[c.chauffeur].exemplesCommentaires.push(c.commentaire);
         });
 
         resultats[cat] = Object.entries(chauffeursConcernes)
-            .map(([nom, data]) => ({ nom, recurrence: data.recurrence, exempleCommentaire: data.exemples[0] }))
+            .map(([nom, data]) => ({ nom, recurrence: data.recurrence, exemplesCommentaires: data.exemplesCommentaires }))
             .sort((a, b) => b.recurrence - a.recurrence);
     });
 

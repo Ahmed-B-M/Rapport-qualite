@@ -1,4 +1,5 @@
 
+
 'use client';
 import React from "react";
 import Image from "next/image";
@@ -137,11 +138,15 @@ const AnalyseCategorielleImpression = ({ resultats, totalCommentairesNegatifs }:
                             <h5 className="font-bold capitalize">{cat}</h5>
                             <span className="font-semibold">{totalCasCategorie} cas ({pourcentageCategorie.toFixed(1)}%)</span>
                         </div>
-                        <ul className="list-disc pl-4 space-y-1">
-                            {chauffeurs.slice(0, 2).map(chauffeur => (
+                        <ul className="list-disc pl-4 space-y-2 mt-2">
+                            {chauffeurs.map(chauffeur => (
                                 <li key={chauffeur.nom}>
-                                    {chauffeur.nom} <span className="text-gray-500">({chauffeur.recurrence} cas)</span>
-                                    {chauffeur.exempleCommentaire && <p className="text-xs text-gray-600 italic mt-0.5">"{chauffeur.exempleCommentaire}"</p>}
+                                    <span className="font-medium">{chauffeur.nom}</span> <span className="text-gray-500">({chauffeur.recurrence} cas)</span>
+                                    <ul className="list-['-_'] pl-4 mt-1 space-y-1">
+                                        {chauffeur.exemplesCommentaires.map((commentaire, index) => (
+                                            <li key={index} className="text-gray-600 italic">"{commentaire}"</li>
+                                        ))}
+                                    </ul>
                                 </li>
                             ))}
                         </ul>
@@ -151,6 +156,7 @@ const AnalyseCategorielleImpression = ({ resultats, totalCommentairesNegatifs }:
         </div>
     </div>
 );
+
 
 // --- Composant principal imprimable ---
 

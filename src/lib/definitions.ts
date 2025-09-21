@@ -111,7 +111,7 @@ export type CommentaireCategorise = {
 export type ChauffeurProbleme = {
     nom: string;
     recurrence: number;
-    exempleCommentaire?: string;
+    exemplesCommentaires: string[];
 };
 
 export type ResultatsCategorisation = Record<CategorieProbleme, ChauffeurProbleme[]>;
