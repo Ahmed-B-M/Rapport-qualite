@@ -121,7 +121,7 @@ const ExemplesCommentairesImpression = ({ top, flop }: { top: ExempleCommentaire
     </div>
 );
 
-const AnalyseCategorielleImpression = ({ resultats, totalCommentairesNegatifs }: { resultats: ResultatsCategorisation, totalCommentairesNegatifs: number }) => (
+const AnalyseCategorielleImpression = ({ resultats, totalCommentairesNegatifs, afficherDetailsCommentaires = true }: { resultats: ResultatsCategorisation, totalCommentairesNegatifs: number, afficherDetailsCommentaires?: boolean }) => (
     <div className="mt-4 break-inside-avoid">
         <h4 className="text-base font-semibold mb-2 flex items-center"><ClipboardList className="h-4 w-4 mr-2"/>Analyse des Commentaires Négatifs</h4>
         <div className="space-y-3">
@@ -138,18 +138,20 @@ const AnalyseCategorielleImpression = ({ resultats, totalCommentairesNegatifs }:
                             <h5 className="font-bold capitalize">{cat}</h5>
                             <span className="font-semibold">{totalCasCategorie} cas ({pourcentageCategorie.toFixed(1)}%)</span>
                         </div>
-                        <ul className="list-disc pl-4 space-y-2 mt-2">
-                            {chauffeurs.map(chauffeur => (
-                                <li key={chauffeur.nom}>
-                                    <span className="font-medium">{chauffeur.nom}</span> <span className="text-gray-500">({chauffeur.recurrence} cas)</span>
-                                    <ul className="list-['-_'] pl-4 mt-1 space-y-1">
-                                        {chauffeur.exemplesCommentaires.map((commentaire, index) => (
-                                            <li key={index} className="text-gray-600 italic">"{commentaire}"</li>
-                                        ))}
-                                    </ul>
-                                </li>
-                            ))}
-                        </ul>
+                        {afficherDetailsCommentaires && (
+                            <ul className="list-disc pl-4 space-y-2 mt-2">
+                                {chauffeurs.map(chauffeur => (
+                                    <li key={chauffeur.nom}>
+                                        <span className="font-medium">{chauffeur.nom}</span> <span className="text-gray-500">({chauffeur.recurrence} cas)</span>
+                                        <ul className="list-['-_'] pl-4 mt-1 space-y-1">
+                                            {chauffeur.exemplesCommentaires.map((commentaire, index) => (
+                                                <li key={index} className="text-gray-600 italic">"{commentaire}"</li>
+                                            ))}
+                                        </ul>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
                     </div>
                 );
             })}
@@ -202,7 +204,11 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
                     <Separator/>
                     <ExemplesCommentairesImpression top={donneesRapport.global.meilleursCommentaires} flop={donneesRapport.global.piresCommentaires} />
                     <Separator/>
-                    <AnalyseCategorielleImpression resultats={donneesRapport.global.resultatsCategorisation} totalCommentairesNegatifs={donneesRapport.global.totalCommentairesNegatifs} />
+                    <AnalyseCategorielleImpression 
+                        resultats={donneesRapport.global.resultatsCategorisation} 
+                        totalCommentairesNegatifs={donneesRapport.global.totalCommentairesNegatifs}
+                        afficherDetailsCommentaires={false}
+                    />
                 </CardContent>
             </Card>
         </div>
@@ -254,7 +260,10 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
                                 <Separator/>
                                 <ExemplesCommentairesImpression top={depot.meilleursCommentaires} flop={depot.piresCommentaires} />
                                 <Separator/>
-                                <AnalyseCategorielleImpression resultats={depot.resultatsCategorisation} totalCommentairesNegatifs={depot.totalCommentairesNegatifs}/>
+                                <AnalyseCategorielleImpression 
+                                    resultats={depot.resultatsCategorisation} 
+                                    totalCommentairesNegatifs={depot.totalCommentairesNegatifs}
+                                />
                             </CardContent>
                         </Card>
                     </div>
