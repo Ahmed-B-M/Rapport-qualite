@@ -3,7 +3,7 @@
 
 import { useMemo, useState } from 'react';
 import { type Delivery } from '@/lib/definitions';
-import { aggregateStats } from '@/lib/data-processing';
+import { aggregateStatsByEntity } from '@/lib/analysis';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,7 @@ export function WarehouseAnalytics({ data }: { data: Delivery[] }) {
     const [filter, setFilter] = useState('');
 
     const warehouseStats = useMemo(() => {
-        const stats = aggregateStats(data, 'warehouse');
+        const stats = aggregateStatsByEntity(data, 'warehouse');
         return Object.entries(stats).map(([name, stat]) => ({ name, ...stat }))
           .sort((a,b) => b.totalDeliveries - a.totalDeliveries);
     }, [data]);
@@ -29,7 +29,7 @@ export function WarehouseAnalytics({ data }: { data: Delivery[] }) {
             "Entrepôt": stat.name,
             "Dépôt": data.find(d => d.warehouse === stat.name)?.depot,
             "Total Livraisons": stat.totalDeliveries,
-            "Note Moyenne": stat.ratedDeliveries > 0 ? stat.averageRating.toFixed(2) : 'N/A',
+            "Note Moyenne": stat.averageRating ? stat.averageRating.toFixed(2) : 'N/A',
             "Ponctualité (%)": stat.punctualityRate.toFixed(2),
             "Taux d'échec (%)": (100 - stat.successRate).toFixed(2),
             "Sur place forcé (%)": stat.forcedOnSiteRate.toFixed(2),
@@ -82,7 +82,7 @@ export function WarehouseAnalytics({ data }: { data: Delivery[] }) {
                                 <TableCell className="font-medium">{stat.name}</TableCell>
                                 <TableCell className="text-muted-foreground">{data.find(d => d.warehouse === stat.name)?.depot}</TableCell>
                                 <TableCell className="text-right">{stat.totalDeliveries}</TableCell>
-                                <TableCell className="text-right">{stat.ratedDeliveries > 0 ? stat.averageRating.toFixed(2) : 'N/A'}</TableCell>
+                                <TableCell className="text-right">{stat.averageRating ? stat.averageRating.toFixed(2) : 'N/A'}</TableCell>
                                 <TableCell className="text-right">{stat.punctualityRate.toFixed(2)}%</TableCell>
                                 <TableCell className="text-right">{(100 - stat.successRate).toFixed(2)}%</TableCell>
                                 <TableCell className="text-right">{stat.forcedOnSiteRate.toFixed(2)}%</TableCell>
@@ -103,6 +103,3 @@ export function WarehouseAnalytics({ data }: { data: Delivery[] }) {
         </Card>
     );
 }
-
-    
-    

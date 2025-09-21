@@ -1,7 +1,11 @@
 
-import { type Delivery, type StatsByEntity, type AggregatedStats, type DeliveryStatus } from './definitions';
+import { type Delivery, type AggregatedStats } from './definitions';
 import { WAREHOUSE_DEPOT_MAP, CARRIERS } from './constants';
 import { parse, isValid, format } from 'date-fns';
+import {
+  getOverallStats as getAnalysisOverallStats,
+} from './analysis';
+
 
 const HEADER_MAPPING: Record<string, keyof Delivery> = {
   'Date': 'date',
@@ -34,7 +38,6 @@ const getCarrierFromDriver = (driverName: string): string => {
     return 'Inconnu';
 };
 
-// Function to convert Excel serial number date to a JS Date object
 const convertExcelDate = (serial: number): Date => {
     const excelEpoch = new Date(1899, 11, 30);
     return new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000);
@@ -50,7 +53,6 @@ export const processRawData = (rawData: any[]): Delivery[] => {
       }
     }
 
-    // --- Date handling logic ---
     let formattedDate: string = 'N/A';
     const dateValue: any = delivery.date;
 
@@ -61,12 +63,11 @@ export const processRawData = (rawData: any[]): Delivery[] => {
             const convertedDate = convertExcelDate(dateValue);
             formattedDate = format(convertedDate, 'yyyy-MM-dd');
         } else if (typeof dateValue === 'string') {
-            // Attempt to parse the DD/MM/YYYY format
             const parsedDate = parse(dateValue, 'dd/MM/yyyy', new Date());
             if (isValid(parsedDate)) {
                 formattedDate = format(parsedDate, 'yyyy-MM-dd');
             } else {
-                formattedDate = dateValue; // Keep original if parsing fails
+                formattedDate = dateValue;
             }
         } else {
             formattedDate = String(dateValue);
@@ -99,24 +100,11 @@ export const processRawData = (rawData: any[]): Delivery[] => {
     const carrier = getCarrierFromDriver(driverName);
     const driver = driverName ? `${driverName} (${depot})` : `Livreur Inconnu (${depot})`;
     
-    let status: DeliveryStatus;
-    switch(row['Statut']) {
-        case 'Livré': status = 'Livré'; break;
-        case 'Non livré': status = 'Non livré'; break;
-        case 'Partiellement livré': status = 'Partiellement livré'; break;
-        default: status = 'En attente'; break;
-    }
-
-    let failureReason = delivery.failureReason;
-    if (status === 'Livré' || status === 'Partiellement livré') {
-        failureReason = undefined;
-    }
-
     return {
       ...delivery,
       date: formattedDate,
-      status: status,
-      failureReason: failureReason,
+      status: row['Statut'] === 'Livré' ? 'Livré' : 'Non livré',
+      failureReason: row['Statut'] === 'Non livré' ? delivery.failureReason : undefined,
       taskId: String(delivery.taskId || 'N/A'),
       warehouse: warehouse,
       driver: driver,
@@ -125,7 +113,7 @@ export const processRawData = (rawData: any[]): Delivery[] => {
       delaySeconds: Number(delivery.delaySeconds) || 0,
       forcedNoContact: String(delivery.forcedNoContact).toLowerCase() === 'true',
       forcedOnSite: delivery.forcedOnSite === 'Yes' ? 'Yes' : 'No',
-      completedBy: String(delivery.completedBy).toLowerCase() === 'web' ? 'web' : (String(delivery.completedBy).toLowerCase() === 'mobile' ? 'mobile' : 'unknown'),
+      completedBy: String(delivery.completedBy).toLowerCase() === 'web' ? 'web' : 'mobile',
       deliveryRating: delivery.deliveryRating ? Number(delivery.deliveryRating) : undefined,
       feedbackComment: delivery.feedbackComment ? String(delivery.feedbackComment) : undefined,
       depot,
@@ -134,90 +122,10 @@ export const processRawData = (rawData: any[]): Delivery[] => {
   });
 };
 
-const createInitialStats = (): AggregatedStats => ({
-    totalDeliveries: 0, successfulDeliveries: 0, failedDeliveries: 0, pendingDeliveries: 0,
-    successRate: 0, failureReasons: {}, totalRating: 0, ratedDeliveries: 0,
-    averageRating: 0, onTimeDeliveries: 0, punctualityRate: 0, problematicDeliveries: 0,
-    problematicDeliveriesRate: 0, forcedNoContactCount: 0, forcedNoContactRate: 0,
-    forcedOnSiteCount: 0, forcedOnSiteRate: 0, webCompletionCount: 0, webCompletionRate: 0,
-    ratingRate: 0,
-});
-
-const updateStats = (stats: AggregatedStats, delivery: Delivery) => {
-    stats.totalDeliveries++;
-    if (delivery.status === 'Livré' || delivery.status === 'Partiellement livré') {
-        stats.successfulDeliveries++;
-    } else if (delivery.status === 'Non livré') {
-        stats.failedDeliveries++;
-        if (delivery.failureReason) {
-            const reason = delivery.failureReason.trim();
-            stats.failureReasons[reason] = (stats.failureReasons[reason] || 0) + 1;
-        }
-    }
-    if (delivery.delaySeconds >= -900 && delivery.delaySeconds <= 900) stats.onTimeDeliveries++;
-    if (delivery.deliveryRating !== undefined && delivery.deliveryRating !== null) {
-        stats.ratedDeliveries++;
-        stats.totalRating += delivery.deliveryRating;
-    }
-    if (delivery.forcedNoContact) stats.forcedNoContactCount++;
-    if (delivery.forcedOnSite === 'Yes') stats.forcedOnSiteCount++;
-    if (delivery.completedBy === 'web') stats.webCompletionCount++;
-};
-
-const isProblematic = (delivery: Delivery): boolean => {
-    const isLate = delivery.delaySeconds > 900;
-    const hasBadRating = delivery.deliveryRating !== undefined && delivery.deliveryRating <= 2;
-    const isFailed = delivery.status === 'Non livré';
-    return isLate || hasBadRating || isFailed;
-};
-
-const finalizeStats = (stats: AggregatedStats, allDeliveries: Delivery[]) => {
-    const relevantTotal = stats.successfulDeliveries + stats.failedDeliveries;
-    if (relevantTotal > 0) {
-        stats.successRate = (stats.successfulDeliveries / relevantTotal) * 100;
-        stats.punctualityRate = (stats.onTimeDeliveries / relevantTotal) * 100;
-        stats.forcedNoContactRate = (stats.forcedNoContactCount / relevantTotal) * 100;
-        stats.forcedOnSiteRate = (stats.forcedOnSiteCount / relevantTotal) * 100;
-        stats.webCompletionRate = (stats.webCompletionCount / relevantTotal) * 100;
-        stats.ratingRate = (stats.ratedDeliveries / relevantTotal) * 100;
-        stats.problematicDeliveries = allDeliveries.filter(isProblematic).length;
-        stats.problematicDeliveriesRate = (stats.problematicDeliveries / relevantTotal) * 100;
-    }
-    if (stats.ratedDeliveries > 0) {
-        stats.averageRating = stats.totalRating / stats.ratedDeliveries;
-    }
-    stats.totalDeliveries = relevantTotal;
-};
-
-export const aggregateStats = (data: Delivery[], groupBy: keyof Delivery): StatsByEntity => {
-  const statsByEntity: StatsByEntity = {};
-  data.forEach((delivery) => {
-    let entityName: string = delivery[groupBy] as string || 'Inconnu';
-    if (groupBy === 'driver' && entityName.startsWith('Livreur Inconnu')) {
-        entityName = `Livreur Inconnu (${delivery.depot})`;
-    }
-    if (!statsByEntity[entityName]) {
-      statsByEntity[entityName] = createInitialStats();
-    }
-    if (delivery.status === 'En attente') {
-      statsByEntity[entityName].pendingDeliveries++;
-    } else {
-      updateStats(statsByEntity[entityName], delivery);
-    }
-  });
-  Object.values(statsByEntity).forEach(stats => finalizeStats(stats, data));
-  return statsByEntity;
-};
-
-export const getOverallStats = (data: Delivery[]): AggregatedStats => {
-    const overallStats = createInitialStats();
-    const relevantDeliveries = data.filter(d => d.status !== 'En attente');
-    const pendingCount = data.length - relevantDeliveries.length;
-    relevantDeliveries.forEach(delivery => updateStats(overallStats, delivery));
-    finalizeStats(overallStats, relevantDeliveries);
-    overallStats.pendingDeliveries = pendingCount;
-    return overallStats;
+export const getOverallStats = (deliveries: Delivery[]): AggregatedStats => {
+    return getAnalysisOverallStats(deliveries);
 }
+
 
 export const filterDataByPeriod = (data: Delivery[], period: string, previous = false): Delivery[] => {
     const now = new Date();
@@ -245,4 +153,12 @@ export const filterDataByDepot = (data: Delivery[], depot: string): Delivery[] =
     return data.filter(d => d.depot === depot);
 };
 
-export const processGlobalData = getOverallStats;
+export const processGlobalData = (deliveries: Delivery[]): AggregatedStats & { failedDeliveries: number; totalDeliveries: number; } => {
+    const stats = getOverallStats(deliveries);
+    const failedDeliveries = deliveries.filter(d => d.status === 'Non livré').length;
+    return {
+        ...stats,
+        failedDeliveries,
+        totalDeliveries: deliveries.length,
+    };
+};

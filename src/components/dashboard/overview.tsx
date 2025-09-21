@@ -1,17 +1,14 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Truck, Users, Package, Star, Building, TrendingUp, TrendingDown, ArrowRight, Timer, Percent, Link2Off, UserX } from 'lucide-react';
+import { Truck, Users, Package, Star, Building, TrendingUp, TrendingDown, ArrowRight, Timer, Percent, Link2Off, UserX, Smile } from 'lucide-react';
 import { StatCard } from './stat-card';
-import { DriverAnalytics } from './driver-analytics';
-import { CarrierAnalytics } from './carrier-analytics';
-import { DepotAnalytics } from './depot-analytics';
+import { GlobalPerformance } from './global-performance';
 import { CustomerSatisfaction } from './customer-satisfaction';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { type Delivery } from '@/lib/definitions';
-import { processGlobalData, filterDataByDepot, filterDataByPeriod } from '@/lib/data-processing';
+import { getOverallStats, filterDataByDepot, filterDataByPeriod } from '@/lib/analysis';
 
 interface OverviewProps {
   data: Delivery[];
@@ -19,25 +16,21 @@ interface OverviewProps {
 
 export function Overview({ data }: OverviewProps) {
   const [activeDepot, setActiveDepot] = useState<string>('all');
-  const [activePeriod, setActivePeriod] = useState<string>('7d'); // e.g., '1d', '7d', '30d'
+  const [activePeriod, setActivePeriod] = useState<string>('7d');
 
-  // Extract unique depots from data for the filter dropdown
   const uniqueDepots = useMemo(() => {
     const depots = new Set(data.map(d => d.depot));
     return Array.from(depots).sort();
   }, [data]);
 
-  // 1. Filter by period first
-  const periodData = filterDataByPeriod(data, activePeriod);
-  const previousPeriodData = filterDataByPeriod(data, activePeriod, true);
+  const periodData = useMemo(() => filterDataByPeriod(data, activePeriod), [data, activePeriod]);
+  const previousPeriodData = useMemo(() => filterDataByPeriod(data, activePeriod, true), [data, activePeriod]);
 
-  // 2. Then filter by depot
-  const depotData = filterDataByDepot(periodData, activeDepot);
-  const previousDepotData = filterDataByDepot(previousPeriodData, activeDepot);
+  const depotData = useMemo(() => filterDataByDepot(periodData, activeDepot), [periodData, activeDepot]);
+  const previousDepotData = useMemo(() => filterDataByDepot(previousPeriodData, activeDepot), [previousPeriodData, activeDepot]);
 
-  // 3. Process the filtered data
-  const currentStats = processGlobalData(depotData);
-  const previousStats = processGlobalData(previousDepotData);
+  const currentStats = useMemo(() => getOverallStats(depotData), [depotData]);
+  const previousStats = useMemo(() => getOverallStats(previousDepotData), [previousDepotData]);
 
   return (
     <div className="space-y-4">
@@ -79,16 +72,16 @@ export function Overview({ data }: OverviewProps) {
           trendDirection="up"
         />
         <StatCard
-          title="Livraisons échouées"
-          value={currentStats.failedDeliveries}
-          description="Retours et échecs"
-          icon={<TrendingDown className="text-red-500" />}
-          previousValue={previousStats.failedDeliveries}
-          trendDirection="down"
+          title="Note des Commentaires"
+          value={`${currentStats.averageSentiment.toFixed(2)}/10`}
+          description="Note moyenne des commentaires"
+          icon={<Smile className="text-blue-500" />}
+          previousValue={previousStats.averageSentiment}
+          trendDirection="up"
         />
          <StatCard
-          title="Satisfaction Client"
-          value={currentStats.averageRating.toFixed(2)}
+          title="Note moyenne"
+          value={currentStats.averageRating ? currentStats.averageRating.toFixed(2) : 'N/A'}
           description="Note moyenne sur 5"
           icon={<Star className="text-yellow-500" />}
           previousValue={previousStats.averageRating}
@@ -99,7 +92,7 @@ export function Overview({ data }: OverviewProps) {
         <StatCard
           title="Ponctualité"
           value={`${currentStats.punctualityRate.toFixed(1)}%`}
-          description="Livraisons à l'heure (fenêtre de +/- 15min)"
+          description="Livraisons à l'heure"
           icon={<Timer />}
           previousValue={previousStats.punctualityRate}
           trendDirection="up"
@@ -115,7 +108,7 @@ export function Overview({ data }: OverviewProps) {
         <StatCard
           title="'Sans Contact' Forcé"
           value={`${currentStats.forcedNoContactRate.toFixed(1)}%`}
-          description="Utilisation de la complétion forcée sans contact"
+          description="Complétion forcée sans contact"
           icon={<UserX />}
           previousValue={previousStats.forcedNoContactRate}
           trendDirection="down"
@@ -123,28 +116,18 @@ export function Overview({ data }: OverviewProps) {
         <StatCard
           title="'Validation Web'"
           value={`${currentStats.webCompletionRate.toFixed(1)}%`}
-          description="Utilisation de la validation par le web"
+          description="Utilisation de la validation web"
           icon={<Link2Off />}
           previousValue={previousStats.webCompletionRate}
           trendDirection="down"
         />
       </div>
 
-      {/* Pass filtered data to children components */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <div className="col-span-full lg:col-span-4">
-          <DriverAnalytics data={depotData} />
+      <div className="grid gap-4 mt-4 lg:grid-cols-7">
+        <div className="lg:col-span-4">
+          <GlobalPerformance data={depotData} />
         </div>
-        <div className="col-span-full lg:col-span-3">
-          <CarrierAnalytics data={depotData} />
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <div className="col-span-full lg:col-span-3">
-          <DepotAnalytics data={depotData} />
-        </div>
-        <div className="col-span-full lg:col-span-4">
+        <div className="lg:col-span-3">
           <CustomerSatisfaction data={depotData} />
         </div>
       </div>

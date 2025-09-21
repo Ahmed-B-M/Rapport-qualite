@@ -1,10 +1,11 @@
+
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { UploadCloud, FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
-import { processRawData } from "@/lib/data-processing";
+import { processRawData } from "@/lib/analysis";
 import { type Delivery } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
 
@@ -13,99 +14,96 @@ interface FileUploaderProps {
   setLoading: (loading: boolean) => void;
 }
 
-export function FileUploader({ onDataUploaded, setLoading }: FileUploaderProps) {
+export function FileUploader({
+  onDataUploaded,
+  setLoading,
+}: FileUploaderProps) {
   const { toast } = useToast();
 
-  const onDrop = useCallback(
-    (acceptedFiles: File[]) => {
+  const onDrop = (acceptedFiles: File[]) => {
+    if (acceptedFiles.length > 0) {
       setLoading(true);
-      if (acceptedFiles.length === 0) {
-        onDataUploaded([], "Aucun fichier n'a été déposé ou sélectionné.");
-        return;
-      }
-
       const file = acceptedFiles[0];
-
-      if (!file.name.endsWith(".xlsx")) {
-        onDataUploaded([], "Type de fichier invalide. Veuillez télécharger un fichier .xlsx.");
-        toast({
-          title: "Type de fichier invalide",
-          description: "Veuillez télécharger un fichier .xlsx.",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-
       const reader = new FileReader();
-      reader.onabort = () => {
-        onDataUploaded([], "La lecture du fichier a été interrompue.");
-        setLoading(false);
-      }
-      reader.onerror = () => {
-        onDataUploaded([], "La lecture du fichier a échoué.");
-        setLoading(false);
-      }
-      reader.onload = () => {
+
+      reader.onload = (event) => {
         try {
-          const binaryStr = reader.result;
-          const workbook = XLSX.read(binaryStr, { type: "binary", cellDates: true });
+          const workbook = XLSX.read(event.target?.result, { type: "binary" });
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
           
-          if (jsonData.length === 0) {
-            throw new Error("Le fichier téléchargé est vide ou dans un format incorrect.");
+          if(jsonData.length === 0) {
+            throw new Error("Le fichier est vide ou ne contient pas de données lisibles.");
           }
 
           const processedData = processRawData(jsonData);
           onDataUploaded(processedData);
           toast({
-            title: "Fichier téléchargé avec succès",
-            description: `${processedData.length} enregistrements ont été traités.`,
+            title: "Succès",
+            description: `${processedData.length} lignes ont été traitées avec succès.`,
           });
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : "Une erreur inconnue est survenue lors du traitement du fichier.";
+          const errorMessage = error instanceof Error ? error.message : "Une erreur inconnue est survenue.";
           onDataUploaded([], errorMessage);
           toast({
-            title: "Erreur de traitement",
-            description: errorMessage,
+            title: "Erreur",
+            description: `Échec du traitement du fichier : ${errorMessage}`,
             variant: "destructive",
           });
-          setLoading(false);
         }
       };
+      
+      reader.onerror = () => {
+        onDataUploaded([], "Erreur lors de la lecture du fichier.");
+        toast({
+            title: "Erreur",
+            description: "Impossible de lire le fichier. Veuillez réessayer.",
+            variant: "destructive",
+        });
+      }
+
       reader.readAsBinaryString(file);
-    },
-    [onDataUploaded, setLoading, toast]
-  );
+    }
+  };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+      "application/vnd.ms-excel": [".xls"],
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+        ".xlsx",
+      ],
     },
-    multiple: false,
+    maxFiles: 1,
   });
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
-      <div
-        {...getRootProps()}
-        className={`flex justify-center w-full px-6 py-12 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
-          isDragActive ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+    <div
+      {...getRootProps()}
+      className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors duration-200 ease-in-out
+        ${
+          isDragActive
+            ? "border-primary bg-primary/10"
+            : "border-muted-foreground/30 hover:border-primary hover:bg-primary/5"
         }`}
-      >
-        <input {...getInputProps()} />
-        <div className="text-center">
-          <UploadCloud className="w-12 h-12 mx-auto text-muted-foreground" />
-          <p className="mt-4 text-lg font-semibold">
-            {isDragActive ? "Déposez le fichier ici..." : "Glissez-déposez votre fichier XLSX ici"}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">ou cliquez pour sélectionner un fichier</p>
-          <p className="mt-4 text-xs text-muted-foreground flex items-center justify-center gap-2">
-            <FileSpreadsheet className="w-4 h-4" /> Format pris en charge : .xlsx
-          </p>
+    >
+      <input {...getInputProps()} />
+      <div className="flex flex-col items-center justify-center gap-4">
+        <div className="p-4 bg-primary/10 rounded-full text-primary">
+            <UploadCloud className="h-12 w-12" />
+        </div>
+        <div className="space-y-2">
+            <h3 className="text-2xl font-bold font-headline">
+                Déposez votre fichier ici
+            </h3>
+            <p className="text-muted-foreground">
+                ou cliquez pour sélectionner un fichier (XLS, XLSX)
+            </p>
+        </div>
+        <div className="flex items-center text-sm text-muted-foreground/80 mt-4">
+            <FileSpreadsheet className="h-4 w-4 mr-2"/>
+            <span>Seuls les fichiers Excel sont acceptés</span>
         </div>
       </div>
     </div>
