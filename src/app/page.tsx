@@ -98,27 +98,31 @@ export default function DashboardPage() {
   }, [donnees, exclureMagasin, plageDates]);
 
   const livreursNonAssocies = useMemo(() => {
-    const livreurs = donnees.filter(d => d.transporteur === 'Inconnu');
-    const livreursUniques = Array.from(new Set(livreurs.map(l => l.chauffeur)));
-    return livreurs.filter(l => livreursUniques.includes(l.chauffeur));
+    return donnees.filter(d => d.transporteur === 'Inconnu');
   }, [donnees]);
-
+  
   const livreursNonAssociesParDepot = useMemo(() => {
-    const groupes: Record<string, string[]> = {};
+    const groupes: Record<string, { livreurs: string[], entrepot?: string }> = {};
     const livreursUniques = new Set(livreursNonAssocies.map(l => l.chauffeur));
-    
+  
     livreursUniques.forEach(chauffeur => {
-        const livraison = livreursNonAssocies.find(l => l.chauffeur === chauffeur);
-        if(livraison) {
-            if (!groupes[livraison.depot]) {
-                groupes[livraison.depot] = [];
-            }
-            groupes[livraison.depot].push(livraison.chauffeur);
+      const livraison = livreursNonAssocies.find(l => l.chauffeur === chauffeur);
+      if (livraison) {
+        const key = livraison.depot === 'Magasin' ? `Magasin (${livraison.entrepot})` : livraison.depot;
+        if (!groupes[key]) {
+          groupes[key] = { livreurs: [] };
+          if (livraison.depot === 'Magasin') {
+            groupes[key].entrepot = livraison.entrepot;
+          }
         }
+        if (!groupes[key].livreurs.includes(livraison.chauffeur)) {
+            groupes[key].livreurs.push(livraison.chauffeur);
+        }
+      }
     });
-
-    for(const depot in groupes) {
-        groupes[depot].sort();
+  
+    for (const depot in groupes) {
+      groupes[depot].livreurs.sort();
     }
     return groupes;
   }, [livreursNonAssocies]);
@@ -211,15 +215,15 @@ export default function DashboardPage() {
             </DialogHeader>
             <ScrollArea className="h-[60vh] mt-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-1">
-                    {Object.entries(livreursNonAssociesParDepot).sort(([depotA], [depotB]) => depotA.localeCompare(depotB)).map(([depot, livreurs]) => (
+                    {Object.entries(livreursNonAssociesParDepot).sort(([depotA], [depotB]) => depotA.localeCompare(depotB)).map(([depot, data]) => (
                         <Card key={depot}>
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-lg">{depot}</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <ul className="list-disc pl-5 space-y-1 text-sm">
-                                    {livreurs.map((livreur) => (
-                                        <li key={livreur}>{livreur.replace(`(${depot})`, '').trim()}</li>
+                                    {data.livreurs.map((livreur) => (
+                                        <li key={livreur}>{livreur.replace(/\s*\([^)]*\)$/, '').trim()}</li>
                                     ))}
                                 </ul>
                             </CardContent>
@@ -235,3 +239,5 @@ export default function DashboardPage() {
     </SidebarProvider>
   );
 }
+
+    

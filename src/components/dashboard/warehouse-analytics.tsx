@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import { useMemo, useState } from 'react';
@@ -26,24 +25,37 @@ export function WarehouseAnalytics({ donnees }: { donnees: Livraison[] }) {
     }, [statistiquesEntrepots, filtre]);
     
     const gererExport = () => {
-        const donneesAExporter = statistiquesFiltrees.map(stat => ({
-            "Entrepôt": stat.nom,
-            "Dépôt": donnees.find(d => d.entrepot === stat.nom)?.depot,
-            "Total Livraisons": stat.totalLivraisons,
-            "Note Moyenne": stat.noteMoyenne ? stat.noteMoyenne.toFixed(2) : 'N/A',
-            "Ponctualité (%)": stat.tauxPonctualite.toFixed(2),
-            "Taux d'échec (%)": (100 - stat.tauxReussite).toFixed(2),
-            "Sur place forcé (%)": stat.tauxForceSurSite.toFixed(2),
-            "Sans contact forcé (%)": stat.tauxForceSansContact.toFixed(2),
-            "Validation Web (%)": stat.tauxCompletionWeb.toFixed(2),
-            "Taux de notation (%)": stat.tauxNotation.toFixed(2),
-        }));
+        const donneesAExporter = statistiquesFiltrees.map(stat => {
+            const depot = donnees.find(d => d.entrepot === stat.nom)?.depot;
+            const depotDisplay = depot === 'Magasin' ? `Magasin (${stat.nom})` : depot;
+
+            return {
+                "Entrepôt": stat.nom,
+                "Dépôt": depotDisplay,
+                "Total Livraisons": stat.totalLivraisons,
+                "Note Moyenne": stat.noteMoyenne ? stat.noteMoyenne.toFixed(2) : 'N/A',
+                "Ponctualité (%)": stat.tauxPonctualite.toFixed(2),
+                "Taux d'échec (%)": (100 - stat.tauxReussite).toFixed(2),
+                "Sur place forcé (%)": stat.tauxForceSurSite.toFixed(2),
+                "Sans contact forcé (%)": stat.tauxForceSansContact.toFixed(2),
+                "Validation Web (%)": stat.tauxCompletionWeb.toFixed(2),
+                "Taux de notation (%)": stat.tauxNotation.toFixed(2),
+            }
+        });
         
         const feuilleCalcul = XLSX.utils.json_to_sheet(donneesAExporter);
         const classeur = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(classeur, feuilleCalcul, 'Performance Entrepôts');
         XLSX.writeFile(classeur, 'performance_entrepots.xlsx');
     };
+
+    const getDepotDisplay = (entrepotNom: string) => {
+        const depot = donnees.find(d => d.entrepot === entrepotNom)?.depot;
+        if (depot === 'Magasin') {
+            return `Magasin (${entrepotNom})`;
+        }
+        return depot;
+    }
 
     return (
         <Card>
@@ -81,7 +93,7 @@ export function WarehouseAnalytics({ donnees }: { donnees: Livraison[] }) {
                         {statistiquesFiltrees.length > 0 ? statistiquesFiltrees.map((stat) => (
                             <TableRow key={stat.nom}>
                                 <TableCell className="font-medium">{stat.nom}</TableCell>
-                                <TableCell className="text-muted-foreground">{donnees.find(d => d.entrepot === stat.nom)?.depot}</TableCell>
+                                <TableCell className="text-muted-foreground">{getDepotDisplay(stat.nom)}</TableCell>
                                 <TableCell className="text-right">{stat.totalLivraisons}</TableCell>
                                 <TableCell className="text-right">{stat.noteMoyenne ? stat.noteMoyenne.toFixed(2) : 'N/A'}</TableCell>
                                 <TableCell className="text-right">{stat.tauxPonctualite.toFixed(2)}%</TableCell>
@@ -104,3 +116,5 @@ export function WarehouseAnalytics({ donnees }: { donnees: Livraison[] }) {
         </Card>
     );
 }
+
+    

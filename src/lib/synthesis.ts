@@ -1,5 +1,5 @@
 
-import { type DonneesRapportPerformance, type Objectifs, type ResultatSynthese, type DonneesSectionRapport, PointsSynthese } from './definitions';
+import { type DonneesRapportPerformance, type Objectifs, type ResultatSynthese, type DonneesSectionRapport, PointsSynthese, type SyntheseDepot } from './definitions';
 
 const KPI_CONFIG = {
     tauxReussite: {
@@ -56,7 +56,6 @@ function analyzeKpi(
 function generatePointsForScope(
     data: DonneesSectionRapport,
     objectives: Objectifs,
-    scopeName: string = 'global'
 ): PointsSynthese & { global: 'positif' | 'négatif' | 'mitigé' } {
     const points: PointsSynthese = { forces: [], faiblesses: [] };
     let score = 0;
@@ -120,12 +119,13 @@ export function generateSynthesis(
     reportData: DonneesRapportPerformance,
     objectives: Objectifs
 ): ResultatSynthese {
-    const globalSynthesis = generatePointsForScope(reportData.global, objectives, 'global');
+    const globalSynthesis = generatePointsForScope(reportData.global, objectives);
 
-    const depotSyntheses = reportData.depots.map(depotData => {
-        const depotPoints = generatePointsForScope(depotData, objectives, depotData.nom);
+    const depotSyntheses: SyntheseDepot[] = reportData.depots.map(depotData => {
+        const depotPoints = generatePointsForScope(depotData, objectives);
         return {
             nom: depotData.nom,
+            entrepot: depotData.entrepot,
             ...depotPoints
         };
     });
@@ -145,3 +145,5 @@ Le rapport met en évidence une performance **${globalSynthesis.global === 'posi
         conclusion: conclusion.trim()
     };
 }
+
+    

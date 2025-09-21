@@ -27,9 +27,11 @@ interface RapportImprimableProps {
   objectifs: Objectifs;
 }
 
-const LogoDepotImpression = ({ nomDepot }: { nomDepot: string }) => {
-    const nomLogo = nomDepot.toLowerCase().replace(/\s+/g, '-');
+const LogoDepotImpression = ({ nomDepot, entrepot }: { nomDepot: string, entrepot?: string }) => {
+    const isMagasin = nomDepot === 'Magasin' && entrepot;
+    const nomLogo = (isMagasin ? entrepot! : nomDepot).toLowerCase().replace(/\s+/g, '-');
     const urlLogo = `/logos/id-${nomLogo}.jpg`;
+
     return <Image src={urlLogo} alt={`Logo ${nomDepot}`} width={30} height={30} className="rounded-full inline-block mr-2"/>;
 };
 
@@ -118,7 +120,7 @@ const ExemplesCommentairesImpression = ({ top, flop }: { top: ExempleCommentaire
     </div>
 );
 
-const AnalyseCategorielleImpression = ({ resultats }: { resultats: ResultatsCategorisation }) => (
+const AnalyseCategorielleImpression = ({ resultats, totalCommentairesNegatifs }: { resultats: ResultatsCategorisation, totalCommentairesNegatifs: number }) => (
     <div className="mt-4 break-inside-avoid">
         <h4 className="text-base font-semibold mb-2 flex items-center"><ClipboardList className="h-4 w-4 mr-2"/>Analyse des Commentaires Négatifs</h4>
         <div className="space-y-3">
@@ -126,12 +128,21 @@ const AnalyseCategorielleImpression = ({ resultats }: { resultats: ResultatsCate
                 const chauffeurs = resultats[cat];
                 if (chauffeurs.length === 0) return null;
 
+                const totalCasCategorie = chauffeurs.reduce((acc, curr) => acc + curr.recurrence, 0);
+                const pourcentageCategorie = totalCommentairesNegatifs > 0 ? (totalCasCategorie / totalCommentairesNegatifs) * 100 : 0;
+
                 return (
                     <div key={cat} className="p-2 border rounded-md text-xs">
-                        <h5 className="font-bold capitalize mb-1">{cat}</h5>
-                        <ul className="list-disc pl-4">
-                            {chauffeurs.map(chauffeur => (
-                                <li key={chauffeur.nom}>{chauffeur.nom} <span className="text-gray-500">({chauffeur.recurrence} cas)</span></li>
+                        <div className="flex justify-between items-center mb-1">
+                            <h5 className="font-bold capitalize">{cat}</h5>
+                            <span className="font-semibold">{totalCasCategorie} cas ({pourcentageCategorie.toFixed(1)}%)</span>
+                        </div>
+                        <ul className="list-disc pl-4 space-y-1">
+                            {chauffeurs.slice(0, 2).map(chauffeur => (
+                                <li key={chauffeur.nom}>
+                                    {chauffeur.nom} <span className="text-gray-500">({chauffeur.recurrence} cas)</span>
+                                    {chauffeur.exempleCommentaire && <p className="text-xs text-gray-600 italic mt-0.5">"{chauffeur.exempleCommentaire}"</p>}
+                                </li>
                             ))}
                         </ul>
                     </div>
@@ -185,28 +196,30 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
                     <Separator/>
                     <ExemplesCommentairesImpression top={donneesRapport.global.meilleursCommentaires} flop={donneesRapport.global.piresCommentaires} />
                     <Separator/>
-                    <AnalyseCategorielleImpression resultats={donneesRapport.global.resultatsCategorisation} />
+                    <AnalyseCategorielleImpression resultats={donneesRapport.global.resultatsCategorisation} totalCommentairesNegatifs={donneesRapport.global.totalCommentairesNegatifs} />
                 </CardContent>
             </Card>
         </div>
 
         {/* Sections par dépôt */}
         {donneesRapport.depots.map((depot) => {
-            const syntheseDepot = donneesSynthese.depots.find(d => d.nom === depot.nom);
+            const syntheseDepot = donneesSynthese.depots.find(d => d.nom === depot.nom && d.entrepot === depot.entrepot);
             if (!syntheseDepot) return null;
             
+            const titreDepot = depot.nom === 'Magasin' ? `Magasin (${depot.entrepot})` : depot.nom;
+
             return (
-                <React.Fragment key={depot.nom}>
+                <React.Fragment key={titreDepot}>
                     {/* Dépôt - Page 1 */}
                     <div className="page-break">
                         <h2 className="text-2xl font-bold mb-4 flex items-center">
-                            <LogoDepotImpression nomDepot={depot.nom} />
-                            {depot.nom}
+                            <LogoDepotImpression nomDepot={depot.nom} entrepot={depot.entrepot} />
+                            {titreDepot}
                         </h2>
-                        <SectionSyntheseImpression titre={`Synthèse ${depot.nom}`} synthese={syntheseDepot} />
+                        <SectionSyntheseImpression titre={`Synthèse ${titreDepot}`} synthese={syntheseDepot} />
                         <Card className="break-inside-avoid">
                              <CardHeader className="p-3">
-                                <CardTitle className="text-base">Indicateurs de Performance Clés (KPIs) - {depot.nom}</CardTitle>
+                                <CardTitle className="text-base">Indicateurs de Performance Clés (KPIs) - {titreDepot}</CardTitle>
                              </CardHeader>
                              <CardContent className="p-3">
                                 <div className="grid grid-cols-4 gap-2">
@@ -222,12 +235,12 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
                     {/* Dépôt - Page 2 */}
                     <div className="page-break">
                         <h2 className="text-2xl font-bold mb-4 flex items-center">
-                           <LogoDepotImpression nomDepot={depot.nom} />
-                           {depot.nom}
+                           <LogoDepotImpression nomDepot={depot.nom} entrepot={depot.entrepot} />
+                           {titreDepot}
                         </h2>
                         <Card>
                             <CardHeader className="p-3">
-                                <CardTitle className="text-base">Analyse Détaillée - {depot.nom}</CardTitle>
+                                <CardTitle className="text-base">Analyse Détaillée - {titreDepot}</CardTitle>
                                 <CardDescription className="text-xs">{depot.statistiques.totalLivraisons} livraisons analysées.</CardDescription>
                             </CardHeader>
                             <CardContent className="p-3 space-y-3">
@@ -235,7 +248,7 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
                                 <Separator/>
                                 <ExemplesCommentairesImpression top={depot.meilleursCommentaires} flop={depot.piresCommentaires} />
                                 <Separator/>
-                                <AnalyseCategorielleImpression resultats={depot.resultatsCategorisation} />
+                                <AnalyseCategorielleImpression resultats={depot.resultatsCategorisation} totalCommentairesNegatifs={depot.totalCommentairesNegatifs}/>
                             </CardContent>
                         </Card>
                     </div>
@@ -245,3 +258,5 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
     </div>
   );
 }
+
+    

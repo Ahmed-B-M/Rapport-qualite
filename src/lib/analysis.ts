@@ -1,11 +1,10 @@
 
-
 import { 
     type Livraison, type StatistiquesAgregees, type PerformanceChauffeur, 
     type DonneesRapportPerformance, type ClassementsKpiParEntite, type EntiteClassement, 
     type RapportDepot, type StatutLivraison, type DonneesSectionRapport, 
     type EntiteClassementNoteChauffeur,
-    type CategorieProbleme, type CommentaireCategorise, type ResultatsCategorisation, CATEGORIES_PROBLEMES, ForceSurSite, TerminePar
+    type CategorieProbleme, type CommentaireCategorise, type ResultatsCategorisation, CATEGORIES_PROBLEMES, ChauffeurProbleme
 } from './definitions';
 import { CARTE_ENTREPOT_DEPOT, TRANSPORTEURS } from '@/lib/constants';
 import { parse, isValid, format } from 'date-fns';
@@ -85,7 +84,7 @@ export const traiterDonneesBrutes = (donneesBrutes: any[]): Livraison[] => {
     const nomChauffeur = (livraison.chauffeur || '').trim();
     
     const transporteur = getTransporteurFromChauffeur(nomChauffeur);
-    const chauffeur = nomChauffeur ? `${nomChauffeur} (${depot})` : `Livreur Inconnu (${depot})`;
+    const chauffeur = nomChauffeur ? `${nomChauffeur} (${depot === 'Magasin' ? entrepot : depot})` : `Livreur Inconnu (${depot})`;
     
     let statut: StatutLivraison;
     switch(ligne['Statut']) {
@@ -98,7 +97,7 @@ export const traiterDonneesBrutes = (donneesBrutes: any[]): Livraison[] => {
     const note = livraison.noteLivraison ? Number(livraison.noteLivraison) : undefined;
     
     const termineParBrut = String(livraison.terminePar).toLowerCase();
-    let terminePar: TerminePar;
+    let terminePar: 'web' | 'mobile' | 'inconnu';
     if (termineParBrut.includes('web')) {
         terminePar = 'web';
     } else if (termineParBrut.includes('mobile')) {
@@ -228,9 +227,18 @@ export const getDonneesPerformanceChauffeur = (donnees: Livraison[] | undefined,
     });
     return Object.entries(livraisonsParChauffeur).map(([nomChauffeur, livraisons]) => {
         const stats = getStatistiquesGlobales(livraisons, noteMoyenneGlobale);
-        const depot = livraisons[0]?.depot || 'Inconnu';
-        const transporteur = livraisons[0]?.transporteur || 'Inconnu';
-        return { chauffeur: nomChauffeur, depot, transporteur, ...stats };
+        const premierLivraison = livraisons[0];
+        const depot = premierLivraison?.depot || 'Inconnu';
+        const transporteur = premierLivraison?.transporteur || 'Inconnu';
+        const entrepot = premierLivraison?.entrepot || 'Inconnu';
+
+        return { 
+            chauffeur: nomChauffeur, 
+            depot, 
+            transporteur,
+            entrepot, 
+            ...stats 
+        };
     });
 };
 
@@ -305,14 +313,20 @@ function analyserCommentairesNegatifs(livraisons: Livraison[]): ResultatsCategor
 
     CATEGORIES_PROBLEMES.forEach(cat => {
         const commentairesDeLaCategorie = commentairesCategorises.filter(c => c.categorie === cat);
-        const chauffeursConcernes: Record<string, number> = {};
+        const chauffeursConcernes: Record<string, { recurrence: number, exemples: string[] }> = {};
 
         commentairesDeLaCategorie.forEach(c => {
-            chauffeursConcernes[c.chauffeur] = (chauffeursConcernes[c.chauffeur] || 0) + 1;
+            if (!chauffeursConcernes[c.chauffeur]) {
+                chauffeursConcernes[c.chauffeur] = { recurrence: 0, exemples: [] };
+            }
+            chauffeursConcernes[c.chauffeur].recurrence++;
+            if (chauffeursConcernes[c.chauffeur].exemples.length < 1) { // On garde un exemple
+                chauffeursConcernes[c.chauffeur].exemples.push(c.commentaire);
+            }
         });
 
         resultats[cat] = Object.entries(chauffeursConcernes)
-            .map(([nom, recurrence]) => ({ nom, recurrence }))
+            .map(([nom, data]) => ({ nom, recurrence: data.recurrence, exempleCommentaire: data.exemples[0] }))
             .sort((a, b) => b.recurrence - a.recurrence);
     });
 
@@ -417,6 +431,10 @@ const getDonneesSectionRapport = (donnees: Livraison[], noteMoyenneGlobale: numb
         return { top: mieuxNotes, flop: moinsBienNotes };
     }
 
+    const commentairesNegatifs = donnees.filter(l => 
+        l.commentaireRetour && l.commentaireRetour.trim().length > 5 &&
+        analyzeSentiment(l.commentaireRetour, l.noteLivraison).score < 5
+    );
 
     const classementsNotesChauffeur = getClassementsNotesChauffeur(donnees, performancesChauffeur);
 
@@ -428,6 +446,7 @@ const getDonneesSectionRapport = (donnees: Livraison[], noteMoyenneGlobale: numb
         chauffeursMieuxNotes: classementsNotesChauffeur.top,
         chauffeursMoinsBienNotes: classementsNotesChauffeur.flop,
         resultatsCategorisation: analyserCommentairesNegatifs(donnees),
+        totalCommentairesNegatifs: commentairesNegatifs.length,
     };
 };
 
@@ -439,13 +458,16 @@ export const genererRapportPerformance = (donnees: Livraison[]): DonneesRapportP
 
     const livraisonsParDepot: { [key: string]: Livraison[] } = {};
     donnees.forEach(l => {
-        if (!livraisonsParDepot[l.depot]) livraisonsParDepot[l.depot] = [];
-        livraisonsParDepot[l.depot].push(l);
+        const key = l.depot === 'Magasin' ? `Magasin_${l.entrepot}` : l.depot;
+        if (!livraisonsParDepot[key]) livraisonsParDepot[key] = [];
+        livraisonsParDepot[key].push(l);
     });
 
-    const rapportsDepot: RapportDepot[] = Object.entries(livraisonsParDepot).map(([nomDepot, donneesDepot]) => {
+    const rapportsDepot: RapportDepot[] = Object.entries(livraisonsParDepot).map(([key, donneesDepot]) => {
+        const premierLivraison = donneesDepot[0];
         return {
-            nom: nomDepot,
+            nom: premierLivraison.depot,
+            entrepot: premierLivraison.depot === 'Magasin' ? premierLivraison.entrepot : undefined,
             ...getDonneesSectionRapport(donneesDepot, noteMoyenneGlobale)
         };
     });
@@ -483,16 +505,5 @@ export const filtrerDonneesParDepot = (donnees: Livraison[], depot: string): Liv
     if (depot === 'all') return donnees;
     return donnees.filter(l => l.depot === depot);
 };
-
-
-
-
-
-
-
-
-
-
-
 
     

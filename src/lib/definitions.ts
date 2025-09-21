@@ -46,6 +46,7 @@ export type PerformanceChauffeur = StatistiquesAgregees & {
   chauffeur: string;
   depot: string;
   transporteur: string;
+  entrepot: string;
 };
 
 // --- Nouveaux types pour le rapport de performance ---
@@ -110,6 +111,7 @@ export type CommentaireCategorise = {
 export type ChauffeurProbleme = {
     nom: string;
     recurrence: number;
+    exempleCommentaire?: string;
 };
 
 export type ResultatsCategorisation = Record<CategorieProbleme, ChauffeurProbleme[]>;
@@ -123,10 +125,12 @@ export type DonneesSectionRapport = {
     chauffeursMieuxNotes: EntiteClassementNoteChauffeur[];
     chauffeursMoinsBienNotes: EntiteClassementNoteChauffeur[];
     resultatsCategorisation: ResultatsCategorisation;
+    totalCommentairesNegatifs: number;
 };
 
 export type RapportDepot = DonneesSectionRapport & {
     nom: string;
+    entrepot?: string;
 };
 
 export type DonneesRapportPerformance = {
@@ -142,6 +146,7 @@ export interface PointsSynthese {
 
 export interface SyntheseDepot extends PointsSynthese {
   nom: string;
+  entrepot?: string;
   global: 'positif' | 'négatif' | 'mitigé';
 }
 
