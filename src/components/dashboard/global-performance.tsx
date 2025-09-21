@@ -3,125 +3,141 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { type DriverPerformance } from '@/lib/definitions';
-import { getDriverPerformanceData } from '@/lib/analysis';
+import { type PerformanceChauffeur } from '@/lib/definitions';
+import { getDonneesPerformanceChauffeur } from '@/lib/analysis';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import * as XLSX from 'xlsx';
 
-interface GlobalPerformanceProps {
-  data: any[];
+interface PerformanceGlobaleProps {
+  data?: any[];
+  depotsUniques: string[];
+  depotActif: string;
+  setDepotActif: (value: string) => void;
 }
 
-export function GlobalPerformance({ data }: GlobalPerformanceProps) {
-  const [carrierFilter, setCarrierFilter] = useState('all');
-  const [depotFilter, setDepotFilter] = useState('all');
-  const [driverFilter, setDriverFilter] = useState('');
+export function GlobalPerformance({ data, depotsUniques, depotActif, setDepotActif }: PerformanceGlobaleProps) {
+  const [filtreTransporteur, setFiltreTransporteur] = useState('all');
+  const [filtreChauffeur, setFiltreChauffeur] = useState('');
 
-  const performanceData = useMemo(() => getDriverPerformanceData(data), [data]);
+  const donneesPerformance = useMemo(() => {
+    if (!data) {
+      return [];
+    }
+    const noteMoyenneGlobale = data.filter(d => d.noteLivraison).reduce((acc, d) => acc + d.noteLivraison, 0) / data.filter(d => d.noteLivraison).length || 4.5;
+    return getDonneesPerformanceChauffeur(data, noteMoyenneGlobale)
+  }, [data]);
 
-  const uniqueCarriers = useMemo(() => ['all', ...Array.from(new Set(performanceData.map(p => p.carrier)))], [performanceData]);
-  const uniqueDepots = useMemo(() => ['all', ...Array.from(new Set(performanceData.map(p => p.depot)))], [performanceData]);
-
-  const filteredData = useMemo(() => {
-    return performanceData.filter(item => 
-      (carrierFilter === 'all' || item.carrier === carrierFilter) &&
-      (depotFilter === 'all' || item.depot === depotFilter) &&
-      (item.driver.toLowerCase().includes(driverFilter.toLowerCase()))
-    );
-  }, [performanceData, carrierFilter, depotFilter, driverFilter]);
-
-  const getSuccessRateColor = (rate: number) => {
-    if (rate >= 98) return 'bg-green-500 hover:bg-green-600';
-    if (rate >= 95) return 'bg-yellow-500 hover:bg-yellow-600';
-    return 'bg-red-500 hover:bg-red-600';
-  };
+  const transporteursUniques = useMemo(() => ['all', ...Array.from(new Set(donneesPerformance.map(p => p.transporteur)))], [donneesPerformance]);
   
-  const handleExport = () => {
-      const dataToExport = filteredData.map(item => ({
-        "Livreur": item.driver,
-        "Transporteur": item.carrier,
+  const donneesFiltrees = useMemo(() => {
+    return donneesPerformance.filter(item => 
+      (filtreTransporteur === 'all' || item.transporteur === filtreTransporteur) &&
+      (item.chauffeur.toLowerCase().includes(filtreChauffeur.toLowerCase()))
+    );
+  }, [donneesPerformance, filtreTransporteur, filtreChauffeur]);
+  
+  const gererExportation = () => {
+      const donneesAExporter = donneesFiltrees.map(item => ({
+        "Livreur": item.chauffeur,
+        "Transporteur": item.transporteur,
         "Dépôt": item.depot,
-        "Total Livraisons": item.totalDeliveries,
-        "Taux de Succès (%)": item.successRate.toFixed(2),
-        "Note Moyenne": item.averageRating ? item.averageRating.toFixed(2) : 'N/A',
-        "Ponctualité (%)": item.punctualityRate.toFixed(2),
-        "Taux de Notation (%)": item.ratingRate.toFixed(2),
-        "Sur place forcé (%)": item.forcedOnSiteRate.toFixed(2),
-        "Sans contact forcé (%)": item.forcedNoContactRate.toFixed(2),
-        "Validation Web (%)": item.webCompletionRate.toFixed(2),
+        "Total Livraisons": item.totalLivraisons,
+        "Taux de Succès (%)": item.tauxReussite.toFixed(2),
+        "Nb Livraisons Réussies": item.nombreLivraisonsReussies,
+        "Note Moyenne": item.noteMoyenne ? item.noteMoyenne.toFixed(2) : 'N/A',
+        "Nb Notes": item.nombreNotes,
+        "Ponctualité (%)": item.tauxPonctualite.toFixed(2),
+        "Nb Retards": item.nombreRetards,
+        "Taux de Notation (%)": item.tauxNotation.toFixed(2),
+        "Taux Forcé sur site (%)": item.tauxForceSurSite.toFixed(2),
+        "Nb Forcé sur site": item.nombreForceSurSite,
+        "Taux Forcé sans contact (%)": item.tauxForceSansContact.toFixed(2),
+        "Nb Forcé sans contact": item.nombreForceSansContact,
+        "Taux Validation Web (%)": item.tauxCompletionWeb.toFixed(2),
+        "Nb Validation Web": item.nombreCompletionWeb,
       }));
 
-      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Performance Globale');
-      XLSX.writeFile(workbook, 'performance_globale.xlsx');
+      const feuilleCalcul = XLSX.utils.json_to_sheet(donneesAExporter);
+      const classeur = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(classeur, feuilleCalcul, 'Performance Globale');
+      XLSX.writeFile(classeur, 'performance_globale.xlsx');
   };
 
+  const renderCell = (taux: number, nombre: number) => (
+    <div className="text-right">
+        <div>{taux.toFixed(2)}%</div>
+        <div className="text-xs text-muted-foreground">({nombre})</div>
+    </div>
+  );
+  
   return (
     <Card className="col-span-full">
       <CardHeader>
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-start md:items-center flex-col md:flex-row gap-4">
             <div>
-                <CardTitle>Performance Globale par Livreur</CardTitle>
+                <CardTitle>Performance Globale Détaillée</CardTitle>
                 <CardDescription>
-                Analysez et croisez les données par transporteur, dépôt et livreur.
+                Analysez et croisez les données par dépôt, transporteur et livreur.
                 </CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={handleExport}>
+            <Button variant="outline" size="sm" onClick={gererExportation}>
                 <Download className="mr-2 h-4 w-4" /> Exporter en Excel
             </Button>
         </div>
-        <div className="mt-4 flex items-center gap-4">
-          <Select value={carrierFilter} onValueChange={setCarrierFilter}>
-            <SelectTrigger><SelectValue placeholder="Filtrer par transporteur..." /></SelectTrigger>
-            <SelectContent>
-              {uniqueCarriers.map(c => <SelectItem key={c} value={c}>{c === 'all' ? 'Tous les transporteurs' : c}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={depotFilter} onValueChange={setDepotFilter}>
-            <SelectTrigger><SelectValue placeholder="Filtrer par dépôt..." /></SelectTrigger>
-            <SelectContent>
-              {uniqueDepots.map(d => <SelectItem key={d} value={d}>{d === 'all' ? 'Tous les dépôts' : d}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Input placeholder="Rechercher un livreur..." value={driverFilter} onChange={e => setDriverFilter(e.target.value)} />
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Select value={depotActif} onValueChange={setDepotActif}>
+                <SelectTrigger><SelectValue placeholder="Filtrer par dépôt..." /></SelectTrigger>
+                <SelectContent>
+                {depotsUniques.map(d => <SelectItem key={d} value={d}>{d === 'all' ? 'Tous les dépôts' : d}</SelectItem>)}
+                </SelectContent>
+            </Select>
+            <Select value={filtreTransporteur} onValueChange={setFiltreTransporteur}>
+                <SelectTrigger><SelectValue placeholder="Filtrer par transporteur..." /></SelectTrigger>
+                <SelectContent>
+                {transporteursUniques.map(c => <SelectItem key={c} value={c}>{c === 'all' ? 'Tous les transporteurs' : c}</SelectItem>)}
+                </SelectContent>
+            </Select>
+          <Input placeholder="Rechercher un livreur..." value={filtreChauffeur} onChange={e => setFiltreChauffeur(e.target.value)} />
         </div>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-[500px]">
+        <ScrollArea className="h-[65vh]">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Livreur</TableHead>
+                <TableHead className="w-[200px]">Livreur</TableHead>
                 <TableHead>Transporteur</TableHead>
                 <TableHead>Dépôt</TableHead>
                 <TableHead className="text-right">Total Liv.</TableHead>
-                <TableHead className="text-right">Taux Succès</TableHead>
+                <TableHead className="text-right">Succès</TableHead>
                 <TableHead className="text-right">Note Moy.</TableHead>
                 <TableHead className="text-right">Ponctualité</TableHead>
+                <TableHead className="text-right">Taux Not.</TableHead>
+                <TableHead className="text-right">Forcé S.P.</TableHead>
+                <TableHead className="text-right">Forcé S.C.</TableHead>
+                <TableHead className="text-right">Val. Web</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredData.map(item => (
-                <TableRow key={item.driver}>
-                  <TableCell className="font-medium truncate max-w-[200px]">{item.driver}</TableCell>
-                  <TableCell>{item.carrier}</TableCell>
+              {donneesFiltrees.map(item => (
+                <TableRow key={item.chauffeur}>
+                  <TableCell className="font-medium truncate max-w-[200px]">{item.chauffeur}</TableCell>
+                  <TableCell>{item.transporteur}</TableCell>
                   <TableCell>{item.depot}</TableCell>
-                  <TableCell className="text-right">{item.totalDeliveries}</TableCell>
-                  <TableCell className="text-right">
-                    <Badge className={getSuccessRateColor(item.successRate)}>
-                      {item.successRate.toFixed(2)}%
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">{item.averageRating ? item.averageRating.toFixed(2) : 'N/A'}</TableCell>
-                  <TableCell className="text-right">{item.punctualityRate.toFixed(2)}%</TableCell>
+                  <TableCell className="text-right">{item.totalLivraisons}</TableCell>
+                  <TableCell>{renderCell(item.tauxReussite, item.nombreLivraisonsReussies)}</TableCell>
+                  <TableCell>{renderCell(item.noteMoyenne || 0, item.nombreNotes)}</TableCell>
+                  <TableCell>{renderCell(item.tauxPonctualite, item.totalLivraisons - item.nombreRetards)}</TableCell>
+                  <TableCell>{renderCell(item.tauxNotation, item.nombreNotes)}</TableCell>
+                  <TableCell>{renderCell(item.tauxForceSurSite, item.nombreForceSurSite)}</TableCell>
+                  <TableCell>{renderCell(item.tauxForceSansContact, item.nombreForceSansContact)}</TableCell>
+                  <TableCell>{renderCell(item.tauxCompletionWeb, item.nombreCompletionWeb)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -1,28 +1,28 @@
 
-import { type Delivery, type AggregatedStats } from './definitions';
-import { WAREHOUSE_DEPOT_MAP, CARRIERS } from './constants';
+import { type Livraison, type StatistiquesAgregees } from './definitions';
+import { CARTE_ENTREPOT_DEPOT, TRANSPORTEURS } from './constants';
 import { parse, isValid, format } from 'date-fns';
 import {
   getOverallStats as getAnalysisOverallStats,
 } from './analysis';
 
 
-const HEADER_MAPPING: Record<string, keyof Delivery> = {
+const HEADER_MAPPING: Record<string, keyof Livraison> = {
   'Date': 'date',
-  'Statut': 'status',
-  'Raison d’échec de livraison': 'failureReason',
-  'ID de la tâche': 'taskId',
-  'Entrepôt': 'warehouse',
-  'Livreur': 'driver',
-  'Tournée': 'tourId',
+  'Statut': 'statut',
+  'Raison d’échec de livraison': 'raisonEchec',
+  'ID de la tâche': 'idTache',
+  'Entrepôt': 'entrepot',
+  'Livreur': 'chauffeur',
+  'Tournée': 'idTournee',
   'Séquence': 'sequence',
-  'Retard (s)': 'delaySeconds',
-  'Qu\'avez vous pensé de la livraison de votre commande?': 'feedbackComment',
-  'Notez votre livraison': 'deliveryRating',
-  'Sans contact forcé': 'forcedNoContact',
-  'Raison de confirmation sans contact': 'noContactReason',
-  'Sur place forcé': 'forcedOnSite',
-  'Complété par': 'completedBy',
+  'Retard (s)': 'retardSecondes',
+  'Qu\'avez vous pensé de la livraison de votre commande?': 'commentaireRetour',
+  'Notez votre livraison': 'noteLivraison',
+  'Sans contact forcé': 'forceSansContact',
+  'Raison de confirmation sans contact': 'raisonSansContact',
+  'Sur place forcé': 'forceSurSite',
+  'Complété par': 'terminePar',
 };
 
 const getCarrierFromDriver = (driverName: string): string => {
@@ -30,9 +30,9 @@ const getCarrierFromDriver = (driverName: string): string => {
     const name = driverName.trim().toUpperCase();
     if (name.endsWith('ID LOG')) return 'ID LOGISTICS';
     if (name.startsWith('STT')) return 'Sous traitants';
-    for (const carrier of CARRIERS) {
+    for (const carrier of TRANSPORTEURS) {
         for (const suffix of carrier.suffixes) {
-            if (suffix && name.endsWith(suffix)) return carrier.name;
+            if (suffix && name.endsWith(suffix)) return carrier.nom;
         }
     }
     return 'Inconnu';
@@ -43,9 +43,9 @@ const convertExcelDate = (serial: number): Date => {
     return new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000);
 };
 
-export const processRawData = (rawData: any[]): Delivery[] => {
+export const processRawData = (rawData: any[]): Livraison[] => {
   return rawData.map((row) => {
-    const delivery: Partial<Delivery> = {};
+    const delivery: Partial<Livraison> = {};
     for (const rawHeader in row) {
       const mappedKey = HEADER_MAPPING[rawHeader.trim()];
       if (mappedKey) {
@@ -74,27 +74,27 @@ export const processRawData = (rawData: any[]): Delivery[] => {
         }
     }
 
-    const warehouse = (delivery.warehouse || 'Inconnu').trim();
-    const depot = WAREHOUSE_DEPOT_MAP[warehouse] || 'Dépôt Inconnu';
-    const driverName = (delivery.driver || '').trim();
+    const warehouse = (delivery.entrepot || 'Inconnu').trim();
+    const depot = CARTE_ENTREPOT_DEPOT[warehouse] || 'Dépôt Inconnu';
+    const driverName = (delivery.chauffeur || '').trim();
     
     if (!driverName) {
         return {
           ...delivery,
           date: formattedDate,
-          status: 'En attente',
-          taskId: String(delivery.taskId || 'N/A'),
-          warehouse: warehouse,
-          driver: 'Livreur Inconnu',
-          tourId: String(delivery.tourId || 'N/A'),
+          statut: 'En attente',
+          idTache: String(delivery.idTache || 'N/A'),
+          entrepot: warehouse,
+          chauffeur: 'Livreur Inconnu',
+          idTournee: String(delivery.idTournee || 'N/A'),
           sequence: Number(delivery.sequence) || 0,
-          delaySeconds: Number(delivery.delaySeconds) || 0,
-          forcedNoContact: false,
-          forcedOnSite: 'No',
-          completedBy: 'unknown',
+          retardSecondes: Number(delivery.retardSecondes) || 0,
+          forceSansContact: false,
+          forceSurSite: 'Non',
+          terminePar: 'inconnu',
           depot,
-          carrier: 'Inconnu',
-        } as Delivery;
+          transporteur: 'Inconnu',
+        } as Livraison;
     }
     
     const carrier = getCarrierFromDriver(driverName);
@@ -103,31 +103,31 @@ export const processRawData = (rawData: any[]): Delivery[] => {
     return {
       ...delivery,
       date: formattedDate,
-      status: row['Statut'] === 'Livré' ? 'Livré' : 'Non livré',
-      failureReason: row['Statut'] === 'Non livré' ? delivery.failureReason : undefined,
-      taskId: String(delivery.taskId || 'N/A'),
-      warehouse: warehouse,
-      driver: driver,
-      tourId: String(delivery.tourId || 'N/A'),
+      statut: row['Statut'] === 'Livré' ? 'Livré' : 'Non livré',
+      raisonEchec: row['Statut'] === 'Non livré' ? delivery.raisonEchec : undefined,
+      idTache: String(delivery.idTache || 'N/A'),
+      entrepot: warehouse,
+      chauffeur: driver,
+      idTournee: String(delivery.idTournee || 'N/A'),
       sequence: Number(delivery.sequence) || 0,
-      delaySeconds: Number(delivery.delaySeconds) || 0,
-      forcedNoContact: String(delivery.forcedNoContact).toLowerCase() === 'true',
-      forcedOnSite: delivery.forcedOnSite === 'Yes' ? 'Yes' : 'No',
-      completedBy: String(delivery.completedBy).toLowerCase() === 'web' ? 'web' : 'mobile',
-      deliveryRating: delivery.deliveryRating ? Number(delivery.deliveryRating) : undefined,
-      feedbackComment: delivery.feedbackComment ? String(delivery.feedbackComment) : undefined,
+      retardSecondes: Number(delivery.retardSecondes) || 0,
+      forceSansContact: String(delivery.forceSansContact).toLowerCase() === 'true',
+      forceSurSite: delivery.forceSurSite === 'Oui' ? 'Oui' : 'Non',
+      terminePar: String(delivery.terminePar).toLowerCase() === 'web' ? 'web' : 'mobile',
+      noteLivraison: delivery.noteLivraison ? Number(delivery.noteLivraison) : undefined,
+      commentaireRetour: delivery.commentaireRetour ? String(delivery.commentaireRetour) : undefined,
       depot,
-      carrier,
-    } as Delivery;
+      transporteur: carrier,
+    } as Livraison;
   });
 };
 
-export const getOverallStats = (deliveries: Delivery[]): AggregatedStats => {
+export const getOverallStats = (deliveries: Livraison[]): StatistiquesAgregees => {
     return getAnalysisOverallStats(deliveries);
 }
 
 
-export const filterDataByPeriod = (data: Delivery[], period: string, previous = false): Delivery[] => {
+export const filterDataByPeriod = (data: Livraison[], period: string, previous = false): Livraison[] => {
     const now = new Date();
     let startDate = new Date();
     let endDate = new Date(now);
@@ -148,17 +148,17 @@ export const filterDataByPeriod = (data: Delivery[], period: string, previous = 
     });
 };
 
-export const filterDataByDepot = (data: Delivery[], depot: string): Delivery[] => {
+export const filterDataByDepot = (data: Livraison[], depot: string): Livraison[] => {
     if (depot === 'all') return data;
     return data.filter(d => d.depot === depot);
 };
 
-export const processGlobalData = (deliveries: Delivery[]): AggregatedStats & { failedDeliveries: number; totalDeliveries: number; } => {
+export const processGlobalData = (deliveries: Livraison[]): StatistiquesAgregees & { livraisonsRatees: number; totalLivraisons: number; } => {
     const stats = getOverallStats(deliveries);
-    const failedDeliveries = deliveries.filter(d => d.status === 'Non livré').length;
+    const failedDeliveries = deliveries.filter(d => d.statut === 'Non livré').length;
     return {
         ...stats,
-        failedDeliveries,
-        totalDeliveries: deliveries.length,
+        livraisonsRatees: failedDeliveries,
+        totalLivraisons: deliveries.length,
     };
 };

@@ -1,56 +1,67 @@
 
-
 'use client';
 
 import { useMemo } from 'react';
-import { type Delivery } from '@/lib/definitions';
-import { aggregateStats } from '@/lib/data-processing';
+import { type Livraison } from '@/lib/definitions';
+import { agregerStatistiquesParEntite } from '@/lib/analysis';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Star, MessageSquareQuote, ThumbsDown } from 'lucide-react';
 
-interface CustomerSatisfactionProps {
-    data: Delivery[];
+interface CustomerFeedbackSummaryProps {
+  donnees?: Livraison[];
 }
 
-export function CustomerSatisfaction({ data }: CustomerSatisfactionProps) {
-    const satisfactionStats = useMemo(() => {
-        const comments = data.filter(d => d.feedbackComment).map(d => ({
-            comment: d.feedbackComment!,
-            rating: d.deliveryRating!,
-            driver: d.driver,
-        })).reverse(); // Show most recent first
+export function CustomerFeedbackSummary({ donnees }: CustomerFeedbackSummaryProps) {
+  const statistiquesSatisfaction = useMemo(() => {
+    if (!donnees) {
+      return {
+        commentaires: [],
+        noteMoyenne: 0,
+        totalNotes: 0,
+      };
+    }
 
-        const globalStats = aggregateStats(data, 'driver')['global']; // Assuming 'global' key exists or is handled
-        const averageRating = globalStats?.averageRating ?? 0;
-        const totalRatings = globalStats?.ratedDeliveries ?? 0;
+    const commentaires = donnees
+      .filter(l => l.commentaireRetour)
+      .map(l => ({
+        commentaire: l.commentaireRetour!,
+        note: l.noteLivraison!,
+        chauffeur: l.chauffeur,
+      }))
+      .reverse();
 
-        return { comments, averageRating, totalRatings };
-    }, [data]);
-    
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Satisfaction Client</CardTitle>
-                <CardDescription>
-                    Note moyenne de {satisfactionStats.averageRating.toFixed(2)}/5 basée sur {satisfactionStats.totalRatings} évaluations.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-4">
-                    {satisfactionStats.comments.slice(0, 5).map((item, index) => ( // Show top 5 recent comments
-                        <div key={index} className="flex items-start space-x-4">
-                            <div>
-                                {item.rating >= 4 ? <Star className="h-5 w-5 text-yellow-400" /> : <ThumbsDown className="h-5 w-5 text-red-500" />}
-                            </div>
-                            <div className="flex-1">
-                                <p className="text-sm font-medium">{item.driver}</p>
-                                <p className="text-sm text-muted-foreground italic">"{item.comment}"</p>
-                            </div>
-                            <div className="text-sm font-bold">{item.rating}/5</div>
-                        </div>
-                    ))}
-                </div>
-            </CardContent>
-        </Card>
-    );
+    const stats = agregerStatistiquesParEntite(donnees, 'chauffeur');
+    // Simplified logic to get some global stats. This could be improved.
+    const noteMoyenne = donnees.filter(d => d.noteLivraison).reduce((acc, d) => acc + d.noteLivraison!, 0) / donnees.filter(d => d.noteLivraison).length || 0;
+    const totalNotes = donnees.filter(d => d.noteLivraison).length;
+
+    return { commentaires, noteMoyenne, totalNotes };
+  }, [donnees]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Derniers Retours Clients</CardTitle>
+        <CardDescription>
+          Note moyenne de {statistiquesSatisfaction.noteMoyenne.toFixed(2)}/5 basée sur {statistiquesSatisfaction.totalNotes} évaluations.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {statistiquesSatisfaction.commentaires.slice(0, 5).map((item, index) => (
+            <div key={index} className="flex items-start space-x-4">
+              <div>
+                {item.note >= 4 ? <Star className="h-5 w-5 text-yellow-400" /> : <ThumbsDown className="h-5 w-5 text-red-500" />}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">{item.chauffeur}</p>
+                <p className="text-sm text-muted-foreground italic">"{item.commentaire}"</p>
+              </div>
+              <div className="text-sm font-bold">{item.note}/5</div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
 }

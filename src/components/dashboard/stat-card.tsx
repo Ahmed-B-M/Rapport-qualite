@@ -2,52 +2,52 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowDown, ArrowRight, ArrowUp } from 'lucide-react';
 
-interface StatCardProps {
-  title: string;
-  value: string | number;
-  icon: React.ReactNode;
+interface CarteStatistiqueProps {
+  titre: string;
+  valeur: string | number;
+  icone: React.ReactNode;
   description?: string;
-  previousValue?: number;
-  trendDirection?: 'up' | 'down'; // up means higher is better, down means lower is better
+  valeurPrecedente?: number;
+  directionTendance?: 'up' | 'down'; // up signifie que plus haut c'est mieux, down signifie que plus bas c'est mieux
 }
 
-const TrendIndicator = ({ value, previousValue, direction }: { value: number, previousValue: number, direction: 'up' | 'down' }) => {
-  const numericValue = typeof value === 'string' ? parseFloat(value.replace('%','')) : value;
+const IndicateurTendance = ({ valeur, valeurPrecedente, direction }: { valeur: number, valeurPrecedente: number, direction: 'up' | 'down' }) => {
+  const valeurNumerique = typeof valeur === 'string' ? parseFloat(valeur.replace('%','')) : valeur;
   
-  if (isNaN(numericValue) || isNaN(previousValue) || previousValue === 0) {
+  if (isNaN(valeurNumerique) || isNaN(valeurPrecedente) || valeurPrecedente === 0) {
       return <span className="flex items-center text-sm text-gray-500"><ArrowRight className="h-4 w-4 mr-1" /> --</span>;
   }
 
-  if (numericValue > previousValue) {
-    const percentageChange = (((numericValue - previousValue) / previousValue) * 100).toFixed(1);
-    const color = direction === 'up' ? 'text-green-500' : 'text-red-500';
-    return <span className={`flex items-center text-sm ${color}`}><ArrowUp className="h-4 w-4 mr-1" /> {percentageChange}%</span>;
+  if (valeurNumerique > valeurPrecedente) {
+    const changementPourcentage = (((valeurNumerique - valeurPrecedente) / valeurPrecedente) * 100).toFixed(1);
+    const couleur = direction === 'up' ? 'text-green-500' : 'text-red-500';
+    return <span className={`flex items-center text-sm ${couleur}`}><ArrowUp className="h-4 w-4 mr-1" /> {changementPourcentage}%</span>;
   }
-  if (numericValue < previousValue) {
-    const percentageChange = (((previousValue - numericValue) / previousValue) * 100).toFixed(1);
-    const color = direction === 'up' ? 'text-red-500' : 'text-green-500';
-    return <span className={`flex items-center text-sm ${color}`}><ArrowDown className="h-4 w-4 mr-1" /> {percentageChange}%</span>;
+  if (valeurNumerique < valeurPrecedente) {
+    const changementPourcentage = (((valeurPrecedente - valeurNumerique) / valeurPrecedente) * 100).toFixed(1);
+    const couleur = direction === 'up' ? 'text-red-500' : 'text-green-500';
+    return <span className={`flex items-center text-sm ${couleur}`}><ArrowDown className="h-4 w-4 mr-1" /> {changementPourcentage}%</span>;
   }
   return <span className="flex items-center text-sm text-gray-500"><ArrowRight className="h-4 w-4 mr-1" /> 0.0%</span>;
 };
 
 
-export const StatCard: React.FC<StatCardProps> = ({ title, value, icon, description, previousValue, trendDirection }) => {
+export const StatCard: React.FC<CarteStatistiqueProps> = ({ titre, valeur, icone, description, valeurPrecedente, directionTendance }) => {
   
-  const numericValueForTrend = typeof value === 'string' ? parseFloat(value.replace('%','')) : value;
+  const valeurNumeriquePourTendance = typeof valeur === 'string' ? parseFloat(valeur.replace('%','')) : valeur;
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        {icon}
+        <CardTitle className="text-sm font-medium">{titre}</CardTitle>
+        {icone}
       </CardHeader>
       <CardContent>
-        <div className="text-4xl font-bold">{value}</div>
+        <div className="text-4xl font-bold">{valeur}</div>
         <div className="flex justify-between items-center">
           <p className="text-xs text-muted-foreground">{description}</p>
-          {previousValue !== undefined && trendDirection && (
-            <TrendIndicator value={numericValueForTrend} previousValue={previousValue} direction={trendDirection} />
+          {valeurPrecedente !== undefined && directionTendance && (
+            <IndicateurTendance valeur={valeurNumeriquePourTendance} valeurPrecedente={valeurPrecedente} direction={directionTendance} />
           )}
         </div>
       </CardContent>

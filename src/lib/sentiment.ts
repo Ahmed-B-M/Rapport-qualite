@@ -1,6 +1,6 @@
 
 import Sentiment from 'sentiment';
-import { type Delivery } from './definitions';
+import { type Livraison, type ExempleCommentaire } from './definitions';
 
 const sentiment = new Sentiment();
 
@@ -80,21 +80,20 @@ export function analyzeSentiment(text: string, rating?: number): SentimentResult
     };
 }
 
-
 export function getTopComments(
-    deliveries: (Pick<Delivery, 'feedbackComment' | 'deliveryRating' | 'driver'>)[],
-    sentimentType: 'positive' | 'negative',
+    deliveries: Livraison[],
+    sentimentType: 'positif' | 'négatif',
     count: number = 3
-  ): { comment: string; score: number; driver: string }[] {
+  ): ExempleCommentaire[] {
     const allComments = deliveries
-      .filter(d => d.feedbackComment && d.feedbackComment.trim().length > 1)
+      .filter(d => d.commentaireRetour && d.commentaireRetour.trim().length > 1)
       .map(d => ({
-        comment: d.feedbackComment!,
-        score: analyzeSentiment(d.feedbackComment!, d.deliveryRating).score,
-        driver: d.driver,
+        commentaire: d.commentaireRetour!,
+        score: analyzeSentiment(d.commentaireRetour!, d.noteLivraison).score,
+        chauffeur: d.chauffeur,
       }));
   
-    if (sentimentType === 'positive') {
+    if (sentimentType === 'positif') {
       const positiveComments = allComments.filter(c => c.score > 7);
       positiveComments.sort((a, b) => b.score - a.score);
       return positiveComments.slice(0, count);

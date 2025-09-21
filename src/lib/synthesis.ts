@@ -1,16 +1,39 @@
 
-
-import { type PerformanceReportData, type Objectives, type SynthesisResult, type SynthesisPoints, type DepotSynthesis } from './definitions';
+import { type DonneesRapportPerformance, type Objectifs, type ResultatSynthese, type DonneesSectionRapport, PointsSynthese } from './definitions';
 
 const KPI_CONFIG = {
-    successRate: { name: 'Taux de succès', higherIsBetter: true, unit: '%' },
-    averageRating: { name: 'Note moyenne', higherIsBetter: true, unit: '/5' },
-    averageSentiment: { name: 'Note des commentaires', higherIsBetter: true, unit: '/10' },
-    punctualityRate: { name: 'Ponctualité', higherIsBetter: true, unit: '%' },
-    failureRate: { name: 'Taux d\'échec', higherIsBetter: false, unit: '%' },
-    forcedOnSiteRate: { name: 'Taux de "Sur place" forcé', higherIsBetter: false, unit: '%' },
-    forcedNoContactRate: { name: 'Taux de "Sans contact" forcé', higherIsBetter: false, unit: '%' },
-    webCompletionRate: { name: 'Taux de validation web', higherIsBetter: false, unit: '%' }
+    tauxReussite: {
+        nom: 'Taux de succès',
+        higherIsBetter: true,
+        formatter: (val: number) => `${val.toFixed(2)}%`,
+        getPhrase: (val: number, obj: number, meets: boolean) => meets
+            ? `Le taux de succès de ${val.toFixed(2)}% est excellent, dépassant l'objectif de ${obj}%`
+            : `Le taux de succès de ${val.toFixed(2)}% est inférieur à l'objectif de ${obj}%`,
+    },
+    noteMoyenne: {
+        nom: 'Note moyenne',
+        higherIsBetter: true,
+        formatter: (val: number) => `${val.toFixed(2)}/5`,
+        getPhrase: (val: number, obj: number, meets: boolean) => meets
+            ? `La note moyenne de ${val.toFixed(2)}/5 est très bonne, au-dessus de l'objectif de ${obj}/5`
+            : `La note moyenne de ${val.toFixed(2)}/5 est en-dessous de l'objectif de ${obj}/5`,
+    },
+    sentimentMoyen: {
+        nom: 'Sentiment moyen des commentaires',
+        higherIsBetter: true,
+        formatter: (val: number) => `${val.toFixed(2)}/10`,
+        getPhrase: (val: number, obj: number, meets: boolean) => meets
+            ? `Le sentiment des commentaires est positif (${val.toFixed(2)}/10), au-dessus de l'objectif de ${obj}/10`
+            : `Le sentiment des commentaires est à améliorer (${val.toFixed(2)}/10), en-dessous de l'objectif de ${obj}/10`,
+    },
+    tauxPonctualite: {
+        nom: 'Taux de ponctualité',
+        higherIsBetter: true,
+        formatter: (val: number) => `${val.toFixed(2)}%`,
+        getPhrase: (val: number, obj: number, meets: boolean) => meets
+            ? `Le taux de ponctualité de ${val.toFixed(2)}% est bon, dépassant l'objectif de ${obj}%`
+            : `Le taux de ponctualité de ${val.toFixed(2)}% est perfectible, inférieur à l'objectif de ${obj}%`,
+    }
 };
 
 type KpiKey = keyof typeof KPI_CONFIG;
@@ -31,105 +54,94 @@ function analyzeKpi(
 
 
 function generatePointsForScope(
-    data: PerformanceReportData['global'],
-    objectives: Objectives,
+    data: DonneesSectionRapport,
+    objectives: Objectifs,
     scopeName: string = 'global'
-): SynthesisPoints & { overallScore: number } {
-    const points: SynthesisPoints = { strengths: [], weaknesses: [] };
-    let overallScore = 0;
+): PointsSynthese & { global: 'positif' | 'négatif' | 'mitigé' } {
+    const points: PointsSynthese = { forces: [], faiblesses: [] };
+    let score = 0;
 
-    // Process all available KPIs from the data
     for (const key in KPI_CONFIG) {
         const kpi = key as KpiKey;
         const config = KPI_CONFIG[kpi];
+        
         let value: number | undefined;
         let objective: number;
 
-        // Map KPI to stats and objectives
-        if (kpi === 'successRate') {
-            value = data.stats.successRate;
-            objective = 100 - objectives.failureRate;
-        } else if (kpi === 'failureRate') {
-            value = 100 - data.stats.successRate;
-            objective = objectives.failureRate;
-        } else {
-            value = data.stats[kpi as keyof typeof data.stats] as number | undefined;
-            objective = objectives[kpi as keyof typeof objectives] as number;
+        switch (kpi) {
+            case 'tauxReussite':
+                value = data.statistiques.tauxReussite;
+                objective = 100 - objectives.tauxEchec;
+                break;
+            case 'noteMoyenne':
+                value = data.statistiques.noteMoyenne;
+                objective = objectives.noteMoyenne;
+                break;
+            case 'sentimentMoyen':
+                value = data.statistiques.sentimentMoyen;
+                objective = objectives.sentimentMoyen;
+                break;
+            case 'tauxPonctualite':
+                value = data.statistiques.tauxPonctualite;
+                objective = objectives.tauxPonctualite;
+                break;
         }
 
-        if (value === undefined) {
-            continue; // Skip KPIs with no data
+        const analysis = analyzeKpi(kpi, value, objective);
+        if (value !== undefined) {
+             const phrase = config.getPhrase(value, objective, analysis === 'strength');
+             if (analysis === 'strength') {
+                points.forces.push(phrase);
+                score++;
+            } else if (analysis === 'weakness') {
+                points.faiblesses.push(phrase);
+                score--;
+            }
         }
-        
-        const result = analyzeKpi(kpi, value, objective);
-        const formattedValue = `${value.toFixed(2)}${config.unit}`;
-        const pointText = `**${config.name}**: ${formattedValue}`;
-        
-        if (result === 'strength') {
-            points.strengths.push(pointText);
-            overallScore++;
-        } else if (result === 'weakness') {
-            points.weaknesses.push(pointText);
-            overallScore--;
-        }
-    }
-    
-    // Add rankings to strengths if they exist
-    if (data.kpiRankings.drivers.averageRating.top.length > 0) {
-        const topDriver = data.kpiRankings.drivers.averageRating.top[0];
-        points.strengths.push(`Meilleur livreur: **${topDriver.name}** (${topDriver.value.toFixed(2)}/5)`);
-    }
-    if (data.kpiRankings.carriers.averageRating.top.length > 0) {
-        const topCarrier = data.kpiRankings.carriers.averageRating.top[0];
-        points.strengths.push(`Meilleur transporteur: **${topCarrier.name}** (${topCarrier.value.toFixed(2)}/5)`);
     }
 
-    return { ...points, overallScore };
+    if (data.meilleursCommentaires.length > 0) {
+        points.forces.push(`Les commentaires clients sont globalement très positifs, menés par des livreurs comme ${data.meilleursCommentaires[0].chauffeur}.`);
+    }
+    if (data.piresCommentaires.length > 0) {
+        points.faiblesses.push(`Certains clients ont exprimé leur mécontentement, notamment concernant les livraisons effectuées par ${data.piresCommentaires[0].chauffeur}.`);
+    }
+
+    let overallStatus: 'positif' | 'négatif' | 'mitigé';
+    if (score > 1) overallStatus = 'positif';
+    else if (score < 0) overallStatus = 'négatif';
+    else overallStatus = 'mitigé';
+
+    return { ...points, global: overallStatus };
 }
 
-function getOverallStatus(score: number): 'positive' | 'negative' | 'mitigée' {
-    if (score > 0) return 'positive';
-    if (score < 0) return 'negative';
-    return 'mitigée';
-}
 
 export function generateSynthesis(
-    reportData: PerformanceReportData,
-    objectives: Objectives
-): SynthesisResult {
-    const globalAnalysis = generatePointsForScope(reportData.global, objectives, 'global');
+    reportData: DonneesRapportPerformance,
+    objectives: Objectifs
+): ResultatSynthese {
+    const globalSynthesis = generatePointsForScope(reportData.global, objectives, 'global');
 
-    const depotSyntheses: DepotSynthesis[] = reportData.depots.map(depot => {
-        const depotAnalysis = generatePointsForScope(depot, objectives, depot.name);
+    const depotSyntheses = reportData.depots.map(depotData => {
+        const depotPoints = generatePointsForScope(depotData, objectives, depotData.nom);
         return {
-            name: depot.name,
-            strengths: depotAnalysis.strengths,
-            weaknesses: depotAnalysis.weaknesses,
-            overall: getOverallStatus(depotAnalysis.overallScore)
+            nom: depotData.nom,
+            ...depotPoints
         };
     });
 
-    // Conclusion remains descriptive
-    const conclusionPoints = [];
-    if (globalAnalysis.strengths.length > 2 && globalAnalysis.overallScore > 0) conclusionPoints.push("La performance globale est solide avec plusieurs indicateurs clés dépassant les objectifs.");
-    if (globalAnalysis.weaknesses.length > 2 && globalAnalysis.overallScore < 0) conclusionPoints.push("Plusieurs domaines nécessitent une attention particulière pour améliorer la performance globale.");
-    
-    const weakDepots = depotSyntheses.filter(d => d.overall === 'negative');
-    if (weakDepots.length > 0) {
-        conclusionPoints.push(`Les dépôts de ${weakDepots.map(d => d.name).join(', ')} semblent être les plus en difficulté.`);
-    }
-    const strongDepots = depotSyntheses.filter(d => d.overall === 'positive');
-     if (strongDepots.length > 0) {
-        conclusionPoints.push(`Les dépôts de ${strongDepots.map(d => d.name).join(', ')} affichent de bonnes performances.`);
-    }
+    const conclusion = `
+Le rapport met en évidence une performance **${globalSynthesis.global === 'positif' ? 'solide' : globalSynthesis.global === 'mitigé' ? 'mitigée' : 'préoccupante'}** sur la période analysée.
+
+**Recommandations:**
+- **Capitaliser sur les points forts:** Analyser les pratiques des livreurs et dépôts les plus performants pour les généraliser.
+- **Actions correctives ciblées:** Mettre en place des plans d'action pour les dépôts et livreurs identifiés comme moins performants, en se concentrant sur les indicateurs clés en difficulté.
+- **Suivi continu:** Maintenir un suivi régulier de ces indicateurs pour mesurer l'efficacité des actions mises en place.
+    `;
 
     return {
-        global: {
-            strengths: globalAnalysis.strengths,
-            weaknesses: globalAnalysis.weaknesses,
-            overall: getOverallStatus(globalAnalysis.overallScore)
-        },
+        global: globalSynthesis,
         depots: depotSyntheses,
-        conclusion: conclusionPoints.length > 0 ? conclusionPoints.join(' ') : "La performance est mitigée, avec des points forts et des points faibles relativement équilibrés."
+        conclusion: conclusion.trim()
     };
 }

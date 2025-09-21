@@ -1,61 +1,60 @@
 
 "use client";
 
-import { useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { UploadCloud, FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
-import { processRawData } from "@/lib/analysis";
-import { type Delivery } from "@/lib/definitions";
+import { traiterDonneesBrutes } from "@/lib/analysis";
+import { type Livraison } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
 
-interface FileUploaderProps {
-  onDataUploaded: (data: Delivery[], error?: string) => void;
-  setLoading: (loading: boolean) => void;
+interface TelechargeurFichierProps {
+  onDonneesTelechargees: (donnees: Livraison[], erreur?: string) => void;
+  setChargement: (chargement: boolean) => void;
 }
 
 export function FileUploader({
-  onDataUploaded,
-  setLoading,
-}: FileUploaderProps) {
+  onDonneesTelechargees,
+  setChargement,
+}: TelechargeurFichierProps) {
   const { toast } = useToast();
 
-  const onDrop = (acceptedFiles: File[]) => {
-    if (acceptedFiles.length > 0) {
-      setLoading(true);
-      const file = acceptedFiles[0];
-      const reader = new FileReader();
+  const onDrop = (fichiersAcceptes: File[]) => {
+    if (fichiersAcceptes.length > 0) {
+      setChargement(true);
+      const fichier = fichiersAcceptes[0];
+      const lecteur = new FileReader();
 
-      reader.onload = (event) => {
+      lecteur.onload = (event) => {
         try {
-          const workbook = XLSX.read(event.target?.result, { type: "binary" });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+          const classeur = XLSX.read(event.target?.result, { type: "binary" });
+          const nomFeuille = classeur.SheetNames[0];
+          const feuilleCalcul = classeur.Sheets[nomFeuille];
+          const donneesJson = XLSX.utils.sheet_to_json(feuilleCalcul);
           
-          if(jsonData.length === 0) {
+          if(donneesJson.length === 0) {
             throw new Error("Le fichier est vide ou ne contient pas de données lisibles.");
           }
 
-          const processedData = processRawData(jsonData);
-          onDataUploaded(processedData);
+          const donneesTraitees = traiterDonneesBrutes(donneesJson);
+          onDonneesTelechargees(donneesTraitees);
           toast({
             title: "Succès",
-            description: `${processedData.length} lignes ont été traitées avec succès.`,
+            description: `${donneesTraitees.length} lignes ont été traitées avec succès.`,
           });
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : "Une erreur inconnue est survenue.";
-          onDataUploaded([], errorMessage);
+          const messageErreur = error instanceof Error ? error.message : "Une erreur inconnue est survenue.";
+          onDonneesTelechargees([], messageErreur);
           toast({
             title: "Erreur",
-            description: `Échec du traitement du fichier : ${errorMessage}`,
+            description: `Échec du traitement du fichier : ${messageErreur}`,
             variant: "destructive",
           });
         }
       };
       
-      reader.onerror = () => {
-        onDataUploaded([], "Erreur lors de la lecture du fichier.");
+      lecteur.onerror = () => {
+        onDonneesTelechargees([], "Erreur lors de la lecture du fichier.");
         toast({
             title: "Erreur",
             description: "Impossible de lire le fichier. Veuillez réessayer.",
@@ -63,7 +62,7 @@ export function FileUploader({
         });
       }
 
-      reader.readAsBinaryString(file);
+      lecteur.readAsBinaryString(fichier);
     }
   };
 

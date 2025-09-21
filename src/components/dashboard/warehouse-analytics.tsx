@@ -3,8 +3,8 @@
 "use client"
 
 import { useMemo, useState } from 'react';
-import { type Delivery } from '@/lib/definitions';
-import { aggregateStatsByEntity } from '@/lib/analysis';
+import { type Livraison } from '@/lib/definitions';
+import { agregerStatistiquesParEntite } from '@/lib/analysis';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -12,37 +12,37 @@ import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
-export function WarehouseAnalytics({ data }: { data: Delivery[] }) {
-    const [filter, setFilter] = useState('');
+export function WarehouseAnalytics({ donnees }: { donnees: Livraison[] }) {
+    const [filtre, setFiltre] = useState('');
 
-    const warehouseStats = useMemo(() => {
-        const stats = aggregateStatsByEntity(data, 'warehouse');
-        return Object.entries(stats).map(([name, stat]) => ({ name, ...stat }))
-          .sort((a,b) => b.totalDeliveries - a.totalDeliveries);
-    }, [data]);
+    const statistiquesEntrepots = useMemo(() => {
+        const stats = agregerStatistiquesParEntite(donnees, 'entrepot');
+        return Object.entries(stats).map(([nom, stat]) => ({ nom, ...stat }))
+          .sort((a,b) => b.totalLivraisons - a.totalLivraisons);
+    }, [donnees]);
 
-    const filteredStats = useMemo(() => {
-        return warehouseStats.filter(stat => stat.name.toLowerCase().includes(filter.toLowerCase()));
-    }, [warehouseStats, filter]);
+    const statistiquesFiltrees = useMemo(() => {
+        return statistiquesEntrepots.filter(stat => stat.nom.toLowerCase().includes(filtre.toLowerCase()));
+    }, [statistiquesEntrepots, filtre]);
     
-    const handleExport = () => {
-        const dataToExport = filteredStats.map(stat => ({
-            "Entrepôt": stat.name,
-            "Dépôt": data.find(d => d.warehouse === stat.name)?.depot,
-            "Total Livraisons": stat.totalDeliveries,
-            "Note Moyenne": stat.averageRating ? stat.averageRating.toFixed(2) : 'N/A',
-            "Ponctualité (%)": stat.punctualityRate.toFixed(2),
-            "Taux d'échec (%)": (100 - stat.successRate).toFixed(2),
-            "Sur place forcé (%)": stat.forcedOnSiteRate.toFixed(2),
-            "Sans contact forcé (%)": stat.forcedNoContactRate.toFixed(2),
-            "Validation Web (%)": stat.webCompletionRate.toFixed(2),
-            "Taux de notation (%)": stat.ratingRate.toFixed(2),
+    const gererExport = () => {
+        const donneesAExporter = statistiquesFiltrees.map(stat => ({
+            "Entrepôt": stat.nom,
+            "Dépôt": donnees.find(d => d.entrepot === stat.nom)?.depot,
+            "Total Livraisons": stat.totalLivraisons,
+            "Note Moyenne": stat.noteMoyenne ? stat.noteMoyenne.toFixed(2) : 'N/A',
+            "Ponctualité (%)": stat.tauxPonctualite.toFixed(2),
+            "Taux d'échec (%)": (100 - stat.tauxReussite).toFixed(2),
+            "Sur place forcé (%)": stat.tauxForceSurSite.toFixed(2),
+            "Sans contact forcé (%)": stat.tauxForceSansContact.toFixed(2),
+            "Validation Web (%)": stat.tauxCompletionWeb.toFixed(2),
+            "Taux de notation (%)": stat.tauxNotation.toFixed(2),
         }));
         
-        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Performance Entrepôts');
-        XLSX.writeFile(workbook, 'performance_entrepots.xlsx');
+        const feuilleCalcul = XLSX.utils.json_to_sheet(donneesAExporter);
+        const classeur = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(classeur, feuilleCalcul, 'Performance Entrepôts');
+        XLSX.writeFile(classeur, 'performance_entrepots.xlsx');
     };
 
     return (
@@ -54,10 +54,10 @@ export function WarehouseAnalytics({ data }: { data: Delivery[] }) {
                         <Input 
                             placeholder="Filtrer les entrepôts..." 
                             className="max-w-sm"
-                            value={filter}
-                            onChange={(e) => setFilter(e.target.value)}
+                            value={filtre}
+                            onChange={(e) => setFiltre(e.target.value)}
                         />
-                        <Button variant="outline" size="sm" onClick={handleExport}><Download className="mr-2 h-4 w-4" /> Exporter en Excel</Button>
+                        <Button variant="outline" size="sm" onClick={gererExport}><Download className="mr-2 h-4 w-4" /> Exporter en Excel</Button>
                     </div>
                 </div>
             </CardHeader>
@@ -78,18 +78,18 @@ export function WarehouseAnalytics({ data }: { data: Delivery[] }) {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {filteredStats.length > 0 ? filteredStats.map((stat) => (
-                            <TableRow key={stat.name}>
-                                <TableCell className="font-medium">{stat.name}</TableCell>
-                                <TableCell className="text-muted-foreground">{data.find(d => d.warehouse === stat.name)?.depot}</TableCell>
-                                <TableCell className="text-right">{stat.totalDeliveries}</TableCell>
-                                <TableCell className="text-right">{stat.averageRating ? stat.averageRating.toFixed(2) : 'N/A'}</TableCell>
-                                <TableCell className="text-right">{stat.punctualityRate.toFixed(2)}%</TableCell>
-                                <TableCell className="text-right">{(100 - stat.successRate).toFixed(2)}%</TableCell>
-                                <TableCell className="text-right">{stat.forcedOnSiteRate.toFixed(2)}%</TableCell>
-                                <TableCell className="text-right">{stat.forcedNoContactRate.toFixed(2)}%</TableCell>
-                                <TableCell className="text-right">{stat.webCompletionRate.toFixed(2)}%</TableCell>
-                                <TableCell className="text-right">{stat.ratingRate.toFixed(2)}%</TableCell>
+                        {statistiquesFiltrees.length > 0 ? statistiquesFiltrees.map((stat) => (
+                            <TableRow key={stat.nom}>
+                                <TableCell className="font-medium">{stat.nom}</TableCell>
+                                <TableCell className="text-muted-foreground">{donnees.find(d => d.entrepot === stat.nom)?.depot}</TableCell>
+                                <TableCell className="text-right">{stat.totalLivraisons}</TableCell>
+                                <TableCell className="text-right">{stat.noteMoyenne ? stat.noteMoyenne.toFixed(2) : 'N/A'}</TableCell>
+                                <TableCell className="text-right">{stat.tauxPonctualite.toFixed(2)}%</TableCell>
+                                <TableCell className="text-right">{(100 - stat.tauxReussite).toFixed(2)}%</TableCell>
+                                <TableCell className="text-right">{stat.tauxForceSurSite.toFixed(2)}%</TableCell>
+                                <TableCell className="text-right">{stat.tauxForceSansContact.toFixed(2)}%</TableCell>
+                                <TableCell className="text-right">{stat.tauxCompletionWeb.toFixed(2)}%</TableCell>
+                                <TableCell className="text-right">{stat.tauxNotation.toFixed(2)}%</TableCell>
                             </TableRow>
                         )) : (
                             <TableRow>

@@ -1,94 +1,108 @@
 
-
 'use client';
 
 import { useMemo } from 'react';
-import { type Delivery } from '@/lib/definitions';
-import { analyzeSentiment, getTopComments } from '@/lib/sentiment';
+import { type Livraison } from '@/lib/definitions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Star, MessageSquareQuote, ThumbsDown, ThumbsUp, Smile, Frown } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
+import { analyzeSentiment } from '@/lib/sentiment';
 
-interface CustomerSatisfactionProps {
-    data: Delivery[];
+interface SatisfactionClientProps {
+  data?: Livraison[];
 }
 
-const CommentCard = ({ title, comments, icon: Icon, colorClass }: { title: string, comments: { comment: string, score: number, driver: string }[], icon: React.ElementType, colorClass: string }) => (
-    <div>
-        <h4 className={`flex items-center font-headline text-lg font-semibold mb-2 ${colorClass}`}>
-            <Icon className="h-5 w-5 mr-2" />
-            {title}
-        </h4>
-        <div className="space-y-3">
-            {comments.length > 0 ? comments.map((c, index) => (
-                <div key={index} className="border-l-4 pl-3" style={{ borderColor: colorClass.split(' ')[0].replace('text-', 'border-') }}>
-                    <p className="text-sm italic">"{c.comment}"</p>
-                    <p className="text-xs text-muted-foreground mt-1">- {c.driver} (Note: {c.score.toFixed(2)}/10)</p>
-                </div>
-            )) : <p className="text-sm text-muted-foreground italic">Aucun commentaire pertinent.</p>}
-        </div>
-    </div>
-);
-
-export function CustomerSatisfaction({ data }: CustomerSatisfactionProps) {
-    const sentimentAnalysis = useMemo(() => {
-        const commentedDeliveries = data.filter(d => d.feedbackComment && d.feedbackComment.trim().length > 1);
-        if (commentedDeliveries.length === 0) {
-            return {
-                averageScore: 0,
-                topPositive: [],
-                topNegative: []
-            };
-        }
-
-        const totalScore = commentedDeliveries.reduce((sum, d) => sum + analyzeSentiment(d.feedbackComment!, d.deliveryRating).score, 0);
-        const averageScore = totalScore / commentedDeliveries.length;
-
-        const topPositive = getTopComments(commentedDeliveries, 'positive', 3);
-        const topNegative = getTopComments(commentedDeliveries, 'negative', 3);
-
-        return { averageScore, topPositive, topNegative };
-    }, [data]);
-    
-    const getSentimentColor = (score: number) => {
-        if (score > 7) return "text-green-500";
-        if (score < 4) return "text-red-500";
-        return "text-yellow-500";
+export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
+  const analyseSentiment = useMemo(() => {
+    if (!data) {
+      return {
+        repartitionNotes: [],
+        repartitionSentiments: [],
+        noteMoyenne: 0,
+        sentimentMoyen: 0,
+      };
     }
+    
+    const livraisonsNotees = data.filter(d => d.noteLivraison !== undefined);
+    const livraisonsCommentees = data.filter(d => d.commentaireRetour && d.commentaireRetour.trim().length > 5);
 
-    return (
-        <Card className="col-span-full lg:col-span-3">
-            <CardHeader>
-                <CardTitle className="font-headline text-lg">Analyse des Commentaires</CardTitle>
-                <CardDescription>
-                    Analyse des commentaires clients pour mesurer la satisfaction.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="text-center mb-6">
-                    <h3 className="text-sm text-muted-foreground mb-2">Note Moyenne des Commentaires</h3>
-                    <p className={`text-5xl font-bold font-mono ${getSentimentColor(sentimentAnalysis.averageScore)}`}>
-                        {sentimentAnalysis.averageScore.toFixed(2)} / 10
-                    </p>
-                     <p className="text-xs text-muted-foreground mt-1">
-                        (Positif &gt; 7, Négatif &lt; 4)
-                    </p>
-                </div>
+    const repartitionNotes = [
+      { name: '1 étoile', count: livraisonsNotees.filter(d => d.noteLivraison === 1).length },
+      { name: '2 étoiles', count: livraisonsNotees.filter(d => d.noteLivraison === 2).length },
+      { name: '3 étoiles', count: livraisonsNotees.filter(d => d.noteLivraison === 3).length },
+      { name: '4 étoiles', count: livraisonsNotees.filter(d => d.noteLivraison === 4).length },
+      { name: '5 étoiles', count: livraisonsNotees.filter(d => d.noteLivraison === 5).length },
+    ];
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   <CommentCard 
-                        title="Top Positifs"
-                        comments={sentimentAnalysis.topPositive}
-                        icon={ThumbsUp}
-                        colorClass="text-green-600"
-                   />
-                   <CommentCard 
-                        title="Top Négatifs"
-                        comments={sentimentAnalysis.topNegative}
-                        icon={ThumbsDown}
-                        colorClass="text-red-600"
-                   />
-                </div>
-            </CardContent>
-        </Card>
-    );
+    const sentiments = livraisonsCommentees.map(d => analyzeSentiment(d.commentaireRetour!, d.noteLivraison).score);
+    const repartitionSentiments = [
+        { name: 'Très négatif (0-2)', count: sentiments.filter(s => s <= 2).length },
+        { name: 'Négatif (2-4)', count: sentiments.filter(s => s > 2 && s <= 4).length },
+        { name: 'Neutre (4-6)', count: sentiments.filter(s => s > 4 && s <= 6).length },
+        { name: 'Positif (6-8)', count: sentiments.filter(s => s > 6 && s <= 8).length },
+        { name: 'Très positif (8-10)', count: sentiments.filter(s => s > 8).length },
+    ];
+    
+    const noteMoyenne = livraisonsNotees.length > 0
+      ? livraisonsNotees.reduce((acc, d) => acc + (d.noteLivraison || 0), 0) / livraisonsNotees.length
+      : 0;
+
+    const sentimentMoyen = sentiments.length > 0
+        ? sentiments.reduce((acc, s) => acc + s, 0) / sentiments.length
+        : 0;
+
+    return { repartitionNotes, repartitionSentiments, noteMoyenne, sentimentMoyen };
+  }, [data]);
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="p-2 bg-background border rounded-md shadow-md">
+          <p className="font-bold">{label}</p>
+          <p className="text-sm">{`Nombre: ${payload[0].value}`}</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Satisfaction Client</CardTitle>
+        <CardDescription>Répartition des notes et analyse de sentiment des commentaires.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid md:grid-cols-2 gap-8">
+        <div>
+          <h3 className="text-center font-semibold mb-2">
+            Répartition des notes ({analyseSentiment.noteMoyenne.toFixed(2)}/5 en moyenne)
+          </h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={analyseSentiment.repartitionNotes} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
+              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+              <YAxis allowDecimals={false} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]}>
+                <LabelList dataKey="count" position="top" />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div>
+            <h3 className="text-center font-semibold mb-2">
+                Analyse de sentiment ({analyseSentiment.sentimentMoyen.toFixed(2)}/10 en moyenne)
+            </h3>
+            <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={analyseSentiment.repartitionSentiments} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]}>
+                        <LabelList dataKey="count" position="top" />
+                    </Bar>
+                </BarChart>
+            </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }

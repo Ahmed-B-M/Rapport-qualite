@@ -1,9 +1,9 @@
 
+
 "use client";
 
 import { useMemo } from 'react';
-import { type Livraison, type StatistiquesAgregees } from '@/lib/definitions';
-import { type ClassementMetrique } from '@/lib/data-processing';
+import { type Livraison, type StatistiquesAgregees, type ClassementMetrique } from '@/lib/definitions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -55,6 +55,13 @@ const CONFIG_METRIQUE: Record<ClassementMetrique, { titre: string; description: 
         libelleValeur: "Taux 'validation web'",
         meilleurSiEleve: false,
     },
+    tauxNotation: {
+        titre: "Analyse Taux de Notation",
+        description: "Détails sur les entités avec les taux de notation les plus bas.",
+        unite: '%',
+        libelleValeur: "Taux de notation",
+        meilleurSiEleve: true,
+    }
 };
 
 const GraphiqueRaisonEchec = ({ donnees }: { donnees: Livraison[] }) => {
@@ -97,22 +104,25 @@ const ListeClassementFlop = ({ titre, classements, metrique, icone: Icone }: {
 
     const getValeur = (item: StatistiquesAgregees) => {
         if (configMetrique.estTauxEchec) return 100 - item.tauxReussite;
-        return item[metrique as keyof StatistiquesAgregees] as number;
+        const key = metrique as keyof Omit<StatistiquesAgregees, 'totalLivraisons'>;
+        const value = item[key];
+        return typeof value === 'number' ? value : 0;
     }
 
-    const getRecurrence = (item: any) => {
+    const getRecurrence = (item: StatistiquesAgregees) => {
         switch (metrique) {
-            case 'tauxReussite': return item.livraisonsRatees;
-            case 'tauxPonctualite': return item.totalLivraisons - item.livraisonsAPoint;
+            case 'tauxReussite': return item.totalLivraisons - item.nombreLivraisonsReussies;
+            case 'tauxPonctualite': return item.nombreRetards;
             case 'tauxForceSurSite': return item.nombreForceSurSite;
             case 'tauxForceSansContact': return item.nombreForceSansContact;
             case 'tauxCompletionWeb': return item.nombreCompletionWeb;
             case 'noteMoyenne': return item.nombreNotes;
+            case 'tauxNotation': return item.nombreNotes;
             default: return item.totalLivraisons;
         }
     }
     
-    const libelleRecurrence = metrique === 'noteMoyenne' ? 'Nb Notes' : 'Nb Cas';
+    const libelleRecurrence = metrique === 'noteMoyenne' || metrique === 'tauxNotation' ? 'Nb Notes' : 'Nb Cas';
 
     return (
         <div>

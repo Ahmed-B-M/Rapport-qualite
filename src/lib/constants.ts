@@ -1,4 +1,4 @@
-export const WAREHOUSE_DEPOT_MAP: Record<string, string> = {
+export const CARTE_ENTREPOT_DEPOT: Record<string, string> = {
     'Aix Matin': 'AIX',
     'Aix Soir': 'AIX',
     'Carrefour Antibes St Claude 0021': 'Magasin',
@@ -55,14 +55,14 @@ export const WAREHOUSE_DEPOT_MAP: Record<string, string> = {
     'Vitry Paris Dimanche': 'Vitry'
 };
 
-export const CARRIERS = [
-    { name: 'BC one', suffixes: ['3'] },
-    { name: 'DUB', suffixes: ['0'] },
-    { name: 'GPC', suffixes: ['8'] },
-    { name: 'GPL', suffixes: ['7'] },
-    { name: 'RK', suffixes: ['6'] },
-    { name: 'Express', suffixes: ['2'] },
-    { name: 'MLG', suffixes: ['5'] },
-    { name: 'ID LOGISTICS', suffixes: [] },
-    { name: 'Sous traitants', suffixes: [] },
+export const TRANSPORTEURS = [
+    { nom: 'BC one', suffixes: ['3'] },
+    { nom: 'DUB', suffixes: ['0'] },
+    { nom: 'GPC', suffixes: ['8'] },
+    { nom: 'GPL', suffixes: ['7'] },
+    { nom: 'RK', suffixes: ['6'] },
+    { nom: 'Express', suffixes: ['2'] },
+    { nom: 'MLG', suffixes: ['5'] },
+    { nom: 'ID LOGISTICS', suffixes: [] },
+    { nom: 'Sous traitants', suffixes: [] },
 ];

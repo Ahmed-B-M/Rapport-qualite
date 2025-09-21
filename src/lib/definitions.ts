@@ -1,128 +1,136 @@
 
-export type DeliveryStatus = 'Livré' | 'Non livré' | 'En attente' | 'Partiellement livré';
-export type CompletedBy = 'mobile' | 'web' | 'unknown';
-export type ForcedOnSite = 'No' | 'Yes';
 
-export type Delivery = {
+export type StatutLivraison = 'Livré' | 'Non livré' | 'En attente' | 'Partiellement livré';
+export type TerminePar = 'mobile' | 'web' | 'inconnu';
+export type ForceSurSite = 'Non' | 'Oui';
+
+export type Livraison = {
   date: string;
-  status: DeliveryStatus;
-  failureReason?: string;
-  taskId: string;
-  warehouse: string;
-  driver: string;
-  tourId: string;
+  statut: StatutLivraison;
+  raisonEchec?: string;
+  idTache: string;
+  entrepot: string;
+  chauffeur: string;
+  idTournee: string;
   sequence: number;
-  delaySeconds: number;
-  feedbackComment?: string;
-  deliveryRating?: number;
-  forcedNoContact: boolean;
-  noContactReason?: string;
-  forcedOnSite: ForcedOnSite;
-  completedBy: CompletedBy;
+  retardSecondes: number;
+  commentaireRetour?: string;
+  noteLivraison?: number;
+  forceSansContact: boolean;
+  raisonSansContact?: string;
+  forceSurSite: ForceSurSite;
+  terminePar: TerminePar;
   depot: string;
-  carrier: string;
+  transporteur: string;
 };
 
-export type AggregatedStats = {
-  totalDeliveries: number;
-  successRate: number;
-  averageRating?: number;
-  punctualityRate: number;
-  ratingRate: number;
-  forcedOnSiteRate: number;
-  forcedNoContactRate: number;
-  webCompletionRate: number;
-  averageSentiment?: number;
-  ratingCount: number; 
+export type StatistiquesAgregees = {
+  totalLivraisons: number;
+  tauxReussite: number;
+  noteMoyenne?: number;
+  tauxPonctualite: number;
+  tauxNotation: number;
+  tauxForceSurSite: number;
+  tauxForceSansContact: number;
+  tauxCompletionWeb: number;
+  sentimentMoyen?: number;
+  nombreNotes: number;
+  nombreLivraisonsReussies: number;
+  nombreRetards: number;
+  nombreForceSurSite: number;
+  nombreForceSansContact: number;
+  nombreCompletionWeb: number;
 };
 
-export type DriverPerformance = AggregatedStats & {
-  driver: string;
+export type PerformanceChauffeur = StatistiquesAgregees & {
+  chauffeur: string;
   depot: string;
-  carrier: string;
+  transporteur: string;
 };
 
-// --- New Types for Performance Report ---
+// --- Nouveaux types pour le rapport de performance ---
 
-export type Objectives = {
-    averageRating: number;
-    averageSentiment: number;
-    punctualityRate: number;
-    failureRate: number;
-    forcedOnSiteRate: number;
-    forcedNoContactRate: number;
-    webCompletionRate: number;
+export type Objectifs = {
+    noteMoyenne: number;
+    sentimentMoyen: number;
+    tauxPonctualite: number;
+    tauxEchec: number;
+    tauxForceSurSite: number;
+    tauxForceSansContact: number;
+    tauxCompletionWeb: number;
 };
 
-export type RankingEntity = {
-  name: string;
-  value: number;
-  totalDeliveries: number;
+export type EntiteClassement = {
+  nom: string;
+  valeur: number;
+  totalLivraisons: number;
 };
 
-export type DriverRatingRankingEntity = {
-    name: string;
-    count: number;
-    averageRating?: number;
+export type EntiteClassementNoteChauffeur = {
+    nom: string;
+    nombre: number;
+    noteMoyenne?: number;
 };
 
-export type KpiRanking = {
-  top: RankingEntity[];
-  flop: RankingEntity[];
+export type ClassementKpi = {
+  top: EntiteClassement[];
+  flop: EntiteClassement[];
 };
 
-export type KpiRankingsByEntity = {
-  drivers: {
-    averageRating: KpiRanking;
-    averageSentiment: KpiRanking;
-    punctualityRate: KpiRanking;
-    successRate: KpiRanking;
+export type ClassementsKpiParEntite = {
+  chauffeurs: {
+    noteMoyenne: ClassementKpi;
+    sentimentMoyen: ClassementKpi;
+    tauxPonctualite: ClassementKpi;
+    tauxReussite: ClassementKpi;
   };
-  carriers: {
-    averageRating: KpiRanking;
-    averageSentiment: KpiRanking;
-    punctualityRate: KpiRanking;
-    successRate: KpiRanking;
+  transporteurs: {
+    noteMoyenne: ClassementKpi;
+    sentimentMoyen: ClassementKpi;
+    tauxPonctualite: ClassementKpi;
+    tauxReussite: ClassementKpi;
   };
 };
 
-export type CommentExample = {
-    comment: string;
+export type ExempleCommentaire = {
+    commentaire: string;
     score: number;
-    driver: string;
+    chauffeur: string;
 };
 
-export type ReportSectionData = {
-    stats: AggregatedStats;
-    kpiRankings: KpiRankingsByEntity;
-    topComments: CommentExample[];
-    flopComments: CommentExample[];
-    topRatedDrivers: DriverRatingRankingEntity[];
-    flopRatedDrivers: DriverRatingRankingEntity[];
+export type DonneesSectionRapport = {
+    statistiques: StatistiquesAgregees;
+    classementsKpi: ClassementsKpiParEntite;
+    meilleursCommentaires: ExempleCommentaire[];
+    piresCommentaires: ExempleCommentaire[];
+    chauffeursMieuxNotes: EntiteClassementNoteChauffeur[];
+    chauffeursMoinsBienNotes: EntiteClassementNoteChauffeur[];
 };
 
-export type DepotReport = ReportSectionData & {
-    name: string;
+export type RapportDepot = DonneesSectionRapport & {
+    nom: string;
 };
 
-export type PerformanceReportData = {
-  global: ReportSectionData;
-  depots: DepotReport[];
+export type DonneesRapportPerformance = {
+  global: DonneesSectionRapport;
+  depots: RapportDepot[];
 };
 
-// --- New Types for Synthesis Report ---
-export interface SynthesisPoints {
-  strengths: string[];
-  weaknesses: string[];
+// --- Nouveaux types pour le rapport de synthèse ---
+export interface PointsSynthese {
+  forces: string[];
+  faiblesses: string[];
 }
 
-export interface DepotSynthesis extends SynthesisPoints {
-  name: string;
-  overall: 'positive' | 'negative' | 'mitigée';
+export interface SyntheseDepot extends PointsSynthese {
+  nom: string;
+  global: 'positif' | 'négatif' | 'mitigé';
 }
 
-export interface SynthesisResult {
-  global: SynthesisPoints & { overall: 'positive' | 'negative' | 'mitigée' };
-  depots: DepotSynthesis[];
+export interface ResultatSynthese {
+  global: PointsSynthese & { global: 'positif' | 'négatif' | 'mitigé' };
+  depots: SyntheseDepot[];
   conclusion: string;
 }
+
+export type ClassementMetrique = keyof Omit<StatistiquesAgregees, 'totalLivraisons' | 'nombreNotes' | 'sentimentMoyen' | 'nombreLivraisonsReussies' | 'nombreRetards' | 'nombreForceSurSite' | 'nombreForceSansContact' | 'nombreCompletionWeb'>;

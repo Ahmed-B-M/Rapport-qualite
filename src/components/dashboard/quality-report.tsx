@@ -1,19 +1,18 @@
 
 'use client';
-
+import Image from 'next/image';
 import { useMemo } from 'react';
 import { 
-    type Delivery, 
-    type PerformanceReportData, 
-    type Objectives, 
-    type ReportSectionData, 
-    type CommentExample, 
-    type DriverRatingRankingEntity,
-    type SynthesisResult,
-    type DepotSynthesis,
-    type KpiRanking
+    type Livraison, 
+    type DonneesRapportPerformance, 
+    type Objectifs, 
+    type DonneesSectionRapport, 
+    type ExempleCommentaire, 
+    type EntiteClassementNoteChauffeur,
+    type ResultatSynthese,
+    type SyntheseDepot,
 } from '@/lib/definitions';
-import { generatePerformanceReport } from '@/lib/analysis';
+import { genererRapportPerformance } from '@/lib/analysis';
 import { generateSynthesis } from '@/lib/synthesis';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,76 +25,83 @@ import { Separator } from '@/components/ui/separator';
 import ReactMarkdown from 'react-markdown';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-// --- Props Definition ---
+// --- Définition des Props ---
 
-interface QualityReportProps {
-  data: Delivery[];
-  objectives: Objectives;
+interface RapportQualiteProps {
+  donnees: Livraison[];
+  objectifs: Objectifs;
 }
 
-// --- Helper Components ---
+const LogoDepot = ({ nomDepot }: { nomDepot: string }) => {
+    const nomLogo = nomDepot.toLowerCase().replace(/\s+/g, '-');
+    const urlLogo = `/logos/id-${nomLogo}.jpg`;
+    return <Image src={urlLogo} alt={`Logo ${nomDepot}`} width={40} height={40} className="rounded-full inline-block mr-2"/>;
+};
 
-const renderPoints = (points: string[], icon: React.ReactNode) => (
+
+// --- Composants d'aide ---
+
+const rendrePoints = (points: string[], icone: React.ReactNode) => (
     <ul className="space-y-3">
         {points.map((point, index) => (
             <li key={index} className="flex items-start">
-                <div className="flex-shrink-0 mr-3 mt-1">{icon}</div>
+                <div className="flex-shrink-0 mr-3 mt-1">{icone}</div>
                 <ReactMarkdown components={{ p: ({ children }) => <p className="mb-0 text-sm">{children}</p> }}>{point}</ReactMarkdown>
             </li>
         ))}
     </ul>
 );
 
-const SynthesisSection = ({ synthesis }: { synthesis: { strengths: string[], weaknesses: string[] } }) => (
+const SectionSynthese = ({ synthese }: { synthese: { forces: string[], faiblesses: string[] } }) => (
     <Card className="shadow-md mb-6">
         <CardHeader><CardTitle className="flex items-center text-xl"><Target className="h-5 w-5 mr-2 text-gray-700" />Synthèse</CardTitle></CardHeader>
         <CardContent className="space-y-6">
             <div>
                 <h3 className="font-bold text-lg mb-3 text-green-700 flex items-center"><ThumbsUp className="h-5 w-5 mr-2" />Points forts</h3>
-                {synthesis.strengths.length > 0 ? renderPoints(synthesis.strengths, <ArrowRightCircle className="h-4 w-4 text-green-500" />) : <p className="text-sm text-muted-foreground">Aucun point fort majeur identifié.</p>}
+                {synthese.forces.length > 0 ? rendrePoints(synthese.forces, <ArrowRightCircle className="h-4 w-4 text-green-500" />) : <p className="text-sm text-muted-foreground">Aucun point fort majeur identifié.</p>}
             </div>
             <Separator/>
             <div>
                 <h3 className="font-bold text-lg mb-3 text-red-700 flex items-center"><ThumbsDown className="h-5 w-5 mr-2" />Axes d'amélioration</h3>
-                {synthesis.weaknesses.length > 0 ? renderPoints(synthesis.weaknesses, <ArrowRightCircle className="h-4 w-4 text-red-500" />) : <p className="text-sm text-muted-foreground">Aucun axe d'amélioration majeur identifié.</p>}
+                {synthese.faiblesses.length > 0 ? rendrePoints(synthese.faiblesses, <ArrowRightCircle className="h-4 w-4 text-red-500" />) : <p className="text-sm text-muted-foreground">Aucun axe d'amélioration majeur identifié.</p>}
             </div>
         </CardContent>
     </Card>
 );
 
-const KpiCard = ({ title, value, objective, higherIsBetter, unit = '%' }: { title: string, value: number | undefined, objective: number, higherIsBetter: boolean, unit?: string }) => {
-  if (value === undefined) {
+const CarteKpi = ({ titre, valeur, objectif, meilleurSiEleve, unite = '%' }: { titre: string, valeur: number | undefined, objectif: number, meilleurSiEleve: boolean, unite?: string }) => {
+  if (valeur === undefined) {
     return (
         <div className="flex flex-col p-4 border rounded-lg bg-gray-50">
-            <h4 className="text-sm text-muted-foreground">{title}</h4>
-            <div className="flex items-center justify-between mt-2"><p className="text-2xl font-bold">N/A</p>{ objective && <Badge variant="secondary">Objectif: {objective.toFixed(2)}{unit}</Badge> }</div>
+            <h4 className="text-sm text-muted-foreground">{titre}</h4>
+            <div className="flex items-center justify-between mt-2"><p className="text-2xl font-bold">N/A</p>{ objectif && <Badge variant="secondary">Objectif: {objectif.toFixed(2)}{unite}</Badge> }</div>
         </div>
     );
   }
-  const meetsObjective = higherIsBetter ? value >= objective : value <= objective;
+  const atteintObjectif = meilleurSiEleve ? valeur >= objectif : valeur <= objectif;
   return (
     <div className="flex flex-col p-4 border rounded-lg bg-white">
-      <h4 className="text-sm text-muted-foreground">{title}</h4>
+      <h4 className="text-sm text-muted-foreground">{titre}</h4>
       <div className="flex items-center justify-between mt-2">
-        <p className="text-2xl font-bold">{value.toFixed(2)}{unit}</p>
-        <Badge variant={meetsObjective ? 'default' : 'destructive'} className="flex items-center gap-1">
-          {meetsObjective ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-          Objectif: {objective.toFixed(2)}{unit}
+        <p className="text-2xl font-bold">{valeur.toFixed(2)}{unite}</p>
+        <Badge variant={atteintObjectif ? 'default' : 'destructive'} className="flex items-center gap-1">
+          {atteintObjectif ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+          Objectif: {objectif.toFixed(2)}{unite}
         </Badge>
       </div>
     </div>
   );
 };
 
-const SingleRankingTable = ({ title, icon, data, unit }: { title: string, icon: React.ReactNode, data: any[], unit: string }) => (
+const TableauClassementSimple = ({ titre, icone, donnees, unite }: { titre: string, icone: React.ReactNode, donnees: any[], unite: string }) => (
     <div>
-        <h4 className="font-semibold flex items-center mb-2">{icon}{title}</h4>
+        <h4 className="font-semibold flex items-center mb-2">{icone}{titre}</h4>
         <Table>
             <TableBody>
-                {data.length > 0 ? data.map(item => (
-                    <TableRow key={item.name}>
-                        <TableCell>{item.name}</TableCell>
-                        <TableCell className="text-right font-bold">{item.value.toFixed(2)}{unit}</TableCell>
+                {donnees.length > 0 ? donnees.map(item => (
+                    <TableRow key={item.nom}>
+                        <TableCell>{item.nom}</TableCell>
+                        <TableCell className="text-right font-bold">{item.valeur.toFixed(2)}{unite}</TableCell>
                     </TableRow>
                 )) : <TableRow><TableCell className="text-muted-foreground text-center">Aucune donnée</TableCell></TableRow>}
             </TableBody>
@@ -104,18 +110,18 @@ const SingleRankingTable = ({ title, icon, data, unit }: { title: string, icon: 
 );
 
 
-const KpiRankingTabs = ({ reportData }: { reportData: ReportSectionData }) => {
+const OngletsClassementKpi = ({ donneesRapport }: { donneesRapport: DonneesSectionRapport }) => {
     const kpis = [
-        { key: 'averageRating', name: 'Note Moyenne', icon: <Star className="h-4 w-4 mr-2"/>, unit: '/5' },
-        { key: 'successRate', name: 'Taux de Succès', icon: <Percent className="h-4 w-4 mr-2"/>, unit: '%' },
-        { key: 'punctualityRate', name: 'Ponctualité', icon: <Clock className="h-4 w-4 mr-2"/>, unit: '%' },
-        { key: 'averageSentiment', name: 'Note des Comms', icon: <MessageCircle className="h-4 w-4 mr-2"/>, unit: '/10' }
+        { key: 'noteMoyenne', name: 'Note Moyenne', icon: <Star className="h-4 w-4 mr-2"/>, unit: '/5' },
+        { key: 'tauxReussite', name: 'Taux de Succès', icon: <Percent className="h-4 w-4 mr-2"/>, unit: '%' },
+        { key: 'tauxPonctualite', name: 'Ponctualité', icon: <Clock className="h-4 w-4 mr-2"/>, unit: '%' },
+        { key: 'sentimentMoyen', name: 'Note des Comms', icon: <MessageCircle className="h-4 w-4 mr-2"/>, unit: '/10' }
     ];
 
     return (
         <div>
             <h3 className="text-lg font-semibold mb-4">Classements par Indicateur Clé (KPI)</h3>
-            <Tabs defaultValue="averageRating" className="w-full">
+            <Tabs defaultValue="noteMoyenne" className="w-full">
                 <TabsList className="grid w-full grid-cols-4">
                     {kpis.map(kpi => <TabsTrigger key={kpi.key} value={kpi.key}>{kpi.icon}{kpi.name}</TabsTrigger>)}
                 </TabsList>
@@ -127,15 +133,15 @@ const KpiRankingTabs = ({ reportData }: { reportData: ReportSectionData }) => {
                                     <div>
                                         <h4 className="font-semibold text-gray-800 mb-2 flex items-center"><Users className="h-5 w-5 mr-2"/> Classement Livreurs</h4>
                                         <div className="grid grid-cols-2 gap-4">
-                                            <SingleRankingTable title="Top 3" icon={<Award className="h-4 w-4 mr-1 text-green-600"/>} data={reportData.kpiRankings.drivers[kpi.key as keyof typeof reportData.kpiRankings.drivers].top} unit={kpi.unit} />
-                                            <SingleRankingTable title="Flop 3" icon={<UserX className="h-4 w-4 mr-1 text-red-600"/>} data={reportData.kpiRankings.drivers[kpi.key as keyof typeof reportData.kpiRankings.drivers].flop} unit={kpi.unit} />
+                                            <TableauClassementSimple titre="Top 3" icone={<Award className="h-4 w-4 mr-1 text-green-600"/>} donnees={donneesRapport.classementsKpi.chauffeurs[kpi.key as keyof typeof donneesRapport.classementsKpi.chauffeurs].top} unite={kpi.unit} />
+                                            <TableauClassementSimple titre="Flop 3" icone={<UserX className="h-4 w-4 mr-1 text-red-600"/>} donnees={donneesRapport.classementsKpi.chauffeurs[kpi.key as keyof typeof donneesRapport.classementsKpi.chauffeurs].flop} unite={kpi.unit} />
                                         </div>
                                     </div>
                                     <div>
                                         <h4 className="font-semibold text-gray-800 mb-2 flex items-center"><Truck className="h-5 w-5 mr-2"/> Classement Transporteurs</h4>
                                         <div className="grid grid-cols-2 gap-4">
-                                             <SingleRankingTable title="Top 3" icon={<Award className="h-4 w-4 mr-1 text-green-600"/>} data={reportData.kpiRankings.carriers[kpi.key as keyof typeof reportData.kpiRankings.carriers].top} unit={kpi.unit} />
-                                            <SingleRankingTable title="Flop 3" icon={<UserX className="h-4 w-4 mr-1 text-red-600"/>} data={reportData.kpiRankings.carriers[kpi.key as keyof typeof reportData.kpiRankings.carriers].flop} unit={kpi.unit} />
+                                             <TableauClassementSimple titre="Top 3" icone={<Award className="h-4 w-4 mr-1 text-green-600"/>} donnees={donneesRapport.classementsKpi.transporteurs[kpi.key as keyof typeof donneesRapport.classementsKpi.transporteurs].top} unite={kpi.unit} />
+                                            <TableauClassementSimple titre="Flop 3" icone={<UserX className="h-4 w-4 mr-1 text-red-600"/>} donnees={donneesRapport.classementsKpi.transporteurs[kpi.key as keyof typeof donneesRapport.classementsKpi.transporteurs].flop} unite={kpi.unit} />
                                         </div>
                                     </div>
                                 </div>
@@ -148,7 +154,7 @@ const KpiRankingTabs = ({ reportData }: { reportData: ReportSectionData }) => {
     );
 };
 
-const DriverRatingRankings = ({ top, flop }: { top: DriverRatingRankingEntity[], flop: DriverRatingRankingEntity[] }) => (
+const ClassementsNotesChauffeur = ({ top, flop }: { top: EntiteClassementNoteChauffeur[], flop: EntiteClassementNoteChauffeur[] }) => (
     <div>
         <h3 className="text-lg font-semibold mb-4">Classement des Livreurs par Volume de Notes</h3>
         <div className="grid md:grid-cols-2 gap-6">
@@ -163,8 +169,8 @@ const DriverRatingRankings = ({ top, flop }: { top: DriverRatingRankingEntity[],
                     <TableBody>{top.map((item, i) => 
                         <TableRow key={i}>
                             <TableCell>
-                                {item.name} {item.averageRating && <span className="text-xs text-muted-foreground">({item.averageRating.toFixed(2)}/5)</span>}
-                                <span className="font-bold float-right">({item.count})</span>
+                                {item.nom} {item.noteMoyenne && <span className="text-xs text-muted-foreground">({item.noteMoyenne.toFixed(2)}/5)</span>}
+                                <span className="font-bold float-right">({item.nombre})</span>
                             </TableCell>
                         </TableRow>)}
                     </TableBody>
@@ -181,8 +187,8 @@ const DriverRatingRankings = ({ top, flop }: { top: DriverRatingRankingEntity[],
                     <TableBody>{flop.map((item, i) => 
                         <TableRow key={i}>
                              <TableCell>
-                                {item.name} {item.averageRating && <span className="text-xs text-muted-foreground">({item.averageRating.toFixed(2)}/5)</span>}
-                                <span className="font-bold float-right">({item.count})</span>
+                                {item.nom} {item.noteMoyenne && <span className="text-xs text-muted-foreground">({item.noteMoyenne.toFixed(2)}/5)</span>}
+                                <span className="font-bold float-right">({item.nombre})</span>
                             </TableCell>
                         </TableRow>)}
                     </TableBody>
@@ -193,52 +199,61 @@ const DriverRatingRankings = ({ top, flop }: { top: DriverRatingRankingEntity[],
 );
 
 
-const CommentExamples = ({ top, flop }: { top: CommentExample[], flop: CommentExample[] }) => (
+const ExemplesCommentaires = ({ top, flop }: { top: ExempleCommentaire[], flop: ExempleCommentaire[] }) => (
     <div>
         <h3 className="text-lg font-semibold mb-4">Exemples de Commentaires</h3>
         <div className="grid md:grid-cols-2 gap-6">
             <div>
                 <h4 className="font-semibold flex items-center text-green-600 mb-2"><ThumbsUp className="h-4 w-4 mr-2" /> Meilleurs Commentaires</h4>
-                {top.map((c, i) => (<div key={i} className="border-l-2 border-green-600 pl-3 mb-3 text-sm italic">"{c.comment}"<p className="text-xs text-muted-foreground mt-1 not-italic">- {c.driver} (Note: {c.score.toFixed(2)}/10)</p></div>))}
+                {top.map((c, i) => (<div key={i} className="border-l-2 border-green-600 pl-3 mb-3 text-sm italic">"{c.commentaire}"<p className="text-xs text-muted-foreground mt-1 not-italic">- {c.chauffeur} (Note: {c.score.toFixed(2)}/10)</p></div>))}
             </div>
             <div>
                 <h4 className="font-semibold flex items-center text-red-600 mb-2"><ThumbsDown className="h-4 w-4 mr-2" /> Pires Commentaires</h4>
-                {flop.map((c, i) => (<div key={i} className="border-l-2 border-red-600 pl-3 mb-3 text-sm italic">"{c.comment}"<p className="text-xs text-muted-foreground mt-1 not-italic">- {c.driver} (Note: {c.score.toFixed(2)}/10)</p></div>))}
+                {flop.map((c, i) => (<div key={i} className="border-l-2 border-red-600 pl-3 mb-3 text-sm italic">"{c.commentaire}"<p className="text-xs text-muted-foreground mt-1 not-italic">- {c.chauffeur} (Note: {c.score.toFixed(2)}/10)</p></div>))}
             </div>
         </div>
     </div>
 )
 
-const DetailedAnalysisSection = ({ reportData, objectives }: { reportData: ReportSectionData, objectives: Objectives }) => (
+const SectionAnalyseDetaillee = ({ donneesRapport, objectifs }: { donneesRapport: DonneesSectionRapport, objectifs: Objectifs }) => (
     <Card>
         <CardHeader>
             <CardTitle className="flex items-center"><BarChart className="h-5 w-5 mr-2" />Analyse Détaillée</CardTitle>
-            <CardDescription>Total de {reportData.stats.totalDeliveries} livraisons analysées.</CardDescription>
+            <CardDescription>Total de {donneesRapport.statistiques.totalLivraisons} livraisons analysées.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <KpiCard title="Taux de Succès" value={reportData.stats.successRate} objective={100 - objectives.failureRate} higherIsBetter={true} />
-                <KpiCard title="Note Moyenne" value={reportData.stats.averageRating} objective={objectives.averageRating} higherIsBetter={true} unit="/5" />
-                <KpiCard title="Note des Commentaires" value={reportData.stats.averageSentiment} objective={objectives.averageSentiment} higherIsBetter={true} unit="/10" />
-                <KpiCard title="Ponctualité" value={reportData.stats.punctualityRate} objective={objectives.punctualityRate} higherIsBetter={true} />
+                <CarteKpi titre="Taux de Succès" valeur={donneesRapport.statistiques.tauxReussite} objectif={100 - objectifs.tauxEchec} meilleurSiEleve={true} />
+                <CarteKpi titre="Note Moyenne" valeur={donneesRapport.statistiques.noteMoyenne} objectif={objectifs.noteMoyenne} meilleurSiEleve={true} unite="/5" />
+                <CarteKpi titre="Note des Commentaires" valeur={donneesRapport.statistiques.sentimentMoyen} objectif={objectifs.sentimentMoyen} meilleurSiEleve={true} unite="/10" />
+                <CarteKpi titre="Ponctualité" valeur={donneesRapport.statistiques.tauxPonctualite} objectif={objectifs.tauxPonctualite} meilleurSiEleve={true} />
             </div>
             <Separator />
-            <DriverRatingRankings top={reportData.topRatedDrivers} flop={reportData.flopRatedDrivers} />
+            <ClassementsNotesChauffeur top={donneesRapport.chauffeursMieuxNotes} flop={donneesRapport.chauffeursMoinsBienNotes} />
             <Separator />
-            <CommentExamples top={reportData.topComments} flop={reportData.flopComments} />
+            <ExemplesCommentaires top={donneesRapport.meilleursCommentaires} flop={donneesRapport.piresCommentaires} />
             <Separator />
-            <KpiRankingTabs reportData={reportData} />
+            <OngletsClassementKpi donneesRapport={donneesRapport} />
         </CardContent>
     </Card>
 );
 
-// --- Main Report Component ---
+// --- Composant Principal du Rapport ---
 
-export function QualityReport({ data, objectives }: QualityReportProps) {
-  const reportData = useMemo(() => generatePerformanceReport(data), [data]);
-  const synthesisData = useMemo(() => generateSynthesis(reportData, objectives), [reportData, objectives]);
+export function QualityReport({ donnees, objectifs }: RapportQualiteProps) {
+  const donneesRapport = useMemo(() => {
+      if (!donnees) return null;
+      return genererRapportPerformance(donnees);
+  }, [donnees]);
 
-  if (!reportData || !synthesisData) return <div>Génération du rapport en cours...</div>;
+  const donneesSynthese = useMemo(() => {
+      if (!donneesRapport) return null;
+      return generateSynthesis(donneesRapport, objectifs);
+  }, [donneesRapport, objectifs]);
+
+  if (!donneesRapport || !donneesSynthese) {
+      return <div>Génération du rapport en cours...</div>;
+  }
 
   return (
     <div className="bg-gray-50 p-4 sm:p-6 rounded-lg">
@@ -246,27 +261,32 @@ export function QualityReport({ data, objectives }: QualityReportProps) {
              <div className="mb-6 print-header"><h1 className="text-3xl font-bold font-headline text-primary mb-2 print-title">Rapport Qualité</h1><p className="text-muted-foreground">Analyse globale et par dépôt.</p></div>
             <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 shadow-lg">
                 <CardHeader><CardTitle className="flex items-center text-2xl font-bold text-blue-800"><GraduationCap className="h-6 w-6 mr-3 text-blue-600" />Conclusion & Recommandations</CardTitle></CardHeader>
-                <CardContent><ReactMarkdown components={{ p: ({ children }) => <p className="text-base text-gray-700 leading-relaxed">{children}</p> }}>{synthesisData.conclusion}</ReactMarkdown></CardContent>
+                <CardContent><ReactMarkdown components={{ p: ({ children }) => <p className="text-base text-gray-700 leading-relaxed">{children}</p> }}>{donneesSynthese.conclusion}</ReactMarkdown></CardContent>
             </Card>
         </div>
         <Tabs defaultValue="global">
             <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 <TabsTrigger value="global">Vision d'Ensemble</TabsTrigger>
-                {synthesisData.depots.map(depot => (<TabsTrigger key={depot.name} value={depot.name}>{depot.name}</TabsTrigger>))}
+                {donneesSynthese.depots.map((depot: SyntheseDepot) => (
+                    <TabsTrigger key={depot.nom} value={depot.nom}>
+                        <LogoDepot nomDepot={depot.nom} />
+                        {depot.nom}
+                    </TabsTrigger>
+                ))}
             </TabsList>
             <TabsContent value="global" className="mt-4">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                    <div className="lg:col-span-1"><SynthesisSection synthesis={synthesisData.global} /></div>
-                    <div className="lg:col-span-2"><DetailedAnalysisSection reportData={reportData.global} objectives={objectives} /></div>
+                    <div className="lg:col-span-1"><SectionSynthese synthese={donneesSynthese.global} /></div>
+                    <div className="lg:col-span-2"><SectionAnalyseDetaillee donneesRapport={donneesRapport.global} objectifs={objectifs} /></div>
                 </div>
             </TabsContent>
-            {reportData.depots.map((depotReport) => {
-                const depotSynthesis = synthesisData.depots.find(d => d.name === depotReport.name);
+            {donneesRapport.depots.map((rapportDepot) => {
+                const syntheseDepot = donneesSynthese.depots.find((d: SyntheseDepot) => d.nom === rapportDepot.nom);
                 return (
-                    <TabsContent key={depotReport.name} value={depotReport.name} className="mt-4">
+                    <TabsContent key={rapportDepot.nom} value={rapportDepot.nom} className="mt-4">
                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                            <div className="lg:col-span-1">{depotSynthesis && <SynthesisSection synthesis={depotSynthesis} />}</div>
-                            <div className="lg:col-span-2"><DetailedAnalysisSection reportData={depotReport} objectives={objectives}/></div>
+                            <div className="lg:col-span-1">{syntheseDepot && <SectionSynthese synthese={syntheseDepot} />}</div>
+                            <div className="lg:col-span-2"><SectionAnalyseDetaillee donneesRapport={rapportDepot} objectifs={objectifs}/></div>
                         </div>
                     </TabsContent>
                 )
