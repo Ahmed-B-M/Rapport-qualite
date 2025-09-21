@@ -1,3 +1,4 @@
+
 import { type PerformanceReportData, type Objectives, type SynthesisResult, type SynthesisPoints, type DepotSynthesis } from './definitions';
 
 const KPI_CONFIG = {
@@ -65,10 +66,16 @@ function generatePointsForScope(
         const kpi = key as KpiKey;
         const result = analyzeKpi(kpi, data.stats, objectives);
         const kpiName = KPI_CONFIG[kpi].name;
-        let value = (kpi === 'successRate' ? data.stats.successRate : (kpi === 'failureRate' ? 100 - data.stats.successRate : data.stats[kpi as keyof typeof data.stats])) as number | undefined;
         
-        if (kpi === 'punctualityRate') {
+        let value: number | undefined;
+        if (kpi === 'successRate') {
+            value = data.stats.successRate;
+        } else if (kpi === 'failureRate') {
+            value = 100 - data.stats.successRate;
+        } else if (kpi === 'punctualityRate') {
             value = data.stats.punctualityRate;
+        } else {
+            value = data.stats[kpi as keyof typeof data.stats] as number | undefined;
         }
 
         if (value !== undefined) {
