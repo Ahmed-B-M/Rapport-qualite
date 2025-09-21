@@ -201,7 +201,7 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
                     <div className="page-break">
                         <h2 className="text-2xl font-bold mb-4 flex items-center">
                             <LogoDepotImpression nomDepot={depot.nom} />
-                            Analyse du Dépôt: {depot.nom} - Page 1/2
+                            {depot.nom}
                         </h2>
                         <SectionSyntheseImpression titre={`Synthèse ${depot.nom}`} synthese={syntheseDepot} />
                         <Card className="break-inside-avoid">
@@ -223,7 +223,7 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
                     <div className="page-break">
                         <h2 className="text-2xl font-bold mb-4 flex items-center">
                            <LogoDepotImpression nomDepot={depot.nom} />
-                           Analyse du Dépôt: {depot.nom} - Page 2/2
+                           {depot.nom}
                         </h2>
                         <Card>
                             <CardHeader className="p-3">
@@ -245,5 +245,3 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
     </div>
   );
 }
-
-    
