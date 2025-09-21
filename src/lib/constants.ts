@@ -1,8 +1,10 @@
+
 export const CARTE_ENTREPOT_DEPOT: Record<string, string> = {
     'Aix Matin': 'AIX',
     'Aix Soir': 'AIX',
     'Carrefour Antibes St Claude 0021': 'Magasin',
     'Carrefour Athis Mons 0503': 'Magasin',
+    'Carrefour Chambourcy XX': 'Magasin',
     'Carrefour Drancy 0088': 'Magasin',
     'Carrefour Ivry Sur Seine 0032': 'Magasin',
     'Carrefour L Haÿ Les Roses 7330': 'Magasin',
@@ -28,6 +30,7 @@ export const CARTE_ENTREPOT_DEPOT: Record<string, string> = {
     'Castries Zone Nîmes Soir': 'Castries',
     'F - Carrefour Nice TNL 0519': 'Magasin',
     'LEX -Carrefour Market Croissy sur seine 7854 - LEX': 'Magasin',
+    'Rungis Dimanche Zone1': 'Rungis',
     'Rungis Zone1 Après Midi': 'Rungis',
     'Rungis Zone1 Matin': 'Rungis',
     'Rungis Zone1 Soir': 'Rungis',
@@ -50,9 +53,9 @@ export const CARTE_ENTREPOT_DEPOT: Record<string, string> = {
     'Vitry Banlieue Matin': 'Vitry',
     'Vitry J pour J': 'Vitry',
     'Vitry Paris Après-Midi': 'Vitry',
+    'Vitry Paris Dimanche': 'Vitry',
     'Vitry Paris Matin': 'Vitry',
     'Vitry Soir': 'Vitry',
-    'Vitry Paris Dimanche': 'Vitry'
 };
 
 export const TRANSPORTEURS = [
