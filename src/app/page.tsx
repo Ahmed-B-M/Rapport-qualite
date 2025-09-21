@@ -19,6 +19,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { DateRange } from "react-day-picker";
 import { genererRapportPerformance } from '@/lib/analysis';
 import { generateSynthesis } from '@/lib/synthesis';
 
@@ -29,19 +31,40 @@ export default function DashboardPage() {
   const [vueActive, setVueActive] = useState("overview");
   const [parametresOuverts, setParametresOuverts] = useState(false);
   const [exclureMagasin, setExclureMagasin] = useState(false);
+  const [plageDates, setPlageDates] = useState<DateRange | undefined>();
 
   const [objectifs, setObjectives] = useState<Objectifs>({
     noteMoyenne: 4.8, sentimentMoyen: 8.0, tauxPonctualite: 95, tauxEchec: 2,
     tauxForceSurSite: 10, tauxForceSansContact: 10, tauxCompletionWeb: 1,
   });
 
+  const datesUniques = useMemo(() => {
+    const dates = new Set(donnees.map(d => new Date(d.date).setHours(0,0,0,0)));
+    return Array.from(dates).map(d => new Date(d));
+  }, [donnees]);
+
   const handleDonneesTelechargees = (processedData: Livraison[], error?: string) => {
     if (error) { setErreur(error); setDonnees([]); } 
-    else { setDonnees(processedData); setErreur(null); }
+    else { 
+        setDonnees(processedData); 
+        setErreur(null); 
+        const dates = new Set(processedData.map(d => new Date(d.date).setHours(0,0,0,0)));
+        const datesArray = Array.from(dates).map(d => new Date(d));
+        if (datesArray.length > 0) {
+            const minDate = new Date(Math.min(...datesArray.map(d => d.getTime())));
+            const maxDate = new Date(Math.max(...datesArray.map(d => d.getTime())));
+            setPlageDates({ from: minDate, to: maxDate });
+        }
+    }
     setChargement(false);
   };
   
-  const handleReinitialiser = () => { setDonnees([]); setErreur(null); setVueActive("overview"); };
+  const handleReinitialiser = () => { 
+    setDonnees([]); 
+    setErreur(null); 
+    setVueActive("overview"); 
+    setPlageDates(undefined);
+  };
 
   const handleEnregistrerParametres = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -59,8 +82,17 @@ export default function DashboardPage() {
   const handleImprimer = () => window.print();
 
   const donneesFiltrees = useMemo(() => {
-    return exclureMagasin ? donnees.filter(d => d.depot !== 'Magasin') : donnees;
-  }, [donnees, exclureMagasin]);
+    let donneesFiltreMagasin = exclureMagasin ? donnees.filter(d => d.depot !== 'Magasin') : donnees;
+    if (plageDates?.from && plageDates?.to) {
+        const debut = new Date(plageDates.from.setHours(0, 0, 0, 0));
+        const fin = new Date(plageDates.to.setHours(23, 59, 59, 999));
+        donneesFiltreMagasin = donneesFiltreMagasin.filter(d => {
+            const dateLivraison = new Date(d.date);
+            return dateLivraison >= debut && dateLivraison <= fin;
+        });
+    }
+    return donneesFiltreMagasin;
+  }, [donnees, exclureMagasin, plageDates]);
 
   // Mémoriser la génération du rapport
   const donneesRapport = useMemo(() => genererRapportPerformance(donneesFiltrees), [donneesFiltrees]);
@@ -88,7 +120,7 @@ export default function DashboardPage() {
       </div>
       <SidebarInset>
         <div className="p-4 sm:p-6 lg:p-8">
-            <header id="main-header" className="flex items-center justify-between mb-8 print-hide">
+            <header id="main-header" className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 print-hide gap-4">
                 <div className="flex items-center gap-4">
                     <Image src="/logos/logo-crf.jpg" alt="Logo CLCV" width={60} height={60} className="rounded-lg"/>
                     <div>
@@ -96,9 +128,10 @@ export default function DashboardPage() {
                         <p className="text-muted-foreground">Importez et analysez les données de performance de livraison.</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                     {donnees.length > 0 && (
                       <>
+                        <DateRangePicker date={plageDates} onDateChange={setPlageDates} availableDates={datesUniques} />
                         <div className="flex items-center space-x-2"><Switch id="exclude-magasin" checked={exclureMagasin} onCheckedChange={setExclureMagasin} /><Label htmlFor="exclude-magasin">Exclure Magasin</Label></div>
                         <Button variant="outline" onClick={handleImprimer}><Printer className="mr-2 h-4 w-4" /> Imprimer / PDF</Button>
                         <Button variant="outline" onClick={handleReinitialiser}>Nouveau fichier</Button>
@@ -133,3 +166,5 @@ export default function DashboardPage() {
     </SidebarProvider>
   );
 }
+
+    
