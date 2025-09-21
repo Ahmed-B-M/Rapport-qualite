@@ -232,7 +232,7 @@ const MOTS_CLES_CATEGORIES: { categorie: CategorieProbleme, motsCles: string[] }
         motsCles: [
             "pas aimable", "agressif", "impoli", "désagréable", "pas bonjour", "comportement", 
             "odieux", "odieuse", "incorrecte", "mal poli", "catastrophe", "horrible", "pas serviable", 
-            "agressive", "pressé", "impatient", "sur le trottoir"
+            "agressive", "pressé", "impatient", "sur le trottoir", "expéditif", "fait le signe pour avoir la pièce"
         ]
     },
     { 
@@ -258,7 +258,7 @@ const MOTS_CLES_CATEGORIES: { categorie: CategorieProbleme, motsCles: string[] }
     },
     { 
         categorie: "rupture chaine de froid", 
-        motsCles: ["chaud", "pas frais", "pas froid", "congelé", "décongelé", "pas respecter la chaîne du froid"]
+        motsCles: ["chaud", "pas frais", "pas froid", "congelé", "décongelé", "chaîne du froid", "frais"]
     },
 ];
 
@@ -471,6 +471,7 @@ export const filtrerDonneesParDepot = (donnees: Livraison[], depot: string): Liv
     if (depot === 'all') return donnees;
     return donnees.filter(l => l.depot === depot);
 };
+
 
 
 
