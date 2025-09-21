@@ -38,9 +38,9 @@ function generatePointsForScope(
     const points: SynthesisPoints = { strengths: [], weaknesses: [] };
     let overallScore = 0;
 
-    const kpisToAlwaysComment: KpiKey[] = ['punctualityRate', 'averageRating'];
-
-    const processKpi = (kpi: KpiKey, forceComment: boolean = false) => {
+    // Process all available KPIs from the data
+    for (const key in KPI_CONFIG) {
+        const kpi = key as KpiKey;
         const config = KPI_CONFIG[kpi];
         let value: number | undefined;
         let objective: number;
@@ -52,66 +52,36 @@ function generatePointsForScope(
         } else if (kpi === 'failureRate') {
             value = 100 - data.stats.successRate;
             objective = objectives.failureRate;
-        } else if (kpi === 'averageRating') {
-            value = data.stats.averageRating;
-            objective = objectives.averageRating;
-        } else if (kpi === 'punctualityRate') {
-            value = data.stats.punctualityRate;
-            objective = objectives.punctualityRate;
-        } else if (kpi === 'averageSentiment') {
-            value = data.stats.averageSentiment;
-            objective = objectives.averageSentiment;
         } else {
             value = data.stats[kpi as keyof typeof data.stats] as number | undefined;
             objective = objectives[kpi as keyof typeof objectives] as number;
         }
 
         if (value === undefined) {
-             if(forceComment) {
-                points.weaknesses.push(`Le **${config.name}** n'a pas pu être calculé (données insuffisantes).`);
-                overallScore--;
-            }
-            return;
+            continue; // Skip KPIs with no data
         }
         
         const result = analyzeKpi(kpi, value, objective);
         const formattedValue = `${value.toFixed(2)}${config.unit}`;
+        const pointText = `**${config.name}**: ${formattedValue}`;
         
         if (result === 'strength') {
-            points.strengths.push(`Le **${config.name}** (${formattedValue}) est un point fort, atteignant ou dépassant l'objectif.`);
+            points.strengths.push(pointText);
             overallScore++;
         } else if (result === 'weakness') {
-            points.weaknesses.push(`Le **${config.name}** (${formattedValue}) est un point à améliorer, n'atteignant pas l'objectif.`);
+            points.weaknesses.push(pointText);
             overallScore--;
-        } else { // Neutral - currently unreachable but kept for future logic
-             if(forceComment) {
-                 points.strengths.push(`Le **${config.name}** est de ${formattedValue}.`);
-            }
-        }
-    };
-    
-    // Process all KPIs, forcing comments for the most important ones
-    for (const key in KPI_CONFIG) {
-        const kpi = key as KpiKey;
-        const mustComment = kpisToAlwaysComment.includes(kpi);
-        if (mustComment) {
-            processKpi(kpi, true);
-        }
-    }
-     for (const key in KPI_CONFIG) {
-        const kpi = key as KpiKey;
-        const mustComment = kpisToAlwaysComment.includes(kpi);
-        if (!mustComment) {
-            processKpi(kpi, false);
         }
     }
     
-    // Analyze rankings
-    if(data.kpiRankings.drivers.averageRating.top.length > 0) {
-        points.strengths.push(`**${data.kpiRankings.drivers.averageRating.top[0].name}** est le livreur le mieux noté.`);
+    // Add rankings to strengths if they exist
+    if (data.kpiRankings.drivers.averageRating.top.length > 0) {
+        const topDriver = data.kpiRankings.drivers.averageRating.top[0];
+        points.strengths.push(`Meilleur livreur: **${topDriver.name}** (${topDriver.value.toFixed(2)}/5)`);
     }
-    if(data.kpiRankings.carriers.averageRating.top.length > 0) {
-        points.strengths.push(`**${data.kpiRankings.carriers.averageRating.top[0].name}** est le transporteur avec la meilleure note moyenne.`);
+    if (data.kpiRankings.carriers.averageRating.top.length > 0) {
+        const topCarrier = data.kpiRankings.carriers.averageRating.top[0];
+        points.strengths.push(`Meilleur transporteur: **${topCarrier.name}** (${topCarrier.value.toFixed(2)}/5)`);
     }
 
     return { ...points, overallScore };
@@ -139,19 +109,19 @@ export function generateSynthesis(
         };
     });
 
+    // Conclusion remains descriptive
     const conclusionPoints = [];
     if (globalAnalysis.strengths.length > 2 && globalAnalysis.overallScore > 0) conclusionPoints.push("La performance globale est solide avec plusieurs indicateurs clés dépassant les objectifs.");
     if (globalAnalysis.weaknesses.length > 2 && globalAnalysis.overallScore < 0) conclusionPoints.push("Plusieurs domaines nécessitent une attention particulière pour améliorer la performance globale.");
     
     const weakDepots = depotSyntheses.filter(d => d.overall === 'negative');
     if (weakDepots.length > 0) {
-        conclusionPoints.push(`Les dépôts de ${weakDepots.map(d => d.name).join(', ')} semblent être les plus en difficulté et méritent une analyse approfondie.`);
+        conclusionPoints.push(`Les dépôts de ${weakDepots.map(d => d.name).join(', ')} semblent être les plus en difficulté.`);
     }
     const strongDepots = depotSyntheses.filter(d => d.overall === 'positive');
      if (strongDepots.length > 0) {
-        conclusionPoints.push(`Les dépôts de ${strongDepots.map(d => d.name).join(', ')} affichent de bonnes performances, servant de modèle potentiel.`);
+        conclusionPoints.push(`Les dépôts de ${strongDepots.map(d => d.name).join(', ')} affichent de bonnes performances.`);
     }
-
 
     return {
         global: {
@@ -160,6 +130,6 @@ export function generateSynthesis(
             overall: getOverallStatus(globalAnalysis.overallScore)
         },
         depots: depotSyntheses,
-        conclusion: conclusionPoints.length > 0 ? conclusionPoints.join(' ') : "La performance est mitigée, avec des points forts et des points faibles relativement équilibrés sur la période."
+        conclusion: conclusionPoints.length > 0 ? conclusionPoints.join(' ') : "La performance est mitigée, avec des points forts et des points faibles relativement équilibrés."
     };
 }

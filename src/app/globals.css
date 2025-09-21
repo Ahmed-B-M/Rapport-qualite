@@ -1,80 +1,72 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
+ 
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 224 71% 4%;
-    --card: 0 0% 100%;
-    --card-foreground: 224 71% 4%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 224 71% 4%;
-    --primary: 217 91% 54%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 224 71% 4%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 216 12% 47%;
-    --accent: 0 84% 60%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 215 20% 86%;
-    --input: 215 20% 86%;
-    --ring: 217 91% 54%;
-    --radius: 0.5rem;
-    --chart-1: 217 91% 54%;
-    --chart-2: 0 84% 60%;
-    --chart-3: 210 40% 96.1%;
-    --chart-4: 220 13% 69%;
-    --chart-5: 24 10% 10%;
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 224 71% 4%;
-    --sidebar-primary: 217 91% 54%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 0 0% 95%;
-    --sidebar-accent-foreground: 217 91% 54%;
-    --sidebar-border: 215 20% 86%;
-    --sidebar-ring: 217 91% 54%;
-  }
+    --foreground: 222.2 84% 4.9%;
 
-  .dark {
-    --background: 224 71% 4%;
-    --foreground: 210 40% 98%;
-    --card: 224 71% 4%;
-    --card-foreground: 210 40% 98%;
-    --popover: 224 71% 4%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217 91% 60%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+ 
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+ 
+    --primary: 222.2 47.4% 11.2%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 217 33% 18%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 18%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 0 84% 60%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 63% 31%;
+ 
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+ 
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+ 
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+ 
+    --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 18%;
-    --input: 217 33% 18%;
-    --ring: 217 91% 60%;
-    --chart-1: 217 91% 60%;
-    --chart-2: 0 84% 60%;
-    --chart-3: 217 33% 18%;
-    --chart-4: 220 13% 69%;
-    --chart-5: 210 40% 98%;
-    --sidebar-background: 224 71% 4%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 217 33% 18%;
-    --sidebar-accent-foreground: 217 91% 60%;
-    --sidebar-border: 217 33% 18%;
-    --sidebar-ring: 217 91% 60%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+ 
+    --radius: 0.5rem;
+  }
+ 
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+ 
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+ 
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+ 
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+ 
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+ 
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+ 
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+ 
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+ 
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
   }
 }
-
+ 
 @layer base {
   * {
     @apply border-border;
@@ -84,95 +76,58 @@
   }
 }
 
+/* Print-specific styles */
 @media print {
-  @page {
-    size: A4;
-    margin: 1.5cm;
-  }
-  
   body {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    font-size: 10px; /* Smaller font for better density */
   }
 
-  .no-print, 
-  #main-header, 
-  #sidebar-container,
-  [data-sidebar="trigger"],
-  [data-sidebar="rail"],
-  button[onclick*="handlePrintOverview"],
-  button[onclick*="handleReset"],
-  button[onclick*="setIsReportOpen"],
-  button[onclick*="setIsSettingsOpen"]
-   {
-    display: none !important;
+  .print-hide {
+    display: none;
   }
 
-  .print-only {
-      display: block !important;
+  .non-printable {
+    display: none;
   }
 
-  body * {
-    visibility: hidden;
-  }
-  
-  #main-content.print-satisfaction-report *,
-  #main-content .print-satisfaction-content,
-  #main-content .print-satisfaction-content * {
-    visibility: visible;
+  .printable-version {
+    display: block !important;
   }
 
-  #main-content.print-satisfaction-report {
-    position: static;
-  }
-
-  .print-satisfaction-page {
-    page-break-after: always;
-    visibility: visible !important;
-  }
-
-  #main-content, #main-content * {
-    visibility: visible;
-  }
-  
-  #main-content:not(.print-satisfaction-report) {
-    position: absolute;
-    left: 0;
-    top: 0;
+  .printable-content {
     width: 100%;
-    padding: 0 !important;
-    margin: 0 !important;
-  }
-  
-  .grid {
-    display: grid !important;
-  }
-
-  .card {
-    page-break-inside: avoid;
+    margin: 0;
+    padding: 0;
     box-shadow: none;
-    border: 1px solid #e2e8f0;
   }
   
-  .recharts-wrapper {
-      width: 100% !important;
+  h1, h2, h3, h4, h5, h6 {
+    break-after: avoid; /* Avoid page breaks after headers */
   }
 
-  .print-section {
-    page-break-inside: avoid;
+
+  /* Ensure cards and sections don't break across pages */
+  .break-inside-avoid {
+    break-inside: avoid;
   }
 
-  .print-title {
-    page-break-after: avoid;
+  /* Add a page break before major sections for better layout */
+  .page-break {
+    break-before: page;
   }
-  
-  [role="tabpanel"][data-state="inactive"] {
-      display: block !important;
+
+  /* Override card styling for print */
+  .card {
+    border: 1px solid #e5e7eb;
+    box-shadow: none;
+  }
+
+  h1, h2, h3, h4, h5 {
+    color: #000 !important;
   }
 }
 
-@layer utilities {
-    .print-only {
-        display: none;
-    }
+/* Hide printable version by default */
+.printable-version {
+  display: none;
 }

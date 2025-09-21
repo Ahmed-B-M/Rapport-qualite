@@ -1,5 +1,4 @@
 
-
 export type DeliveryStatus = 'Livré' | 'Non livré' | 'En attente' | 'Partiellement livré';
 export type CompletedBy = 'mobile' | 'web' | 'unknown';
 export type ForcedOnSite = 'No' | 'Yes';
@@ -33,7 +32,8 @@ export type AggregatedStats = {
   forcedOnSiteRate: number;
   forcedNoContactRate: number;
   webCompletionRate: number;
-  averageSentiment: number;
+  averageSentiment?: number;
+  ratingCount: number; 
 };
 
 export type DriverPerformance = AggregatedStats & {
@@ -63,6 +63,7 @@ export type RankingEntity = {
 export type DriverRatingRankingEntity = {
     name: string;
     count: number;
+    averageRating?: number;
 };
 
 export type KpiRanking = {
@@ -125,4 +126,3 @@ export interface SynthesisResult {
   depots: DepotSynthesis[];
   conclusion: string;
 }
-

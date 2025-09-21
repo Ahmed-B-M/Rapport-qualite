@@ -113,18 +113,24 @@ export const processRawData = (rawData: any[]): Delivery[] => {
   });
 };
 
+// --- KPI Calculation ---
 
-// --- Existing KPI Functions (calculateAverageRating, etc.) ---
-export function calculateAverageRating(data: Delivery[]): number | undefined {
+const bayesianAverage = (avg: number, count: number, m: number, C: number): number => {
+    if (count === 0) return C;
+    return (C * m + avg * count) / (m + count);
+};
+
+export function calculateAverageRating(data: Delivery[]): { average?: number, count: number } {
   const ratedDeliveries = data.filter(d => d.deliveryRating !== null && d.deliveryRating !== undefined);
-  if (ratedDeliveries.length === 0) return undefined;
+  const count = ratedDeliveries.length;
+  if (count === 0) return { average: undefined, count: 0 };
   const totalRating = ratedDeliveries.reduce((sum, d) => sum + (d.deliveryRating || 0), 0);
-  return totalRating / ratedDeliveries.length;
+  return { average: totalRating / count, count };
 }
 
-export function calculateAverageSentiment(data: Delivery[]): number {
+export function calculateAverageSentiment(data: Delivery[]): number | undefined {
     const commentedDeliveries = data.filter(d => d.feedbackComment && d.feedbackComment.trim().length > 5);
-    if (commentedDeliveries.length === 0) return 0;
+    if (commentedDeliveries.length === 0) return undefined;
 
     const totalScore = commentedDeliveries.reduce((sum, d) => sum + analyzeSentiment(d.feedbackComment!, d.deliveryRating).score, 0);
     return totalScore / commentedDeliveries.length;
@@ -142,50 +148,30 @@ export function calculateFailureRate(data: Delivery[]): number {
   return (failedDeliveries.length / data.length) * 100;
 }
 
-export function calculateForcedOnSiteRate(data: Delivery[]): number {
-  if (data.length === 0) return 0;
-  const forcedOnSiteDeliveries = data.filter(d => d.forcedOnSite === 'Yes');
-  return (forcedOnSiteDeliveries.length / data.length) * 100;
-}
+// --- Data Aggregation ---
 
-export function calculateForcedNoContactRate(data: Delivery[]): number {
-    if (data.length === 0) return 0;
-    const forcedNoContactDeliveries = data.filter(d => d.forcedNoContact === true);
-    return (forcedNoContactDeliveries.length / data.length) * 100;
-}
+export function getOverallStats(deliveries: Delivery[], globalAverageRating?: number, confidenceFactor = 10): AggregatedStats {
+    const closedDeliveries = deliveries.filter(d => ['Livré', 'Non livré', 'Partiellement livré'].includes(d.status));
+    const totalDeliveries = closedDeliveries.length;
 
-export function calculateWebCompletionRate(data: Delivery[]): number {
-  if (data.length === 0) return 0;
-  const webCompletedDeliveries = data.filter(d => d.completedBy === 'web');
-  return (webCompletedDeliveries.length / data.length) * 100;
-}
-
-export function calculateRatingRate(data: Delivery[]): number {
-  if (data.length === 0) return 0;
-  const ratedDeliveries = data.filter(d => d.deliveryRating !== null && d.deliveryRating !== undefined);
-  return (ratedDeliveries.length / data.length) * 100;
-}
-
-// --- Existing Analysis Functions ---
-export function getOverallStats(deliveries: Delivery[]): AggregatedStats {
-    const closedDeliveries = deliveries.filter(d => 
-        ['Livré', 'Non livré', 'Partiellement livré'].includes(d.status)
-    );
-
-    if (closedDeliveries.length === 0) {
-        return { totalDeliveries: 0, successRate: 0, averageRating: undefined, punctualityRate: 0, ratingRate: 0, forcedOnSiteRate: 0, forcedNoContactRate: 0, webCompletionRate: 0, averageSentiment: 0 };
+    if (totalDeliveries === 0) {
+        return { totalDeliveries: 0, successRate: 0, averageRating: undefined, punctualityRate: 0, ratingRate: 0, forcedOnSiteRate: 0, forcedNoContactRate: 0, webCompletionRate: 0, averageSentiment: undefined, ratingCount: 0 };
     }
-    
+
+    const { average: rawAverage, count: ratingCount } = calculateAverageRating(closedDeliveries);
+    const finalAverageRating = globalAverageRating && rawAverage ? bayesianAverage(rawAverage, ratingCount, confidenceFactor, globalAverageRating) : rawAverage;
+
     return {
-        totalDeliveries: closedDeliveries.length,
+        totalDeliveries,
         successRate: 100 - calculateFailureRate(closedDeliveries),
-        averageRating: calculateAverageRating(closedDeliveries),
+        averageRating: finalAverageRating,
         punctualityRate: calculatePunctualityRate(closedDeliveries),
-        ratingRate: calculateRatingRate(closedDeliveries),
-        forcedOnSiteRate: calculateForcedOnSiteRate(closedDeliveries),
-        forcedNoContactRate: calculateForcedNoContactRate(closedDeliveries),
-        webCompletionRate: calculateWebCompletionRate(closedDeliveries),
+        ratingRate: (ratingCount / totalDeliveries) * 100,
+        forcedOnSiteRate: (closedDeliveries.filter(d => d.forcedOnSite === 'Yes').length / totalDeliveries) * 100,
+        forcedNoContactRate: (closedDeliveries.filter(d => d.forcedNoContact).length / totalDeliveries) * 100,
+        webCompletionRate: (closedDeliveries.filter(d => d.completedBy === 'web').length / totalDeliveries) * 100,
         averageSentiment: calculateAverageSentiment(closedDeliveries),
+        ratingCount
     };
 }
 
@@ -200,14 +186,16 @@ export const aggregateStatsByEntity = (data: Delivery[], groupBy: keyof Delivery
     });
     
     const result: Record<string, AggregatedStats> = {};
+    const globalAverageRating = calculateAverageRating(data).average;
+
     for (const entityName in statsByEntity) {
-      result[entityName] = getOverallStats(statsByEntity[entityName]);
+      result[entityName] = getOverallStats(statsByEntity[entityName], globalAverageRating);
     }
     
     return result;
 };
 
-export const getDriverPerformanceData = (data: Delivery[]): DriverPerformance[] => {
+export const getDriverPerformanceData = (data: Delivery[], globalAverageRating: number): DriverPerformance[] => {
     const deliveriesByDriver: Record<string, Delivery[]> = {};
     data.forEach(delivery => {
         if (!deliveriesByDriver[delivery.driver]) {
@@ -216,69 +204,38 @@ export const getDriverPerformanceData = (data: Delivery[]): DriverPerformance[] 
         deliveriesByDriver[delivery.driver].push(delivery);
     });
     return Object.entries(deliveriesByDriver).map(([driverName, deliveries]) => {
-        const stats = getOverallStats(deliveries);
+        const stats = getOverallStats(deliveries, globalAverageRating);
         const depot = deliveries[0]?.depot || 'Inconnu';
         const carrier = deliveries[0]?.carrier || 'Inconnu';
         return { driver: driverName, depot, carrier, ...stats };
     });
 };
 
-// --- New Performance Report Generation Logic ---
+// --- Report Generation ---
 
-const getKpiRankings = (performances: (DriverPerformance | (AggregatedStats & { name: string }))[], kpi: keyof AggregatedStats, higherIsBetter: boolean): { top: RankingEntity[], flop: RankingEntity[] } => {
-    const sorted = [...performances]
-        .filter(p => p.totalDeliveries > 10 && p[kpi] !== undefined) // Filter out entities with low delivery counts or undefined KPI
-        .sort((a, b) => {
-            const valA = (a[kpi] as number);
-            const valB = (b[kpi] as number);
-            return higherIsBetter ? valB - valA : valA - valB;
-        });
-    
-    const top = sorted.slice(0, 3).map(p => ({ name: 'name' in p ? p.name : ('driver' in p ? p.driver : ''), value: (p[kpi] as number), totalDeliveries: p.totalDeliveries }));
-    const flop = sorted.slice(-3).reverse().map(p => ({ name: 'name' in p ? p.name : ('driver' in p ? p.driver : ''), value: (p[kpi] as number), totalDeliveries: p.totalDeliveries }));
-    return { top, flop };
-};
-
-const getDriverRatingRankings = (data: Delivery[]): { top: DriverRatingRankingEntity[], flop: DriverRatingRankingEntity[] } => {
-    const ratingsByDriver: { [driver: string]: { positive: number, negative: number } } = {};
-
-    data.forEach(d => {
-        if (d.deliveryRating) {
-            if (!ratingsByDriver[d.driver]) {
-                ratingsByDriver[d.driver] = { positive: 0, negative: 0 };
-            }
-            if (d.deliveryRating >= 4) {
-                ratingsByDriver[d.driver].positive++;
-            } else if (d.deliveryRating <= 2) {
-                ratingsByDriver[d.driver].negative++;
-            }
-        }
-    });
-
-    const topRated = Object.entries(ratingsByDriver)
-        .map(([name, counts]) => ({ name, count: counts.positive }))
-        .filter(d => d.count > 0)
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 3);
-
-    const flopRated = Object.entries(ratingsByDriver)
-        .map(([name, counts]) => ({ name, count: counts.negative }))
-        .filter(d => d.count > 0)
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 3);
-
-    return { top: topRated, flop: flopRated };
-}
-
-const getReportSectionData = (data: Delivery[]): ReportSectionData => {
-    const driverPerformances = getDriverPerformanceData(data);
+const getReportSectionData = (data: Delivery[], globalAverageRating: number): ReportSectionData => {
+    const driverPerformances = getDriverPerformanceData(data, globalAverageRating);
     
     const deliveriesByCarrier: { [key: string]: Delivery[] } = {};
     data.forEach(d => {
         if (!deliveriesByCarrier[d.carrier]) deliveriesByCarrier[d.carrier] = [];
         deliveriesByCarrier[d.carrier].push(d);
     });
-    const carrierPerformances = Object.entries(deliveriesByCarrier).map(([name, deliveries]) => ({ name, ...getOverallStats(deliveries) }));
+    const carrierPerformances = Object.entries(deliveriesByCarrier).map(([name, deliveries]) => ({ name, ...getOverallStats(deliveries, globalAverageRating) }));
+    
+    const getKpiRankings = (performances: any[], kpi: keyof AggregatedStats, higherIsBetter: boolean): { top: RankingEntity[], flop: RankingEntity[] } => {
+        const sorted = [...performances]
+            .filter(p => p.totalDeliveries > 10 && p[kpi] !== undefined && p.ratingCount > 0)
+            .sort((a, b) => {
+                const valA = (a[kpi] as number);
+                const valB = (b[kpi] as number);
+                return higherIsBetter ? valB - valA : valA - valB;
+            });
+        
+        const top = sorted.slice(0, 3).map(p => ({ name: p.name || p.driver, value: (p[kpi] as number), totalDeliveries: p.totalDeliveries }));
+        const flop = sorted.slice(-3).reverse().map(p => ({ name: p.name || p.driver, value: (p[kpi] as number), totalDeliveries: p.totalDeliveries }));
+        return { top, flop };
+    };
 
     const kpiRankings: KpiRankingsByEntity = {
         drivers: {
@@ -295,10 +252,38 @@ const getReportSectionData = (data: Delivery[]): ReportSectionData => {
         }
     };
     
-    const driverRatingRankings = getDriverRatingRankings(data);
+    const getDriverRatingRankings = (data: Delivery[], driverPerformances: DriverPerformance[]): { top: DriverRatingRankingEntity[], flop: DriverRatingRankingEntity[] } => {
+        const ratingsByDriver: { [driver: string]: { positive: number, negative: number } } = {};
+        data.forEach(d => {
+            if (d.deliveryRating) {
+                if (!ratingsByDriver[d.driver]) ratingsByDriver[d.driver] = { positive: 0, negative: 0 };
+                if (d.deliveryRating >= 4) ratingsByDriver[d.driver].positive++;
+                else if (d.deliveryRating <= 2) ratingsByDriver[d.driver].negative++;
+            }
+        });
+        
+        const performancesMap = new Map(driverPerformances.map(p => [p.driver, p.averageRating]));
+
+        const topRated = Object.entries(ratingsByDriver)
+            .map(([name, counts]) => ({ name, count: counts.positive, averageRating: performancesMap.get(name) }))
+            .filter(d => d.count > 0)
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 3);
+            
+        const flopRated = Object.entries(ratingsByDriver)
+            .map(([name, counts]) => ({ name, count: counts.negative, averageRating: performancesMap.get(name) }))
+            .filter(d => d.count > 0)
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 3);
+            
+        return { top: topRated, flop: flopRated };
+    }
+
+
+    const driverRatingRankings = getDriverRatingRankings(data, driverPerformances);
 
     return {
-        stats: getOverallStats(data),
+        stats: getOverallStats(data, globalAverageRating),
         kpiRankings: kpiRankings,
         topComments: getTopComments(data, 'positive', 3),
         flopComments: getTopComments(data, 'negative', 3),
@@ -307,8 +292,12 @@ const getReportSectionData = (data: Delivery[]): ReportSectionData => {
     };
 };
 
-
 export const generatePerformanceReport = (data: Delivery[]): PerformanceReportData => {
+    const globalRatingData = calculateAverageRating(data);
+    const globalAverageRating = globalRatingData.average || 4.5;
+
+    const globalReportData = getReportSectionData(data, globalAverageRating);
+
     const deliveriesByDepot: { [key: string]: Delivery[] } = {};
     data.forEach(d => {
         if (!deliveriesByDepot[d.depot]) deliveriesByDepot[d.depot] = [];
@@ -318,12 +307,12 @@ export const generatePerformanceReport = (data: Delivery[]): PerformanceReportDa
     const depotReports: DepotReport[] = Object.entries(deliveriesByDepot).map(([depotName, depotData]) => {
         return {
             name: depotName,
-            ...getReportSectionData(depotData)
+            ...getReportSectionData(depotData, globalAverageRating)
         };
     });
 
     return {
-        global: getReportSectionData(data),
+        global: globalReportData,
         depots: depotReports.sort((a, b) => b.stats.totalDeliveries - a.stats.totalDeliveries),
     };
 };
