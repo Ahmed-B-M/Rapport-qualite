@@ -282,6 +282,33 @@ function analyserCommentairesNegatifs(livraisons: Livraison[]): ResultatsCategor
     return resultats;
 }
 
+export function getCategorizedNegativeComments(livraisons: Livraison[]): Record<string, CommentaireCategorise[]> {
+    const commentairesNegatifs = livraisons.filter(l => 
+        l.commentaireRetour && 
+        l.commentaireRetour.trim().length > 5 &&
+        analyzeSentiment(l.commentaireRetour, l.noteLivraison).score < 5
+    );
+
+    const categorizedComments = commentairesNegatifs.map(l => ({
+        categorie: categoriserCommentaire(l.commentaireRetour!),
+        commentaire: l.commentaireRetour!,
+        chauffeur: l.chauffeur
+    }));
+    
+    const groupedComments: Record<string, CommentaireCategorise[]> = {};
+    
+    for(const cat of CATEGORIES_PROBLEMES) {
+        groupedComments[cat] = [];
+    }
+
+    categorizedComments.forEach(comment => {
+        groupedComments[comment.categorie].push(comment);
+    });
+
+    return groupedComments;
+}
+
+
 // --- Génération de rapport ---
 
 const getDonneesSectionRapport = (donnees: Livraison[], noteMoyenneGlobale: number): DonneesSectionRapport => {
@@ -416,3 +443,4 @@ export const filtrerDonneesParDepot = (donnees: Livraison[], depot: string): Liv
     if (depot === 'all') return donnees;
     return donnees.filter(l => l.depot === depot);
 };
+
