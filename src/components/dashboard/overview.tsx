@@ -4,7 +4,7 @@
 
 import { useState, useMemo } from 'react';
 import { GlobalPerformance } from './global-performance';
-import { type Livraison, type StatistiquesAgregees, type Objectifs } from '@/lib/definitions';
+import { type Livraison, type StatistiquesAgregees, type Objectifs, type SerieTemporelle } from '@/lib/definitions';
 import { filtrerDonneesParDepot, getStatistiquesGlobales, agregerStatistiquesParEntite, analyserCommentaires, getDonneesSerieTemporelle } from '@/lib/analysis';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -109,7 +109,15 @@ const FeedbackChart = ({ data }: { data: { categorie: string, nombre: number }[]
     );
 };
 
-const TrendChart = ({ data, lineKey, yAxisLabel, yAxisId = "left", color, objective, yAxisPadding = { top: 20, bottom: 20 } }: { data: any[], lineKey: string, yAxisLabel: string, yAxisId?: "left" | "right", color: string, objective?: number, yAxisPadding?: { top: number, bottom: number } }) => {
+const TrendChart = ({ data, lineKey, yAxisLabel, yAxisId = "left", color, objective, domain }: { 
+    data: any[], 
+    lineKey: string, 
+    yAxisLabel: string, 
+    yAxisId?: "left" | "right", 
+    color: string, 
+    objective?: number,
+    domain: [number, number]
+}) => {
     return (
         <ResponsiveContainer width="100%" height={300}>
             <LineChart data={data}>
@@ -119,8 +127,9 @@ const TrendChart = ({ data, lineKey, yAxisLabel, yAxisId = "left", color, object
                     yAxisId={yAxisId} 
                     orientation={yAxisId} 
                     stroke={color} 
-                    tick={{ fontSize: 10 }} 
-                    padding={yAxisPadding}
+                    tick={{ fontSize: 10 }}
+                    domain={domain}
+                    allowDataOverflow={true}
                     label={{ value: yAxisLabel, angle: -90, position: 'insideLeft', offset: 0, style: { textAnchor: 'middle', fill: color } }} 
                 />
                 <Tooltip />
@@ -176,13 +185,30 @@ export function Overview({ donnees, objectifs }: ApercuProps) {
         .sort((a, b) => b.nombre - a.nombre);
   }, [donneesFiltrees]);
 
-  const trendData = useMemo(() => {
+  const trendData: SerieTemporelle = useMemo(() => {
       return getDonneesSerieTemporelle(donneesFiltrees);
   }, [donneesFiltrees]);
 
   if (!statistiquesGlobalesDepot) {
       return <div className="p-4 text-center">Chargement des données ou aucune donnée pour la sélection...</div>
   }
+
+  const getChartDomain = (minVal: number, maxVal: number, objective?: number): [number, number] => {
+    let min = minVal;
+    let max = maxVal;
+    
+    if (objective !== undefined) {
+      min = Math.min(min, objective);
+      max = Math.max(max, objective);
+    }
+    
+    const padding = (max - min) * 0.1; // 10% padding
+    return [Math.max(0, min - padding), Math.min(100, max + padding)];
+  }
+
+  const successDomain = getChartDomain(trendData.domaines.tauxReussite.min, trendData.domaines.tauxReussite.max, 100 - objectifs.tauxEchec);
+  const ratingDomain = getChartDomain(trendData.domaines.noteMoyenne.min, trendData.domaines.noteMoyenne.max, objectifs.noteMoyenne);
+  const punctualityDomain = getChartDomain(trendData.domaines.tauxPonctualite.min, trendData.domaines.tauxPonctualite.max, objectifs.tauxPonctualite);
 
   return (
     <div className="space-y-6">
@@ -227,11 +253,12 @@ export function Overview({ donnees, objectifs }: ApercuProps) {
             </CardHeader>
             <CardContent>
                 <TrendChart 
-                    data={trendData} 
+                    data={trendData.points} 
                     lineKey="tauxReussite" 
                     yAxisLabel="Taux de Succès (%)" 
                     color="hsl(var(--primary))" 
                     objective={100 - objectifs.tauxEchec}
+                    domain={successDomain}
                 />
             </CardContent>
         </Card>
@@ -243,11 +270,12 @@ export function Overview({ donnees, objectifs }: ApercuProps) {
             </CardHeader>
             <CardContent>
                  <TrendChart 
-                    data={trendData} 
+                    data={trendData.points} 
                     lineKey="noteMoyenne" 
                     yAxisLabel="Note Moyenne" 
                     color="hsl(var(--primary))" 
                     objective={objectifs.noteMoyenne}
+                    domain={ratingDomain}
                  />
             </CardContent>
         </Card>
@@ -259,11 +287,12 @@ export function Overview({ donnees, objectifs }: ApercuProps) {
             </CardHeader>
             <CardContent>
                  <TrendChart 
-                    data={trendData} 
+                    data={trendData.points} 
                     lineKey="tauxPonctualite" 
                     yAxisLabel="Taux de Ponctualité (%)" 
                     color="hsl(var(--primary))"
                     objective={objectifs.tauxPonctualite}
+                    domain={punctualityDomain}
                  />
             </CardContent>
         </Card>

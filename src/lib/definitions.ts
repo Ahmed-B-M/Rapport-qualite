@@ -160,4 +160,27 @@ export interface ResultatSynthese {
 
 export type ClassementMetrique = keyof Omit<StatistiquesAgregees, 'totalLivraisons' | 'nombreNotes' | 'sentimentMoyen' | 'nombreLivraisonsReussies' | 'nombreRetards' | 'nombreForceSurSite' | 'nombreForceSansContact' | 'nombreCompletionWeb'>;
 
+export type PointSerieTemporelle = {
+    date: string;
+    tauxReussite: number;
+    totalLivraisons: number;
+    noteMoyenne?: number;
+    tauxPonctualite: number;
+};
+
+export type DomaineMetrique = {
+    min: number;
+    max: number;
+};
+
+export type SerieTemporelle = {
+    points: PointSerieTemporelle[];
+    domaines: {
+        tauxReussite: DomaineMetrique;
+        noteMoyenne: DomaineMetrique;
+        tauxPonctualite: DomaineMetrique;
+    }
+};
+
     
+
