@@ -9,12 +9,16 @@ import {
     type EntiteClassementNoteChauffeur,
     type ExempleCommentaire,
     type ResultatsCategorisation,
-    CATEGORIES_PROBLEMES
+    CATEGORIES_PROBLEMES,
+    type DonneesSectionRapport,
+    type ClassementKpi,
+    type EntiteClassement
 } from '@/lib/definitions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
-    ThumbsUp, ThumbsDown, ArrowRightCircle, Target, Smile, Frown, MessageSquare, ClipboardList, Truck
+    ThumbsUp, ThumbsDown, ArrowRightCircle, Target, Smile, Frown, MessageSquare, ClipboardList, Truck,
+    Star, Percent, Clock, MessageCircle, Award, UserX, Users, Warehouse
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from "@/components/ui/progress";
@@ -119,6 +123,66 @@ const SectionSyntheseKPIs = ({ titre, synthese, donneesRapport, objectifs }: {
         </CardContent>
     </Card>
 );
+
+const TableauClassementSimpleImpression = ({ titre, icone, donnees, unite }: { titre: string; icone: React.ReactNode; donnees: EntiteClassement[]; unite: string; }) => (
+    <div>
+        <h5 className="font-semibold flex items-center mb-1 text-sm">{icone}{titre}</h5>
+        <Table>
+            <TableBody>
+                {donnees.length > 0 ? (
+                    donnees.map(item => (
+                        <TableRow key={item.nom}>
+                            <TableCell className="text-xs p-1 truncate max-w-[100px]">{item.nom}</TableCell>
+                            <TableCell className="text-right font-bold text-xs p-1">{item.valeur.toFixed(2)}{unite}</TableCell>
+                        </TableRow>
+                    ))
+                ) : <TableRow><TableCell colSpan={2} className="text-xs text-center text-gray-500 p-1">N/A</TableCell></TableRow>}
+            </TableBody>
+        </Table>
+    </div>
+);
+
+
+const ClassementsKpiImpression = ({ donneesRapport, typeRapport }: { donneesRapport: DonneesSectionRapport, typeRapport: 'Dépôt' | 'Transporteur' }) => {
+    const kpis = [
+        { key: 'noteMoyenne', name: 'Note Moyenne', icon: <Star className="h-4 w-4 mr-2"/>, unit: '/5' },
+        { key: 'tauxReussite', name: 'Taux de Succès', icon: <Percent className="h-4 w-4 mr-2"/>, unit: '%' },
+        { key: 'tauxPonctualite', name: 'Ponctualité', icon: <Clock className="h-4 w-4 mr-2"/>, unit: '%' },
+        { key: 'sentimentMoyen', name: 'Note des Comms', icon: <MessageCircle className="h-4 w-4 mr-2"/>, unit: '/10' }
+    ];
+
+    const entiteSecondaireNom = typeRapport === 'Dépôt' ? 'Transporteurs' : 'Dépôts';
+    const entiteSecondaireIcone = typeRapport === 'Dépôt' ? <Truck className="h-5 w-5 mr-2"/> : <Warehouse className="h-5 w-5 mr-2"/>;
+
+    return (
+        <div className="break-inside-avoid mt-4">
+            <h4 className="text-base font-semibold mb-2">Classements par Indicateur Clé (KPI)</h4>
+            <div className="space-y-4">
+                {kpis.map(kpi => (
+                    <div key={kpi.key} className="p-2 border rounded-md">
+                        <h5 className="font-bold text-sm mb-2 flex items-center">{kpi.icon} {kpi.name}</h5>
+                         <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <h6 className="font-semibold text-gray-800 mb-2 flex items-center text-sm"><Users className="h-5 w-5 mr-2"/> Livreurs</h6>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <TableauClassementSimpleImpression titre="Top 3" icone={<Award className="h-4 w-4 mr-1 text-green-600"/>} donnees={donneesRapport.classementsKpi.chauffeurs[kpi.key as keyof typeof donneesRapport.classementsKpi.chauffeurs].top} unite={kpi.unit} />
+                                    <TableauClassementSimpleImpression titre="Flop 3" icone={<UserX className="h-4 w-4 mr-1 text-red-600"/>} donnees={donneesRapport.classementsKpi.chauffeurs[kpi.key as keyof typeof donneesRapport.classementsKpi.chauffeurs].flop} unite={kpi.unit} />
+                                </div>
+                            </div>
+                             <div>
+                                <h6 className="font-semibold text-gray-800 mb-2 flex items-center text-sm">{entiteSecondaireIcone} {entiteSecondaireNom}</h6>
+                                <div className="grid grid-cols-2 gap-2">
+                                     <TableauClassementSimpleImpression titre="Top 3" icone={<Award className="h-4 w-4 mr-1 text-green-600"/>} donnees={donneesRapport.classementsKpi.transporteurs[kpi.key as keyof typeof donneesRapport.classementsKpi.transporteurs].top} unite={kpi.unit} />
+                                    <TableauClassementSimpleImpression titre="Flop 3" icone={<UserX className="h-4 w-4 mr-1 text-red-600"/>} donnees={donneesRapport.classementsKpi.transporteurs[kpi.key as keyof typeof donneesRapport.classementsKpi.transporteurs].flop} unite={kpi.unit} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    )
+};
 
 
 const ClassementsNotesChauffeurImpression = ({ top, flop }: { top: EntiteClassementNoteChauffeur[], flop: EntiteClassementNoteChauffeur[] }) => (
@@ -241,6 +305,8 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs, ty
                             totalCommentairesNegatifs={donneesRapport.global.totalCommentairesNegatifs}
                             afficherDetailsCommentaires={false}
                         />
+                        <Separator/>
+                        <ClassementsKpiImpression donneesRapport={donneesRapport.global} typeRapport={typeRapport} />
                     </CardContent>
                 </Card>
             </div>
@@ -281,6 +347,8 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs, ty
                                     totalCommentairesNegatifs={entite.totalCommentairesNegatifs}
                                     afficherDetailsCommentaires={true}
                                 />
+                                <Separator/>
+                                <ClassementsKpiImpression donneesRapport={entite} typeRapport={typeRapport} />
                             </CardContent>
                         </Card>
                     </div>
