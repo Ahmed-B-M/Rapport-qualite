@@ -252,7 +252,8 @@ const MOTS_CLES_CATEGORIES: { categorie: CategorieProbleme, motsCles: string[] }
             "pas aimable", "agressif", "impoli", "désagréable", "pas bonjour", "comportement", 
             "odieux", "odieuse", "incorrecte", "mal poli", "catastrophe", "horrible", "pas serviable", 
             "agressive", "pressé", "impatient", "sur le trottoir", "expéditif", "fait le signe pour avoir la pièce",
-            "pas professionnel", "pas très aimable", "débrouillez vous", "davantage d'aide"
+            "pas professionnel", "pas très aimable", "débrouillez vous", "davantage d'aide", "mauvaise foi",
+            "laisser les sacs", "devant la maison", "mauvaise adresse"
         ]
     },
     { 
@@ -260,21 +261,23 @@ const MOTS_CLES_CATEGORIES: { categorie: CategorieProbleme, motsCles: string[] }
         motsCles: [
             "casse", "cassé", "abimé", "abîmé", "endommagé", "ecrasé", "écrasé", "produit ouvert", 
             "huevos rotos", "état lamentable", "bouteille ouverte", "trempés", "mal préparée", "mal preparée",
-            "endommagés"
+            "endommagés", "produit éclaté", "crème partout"
         ]
     },
     { 
         categorie: "article manquant", 
         motsCles: [
             "manquant", "manque", "oubli", "pas tout", "pas reçu", "incomplet", "pas eu", 
-            "produit manquant", "sac qui ne nous a pas été livré", "manquait", "pris", "mauvaise commande"
+            "produit manquant", "sac qui ne nous a pas été livré", "manquait", "pris", "mauvaise commande",
+            "problèmes avec des produits dans le sac", "pas voulu reprendre"
         ]
     },
     { 
         categorie: "ponctualité", 
         motsCles: [
             "retard", "tard", "tôt", "en avance", "pas à l'heure", "attente", "attendu", 
-            "jamais arrivé", "pas prévenu", "pas prévenue", "non livrée", "ponctualité", "avant le créneau"
+            "jamais arrivé", "pas prévenu", "pas prévenue", "non livrée", "ponctualité", "avant le créneau",
+            "non effectuée", "après le créneau", "respecter l'horaire"
         ]
     },
     { 
@@ -514,4 +517,5 @@ export const filtrerDonneesParDepot = (donnees: Livraison[], depot: string): Liv
     
 
     
+
 
