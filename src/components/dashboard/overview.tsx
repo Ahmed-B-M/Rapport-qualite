@@ -109,13 +109,20 @@ const FeedbackChart = ({ data }: { data: { categorie: string, nombre: number }[]
     );
 };
 
-const TrendChart = ({ data, lineKey, yAxisLabel, yAxisId = "left", color, domain, objective }: { data: any[], lineKey: string, yAxisLabel: string, yAxisId?: "left" | "right", color: string, domain?: [number, number], objective?: number }) => {
+const TrendChart = ({ data, lineKey, yAxisLabel, yAxisId = "left", color, objective, yAxisPadding = { top: 20, bottom: 20 } }: { data: any[], lineKey: string, yAxisLabel: string, yAxisId?: "left" | "right", color: string, objective?: number, yAxisPadding?: { top: number, bottom: number } }) => {
     return (
         <ResponsiveContainer width="100%" height={300}>
             <LineChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                <YAxis yAxisId={yAxisId} orientation={yAxisId} stroke={color} tick={{ fontSize: 10 }} domain={domain} label={{ value: yAxisLabel, angle: -90, position: 'insideLeft', offset: 0, style: { textAnchor: 'middle', fill: color } }} />
+                <YAxis 
+                    yAxisId={yAxisId} 
+                    orientation={yAxisId} 
+                    stroke={color} 
+                    tick={{ fontSize: 10 }} 
+                    padding={yAxisPadding}
+                    label={{ value: yAxisLabel, angle: -90, position: 'insideLeft', offset: 0, style: { textAnchor: 'middle', fill: color } }} 
+                />
                 <Tooltip />
                 <Legend />
                 {objective !== undefined && <ReferenceLine y={objective} yAxisId={yAxisId} label={{ value: 'Objectif', position: 'insideTopRight' }} stroke="hsl(var(--destructive))" strokeDasharray="3 3" />}
@@ -224,7 +231,6 @@ export function Overview({ donnees, objectifs }: ApercuProps) {
                     lineKey="tauxReussite" 
                     yAxisLabel="Taux de Succès (%)" 
                     color="hsl(var(--primary))" 
-                    domain={[0, 100]} 
                     objective={100 - objectifs.tauxEchec}
                 />
             </CardContent>
@@ -241,7 +247,6 @@ export function Overview({ donnees, objectifs }: ApercuProps) {
                     lineKey="noteMoyenne" 
                     yAxisLabel="Note Moyenne" 
                     color="hsl(var(--primary))" 
-                    domain={[1, 5]} 
                     objective={objectifs.noteMoyenne}
                  />
             </CardContent>
@@ -257,8 +262,7 @@ export function Overview({ donnees, objectifs }: ApercuProps) {
                     data={trendData} 
                     lineKey="tauxPonctualite" 
                     yAxisLabel="Taux de Ponctualité (%)" 
-                    color="hsl(var(--primary))" 
-                    domain={[0, 100]}
+                    color="hsl(var(--primary))"
                     objective={objectifs.tauxPonctualite}
                  />
             </CardContent>
