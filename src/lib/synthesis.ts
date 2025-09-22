@@ -141,7 +141,7 @@ Le rapport met en évidence une performance **${globalSynthesis.global === 'posi
 
     return {
         global: globalSynthesis,
-        depots: depotSyntheses,
+        depots: depotSyntheses.sort((a, b) => a.nom.localeCompare(b.nom)),
         conclusion: conclusion.trim()
     };
 }

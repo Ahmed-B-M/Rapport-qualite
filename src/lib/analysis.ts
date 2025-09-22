@@ -483,7 +483,7 @@ export const genererRapportPerformance = (donnees: Livraison[], groupBy: 'depot'
 
     return {
         global: donneesRapportGlobal,
-        depots: rapportsEntite.sort((a, b) => b.statistiques.totalLivraisons - a.statistiques.totalLivraisons),
+        depots: rapportsEntite.sort((a, b) => a.nom.localeCompare(b.nom)),
     };
 };
 
@@ -519,6 +519,7 @@ export const filtrerDonneesParDepot = (donnees: Livraison[], depot: string): Liv
     
 
     
+
 
 
 
