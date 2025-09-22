@@ -4,7 +4,7 @@
 import Image from "next/image";
 import { useState, useMemo } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { type Livraison, type Objectifs } from "@/lib/definitions";
+import { type Livraison, type Objectifs, type DonneesRapportPerformance, type RapportDepot } from "@/lib/definitions";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
 import { FileUploader } from "@/components/dashboard/file-uploader";
 import { Overview } from "@/components/dashboard/overview";
@@ -25,6 +25,7 @@ import { genererRapportPerformance } from '@/lib/analysis';
 import { generateSynthesis } from '@/lib/synthesis';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function DashboardPage() {
   const [donnees, setDonnees] = useState<Livraison[]>([]);
@@ -40,6 +41,10 @@ export default function DashboardPage() {
     noteMoyenne: 4.8, sentimentMoyen: 8.0, tauxPonctualite: 95, tauxEchec: 2,
     tauxForceSurSite: 10, tauxForceSansContact: 10, tauxCompletionWeb: 1,
   });
+  
+  const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [selectedDepotsForPrint, setSelectedDepotsForPrint] = useState<Record<string, boolean>>({});
+  const [printableReportData, setPrintableReportData] = useState<DonneesRapportPerformance | null>(null);
 
   const datesUniques = useMemo(() => {
     const dates = new Set(donnees.map(d => new Date(d.date).setHours(0,0,0,0)));
@@ -81,8 +86,6 @@ export default function DashboardPage() {
     setObjectives(nouveauxObjectifs);
     setParametresOuverts(false);
   };
-
-  const handleImprimer = () => window.print();
 
   const donneesFiltrees = useMemo(() => {
     let donneesFiltreMagasin = exclureMagasin ? donnees.filter(d => d.depot !== 'Magasin') : donnees;
@@ -131,6 +134,37 @@ export default function DashboardPage() {
   const donneesRapport = useMemo(() => genererRapportPerformance(donneesFiltrees), [donneesFiltrees]);
   const donneesSynthese = useMemo(() => generateSynthesis(donneesRapport, objectifs), [donneesRapport, objectifs]);
 
+  const handleOpenPrintModal = () => {
+    const initialSelection: Record<string, boolean> = {};
+    donneesRapport.depots.forEach(d => {
+      const key = d.entrepot ? `${d.nom}_${d.entrepot}` : d.nom;
+      initialSelection[key] = true;
+    });
+    setSelectedDepotsForPrint(initialSelection);
+    setPrintModalOpen(true);
+  };
+  
+  const handleConfirmPrint = () => {
+    const depotsToPrint: RapportDepot[] = donneesRapport.depots.filter(d => {
+        const key = d.entrepot ? `${d.nom}_${d.entrepot}` : d.nom;
+        return selectedDepotsForPrint[key];
+    });
+
+    const reportDataForPrint: DonneesRapportPerformance = {
+        global: donneesRapport.global,
+        depots: depotsToPrint,
+    };
+    
+    setPrintableReportData(reportDataForPrint);
+    
+    // Use a timeout to ensure state is updated before printing
+    setTimeout(() => {
+        window.print();
+        setPrintModalOpen(false);
+        setPrintableReportData(null); // Reset after printing
+    }, 100);
+  };
+
 
   const renderContent = () => {
     if (chargement) return <div className="flex flex-col items-center justify-center h-full min-h-[400px]"><Loader2 className="h-12 w-12 animate-spin text-primary" /><p className="mt-4 text-muted-foreground">Traitement...</p></div>;
@@ -166,7 +200,7 @@ export default function DashboardPage() {
                       <>
                         <DateRangePicker date={plageDates} onDateChange={setPlageDates} availableDates={datesUniques} />
                         <div className="flex items-center space-x-2"><Switch id="exclude-magasin" checked={exclureMagasin} onCheckedChange={setExclureMagasin} /><Label htmlFor="exclude-magasin">Exclure Magasin</Label></div>
-                        <Button variant="outline" onClick={handleImprimer}><Printer className="mr-2 h-4 w-4" /> Imprimer / PDF</Button>
+                        <Button variant="outline" onClick={handleOpenPrintModal}><Printer className="mr-2 h-4 w-4" /> Imprimer / PDF</Button>
                         <Button variant="outline" onClick={handleReinitialiser}>Nouveau fichier</Button>
                       </>
                     )}
@@ -185,10 +219,14 @@ export default function DashboardPage() {
             <main id="main-content" className="non-printable">
               {renderContent()}
             </main>
-            {donneesRapport && donneesSynthese && (
-                <div className="printable-version">
-                    <PrintableReport donneesRapport={donneesRapport} donneesSynthese={donneesSynthese} objectifs={objectifs} />
-                </div>
+            {(printableReportData || (donneesRapport && !printModalOpen)) && (
+              <div className="printable-version">
+                <PrintableReport 
+                  donneesRapport={printableReportData ?? donneesRapport} 
+                  donneesSynthese={generateSynthesis(printableReportData ?? donneesRapport, objectifs)} 
+                  objectifs={objectifs} 
+                />
+              </div>
             )}
         </div>
       </SidebarInset>
@@ -235,9 +273,41 @@ export default function DashboardPage() {
                 <Button onClick={() => setModalLivreursOuvert(false)}>Fermer</Button>
             </DialogFooter>
         </DialogContent>
-    </Dialog>
+      </Dialog>
+       <Dialog open={printModalOpen} onOpenChange={setPrintModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sélectionner les dépôts à imprimer</DialogTitle>
+            <DialogDescription>
+              Cochez les dépôts que vous souhaitez inclure dans le rapport PDF.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4 max-h-[60vh] overflow-y-auto">
+            {donneesRapport?.depots.map(depot => {
+              const key = depot.entrepot ? `${depot.nom}_${depot.entrepot}` : depot.nom;
+              const label = depot.entrepot ? `${depot.nom} (${depot.entrepot})` : depot.nom;
+              return (
+                <div key={key} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={key}
+                    checked={selectedDepotsForPrint[key]}
+                    onCheckedChange={(checked) => {
+                      setSelectedDepotsForPrint(prev => ({ ...prev, [key]: !!checked }));
+                    }}
+                  />
+                  <label htmlFor={key} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    {label}
+                  </label>
+                </div>
+              )
+            })}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPrintModalOpen(false)}>Annuler</Button>
+            <Button onClick={handleConfirmPrint}>Imprimer la sélection</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   );
 }
-
-    

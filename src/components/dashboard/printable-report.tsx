@@ -14,12 +14,12 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
-    ThumbsUp, ThumbsDown, ArrowRightCircle, Target, Smile, Frown, MessageSquare, ClipboardList, CheckCircle, XCircle
+    ThumbsUp, ThumbsDown, ArrowRightCircle, Target, Smile, Frown, MessageSquare, ClipboardList
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import ReactMarkdown from 'react-markdown';
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface RapportImprimableProps {
   donneesRapport: DonneesRapportPerformance;
@@ -188,9 +188,9 @@ const AnalyseCategorielleImpression = ({ resultats, totalCommentairesNegatifs, a
 
 
 // --- Composant principal imprimable ---
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
 export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: RapportImprimableProps) {
+  if (!donneesRapport || !donneesSynthese) return null;
+  
   return (
     <div className="printable-content">
         <div className="page-break flex flex-col items-center justify-center h-screen text-center">
@@ -207,7 +207,7 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
                  <SectionSyntheseKPIs 
                     titre="Synthèse Globale"
                     synthese={donneesSynthese.global}
-                    donneesRapport={donneesRapport.global}
+                    donneesRapport={{statistiques: donneesRapport.global.statistiques}}
                     objectifs={objectifs}
                 />
                 <Card>
@@ -232,7 +232,7 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
 
         {/* Sections par dépôt */}
         {donneesRapport.depots.map((depot) => {
-            const syntheseDepot = donneesSynthese.depots.find(d => d.nom === depot.nom && d.entrepot === depot.entrepot);
+            const syntheseDepot = donneesSynthese.depots.find(d => (d.nom === depot.nom) && (d.entrepot === depot.entrepot));
             if (!syntheseDepot) return null;
             
             const titreDepot = depot.nom === 'Magasin' ? `Magasin (${depot.entrepot})` : depot.nom;
@@ -274,5 +274,3 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
     </div>
   );
 }
-
-    
