@@ -30,6 +30,7 @@ interface PivotData {
 interface CategoryPivotData {
     [driver: string]: {
         total: number;
+        depot: string;
     } & {
         [category in typeof CATEGORIES_PROBLEMES[number]]?: number
     };
@@ -279,13 +280,9 @@ const CategorizedRecurrenceTable = ({ pivotData }: { pivotData: CategoryPivotDat
         const dataToExport: any[] = [];
 
         drivers.forEach(driver => {
-            const depotMatch = driver.match(/\(([^)]+)\)/);
-            const depot = depotMatch ? depotMatch[1] : 'Inconnu';
-            const livreur = driver.replace(/\s*\([^)]*\)$/, '').trim();
-            
             const rowData: any = {
-                'Livreur': livreur,
-                'Dépôt': depot
+                'Livreur': driver,
+                'Dépôt': pivotData[driver].depot
             };
 
             CATEGORIES_PROBLEMES.forEach(cat => {
@@ -331,6 +328,7 @@ const CategorizedRecurrenceTable = ({ pivotData }: { pivotData: CategoryPivotDat
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="sticky left-0 bg-background z-10 font-bold min-w-[200px]">Livreur</TableHead>
+                                <TableHead>Dépôt</TableHead>
                                 {CATEGORIES_PROBLEMES.map(cat => <TableHead key={cat} className="text-center capitalize">{cat}</TableHead>)}
                                 <TableHead className="text-center font-bold">Total</TableHead>
                             </TableRow>
@@ -339,6 +337,7 @@ const CategorizedRecurrenceTable = ({ pivotData }: { pivotData: CategoryPivotDat
                             {drivers.map(driver => (
                                 <TableRow key={driver}>
                                     <TableCell className="sticky left-0 bg-background z-10 font-medium">{driver}</TableCell>
+                                    <TableCell>{pivotData[driver].depot}</TableCell>
                                     {CATEGORIES_PROBLEMES.map(cat => (
                                         <TableCell key={cat} className="text-center">
                                             {pivotData[driver][cat] || ''}
@@ -434,13 +433,17 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
     const categoryPivotData: CategoryPivotData = {};
     Object.entries(categorizedComments).forEach(([category, comments]) => {
         comments.forEach(comment => {
-            const driver = comment.chauffeur;
-            if (!categoryPivotData[driver]) {
-                categoryPivotData[driver] = { total: 0 };
+            const driverFullName = comment.chauffeur;
+            const depotMatch = driverFullName.match(/\(([^)]+)\)/);
+            const depot = depotMatch ? depotMatch[1] : 'Inconnu';
+            const driverName = driverFullName.replace(/\s*\([^)]*\)$/, '').trim();
+            
+            if (!categoryPivotData[driverName]) {
+                categoryPivotData[driverName] = { total: 0, depot: depot };
             }
             const catKey = category as typeof CATEGORIES_PROBLEMES[number];
-            categoryPivotData[driver][catKey] = (categoryPivotData[driver][catKey] || 0) + 1;
-            categoryPivotData[driver].total += 1;
+            categoryPivotData[driverName][catKey] = (categoryPivotData[driverName][catKey] || 0) + 1;
+            categoryPivotData[driverName].total += 1;
         });
     });
 
@@ -515,3 +518,5 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
     </div>
   );
 }
+
+    
