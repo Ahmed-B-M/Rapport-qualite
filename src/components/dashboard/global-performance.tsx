@@ -29,8 +29,7 @@ export function GlobalPerformance({ data, depotsUniques, depotActif, setDepotAct
     if (!data) {
       return [];
     }
-    const noteMoyenneGlobale = data.filter(d => d.noteLivraison).reduce((acc, d) => acc + d.noteLivraison, 0) / data.filter(d => d.noteLivraison).length || 4.5;
-    return getDonneesPerformanceChauffeur(data, noteMoyenneGlobale)
+    return getDonneesPerformanceChauffeur(data)
   }, [data]);
 
   const transporteursUniques = useMemo(() => ['all', ...Array.from(new Set(donneesPerformance.map(p => p.transporteur)))], [donneesPerformance]);
@@ -172,3 +171,5 @@ export function GlobalPerformance({ data, depotsUniques, depotActif, setDepotAct
     </Card>
   );
 }
+
+    

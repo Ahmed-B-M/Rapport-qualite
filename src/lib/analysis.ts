@@ -131,11 +131,6 @@ export const traiterDonneesBrutes = (donneesBrutes: any[]): Livraison[] => {
 
 // --- Calcul des KPI ---
 
-const moyenneBayesienne = (moy: number, nb: number, m: number, C: number): number => {
-    if (nb === 0) return C;
-    return (C * m + moy * nb) / (m + nb);
-};
-
 export function calculerNoteMoyenne(donnees: Livraison[]): { moyenne?: number, nombre: number } {
   const livraisonsNotees = donnees.filter(l => l.noteLivraison !== null && l.noteLivraison !== undefined);
   const nombre = livraisonsNotees.length;
@@ -152,7 +147,7 @@ export function calculerSentimentMoyen(donnees: Livraison[]): number | undefined
     return scoreTotal / livraisonsCommentees.length;
 }
 
-export function getStatistiquesGlobales(livraisons: Livraison[], noteMoyenneGlobale?: number, facteurConfiance = 10): StatistiquesAgregees {
+export function getStatistiquesGlobales(livraisons: Livraison[]): StatistiquesAgregees {
     const livraisonsCloturees = livraisons.filter(l => ['Livré', 'Non livré', 'Partiellement livré'].includes(l.statut));
     const totalLivraisons = livraisonsCloturees.length;
 
@@ -165,7 +160,6 @@ export function getStatistiquesGlobales(livraisons: Livraison[], noteMoyenneGlob
     }
 
     const { moyenne: moyenneBrute, nombre: nombreNotes } = calculerNoteMoyenne(livraisonsCloturees);
-    const noteMoyenneFinale = noteMoyenneGlobale && moyenneBrute ? moyenneBayesienne(moyenneBrute, nombreNotes, facteurConfiance, noteMoyenneGlobale) : moyenneBrute;
     
     const livraisonsReussies = livraisonsCloturees.filter(l => l.statut === 'Livré');
     const livraisonsAPoint = livraisonsCloturees.filter(l => l.retardSecondes !== null && l.retardSecondes >= -900 && l.retardSecondes <= 900);
@@ -176,7 +170,7 @@ export function getStatistiquesGlobales(livraisons: Livraison[], noteMoyenneGlob
     return {
         totalLivraisons,
         tauxReussite: (livraisonsReussies.length / totalLivraisons) * 100,
-        noteMoyenne: noteMoyenneFinale,
+        noteMoyenne: moyenneBrute,
         tauxPonctualite: (livraisonsAPoint.length / totalLivraisons) * 100,
         tauxNotation: (nombreNotes / totalLivraisons) * 100,
         tauxForceSurSite: (nombreForceSurSite / totalLivraisons) * 100,
@@ -206,16 +200,15 @@ export const agregerStatistiquesParEntite = (donnees: Livraison[], groupBy: keyo
     });
     
     const resultat: Record<string, StatistiquesAgregees> = {};
-    const noteMoyenneGlobale = calculerNoteMoyenne(donnees).moyenne;
 
     for (const nomEntite in statsParEntite) {
-      resultat[nomEntite] = getStatistiquesGlobales(statsParEntite[nomEntite], noteMoyenneGlobale);
+      resultat[nomEntite] = getStatistiquesGlobales(statsParEntite[nomEntite]);
     }
     
     return resultat;
 };
 
-export const getDonneesPerformanceChauffeur = (donnees: Livraison[] | undefined, noteMoyenneGlobale: number): PerformanceChauffeur[] => {
+export const getDonneesPerformanceChauffeur = (donnees: Livraison[] | undefined): PerformanceChauffeur[] => {
     if (!donnees) {
         return [];
     }
@@ -227,7 +220,7 @@ export const getDonneesPerformanceChauffeur = (donnees: Livraison[] | undefined,
         livraisonsParChauffeur[livraison.chauffeur].push(livraison);
     });
     return Object.entries(livraisonsParChauffeur).map(([nomChauffeur, livraisons]) => {
-        const stats = getStatistiquesGlobales(livraisons, noteMoyenneGlobale);
+        const stats = getStatistiquesGlobales(livraisons);
         const premierLivraison = livraisons[0];
         const depot = premierLivraison?.depot || 'Inconnu';
         const transporteur = premierLivraison?.transporteur || 'Inconnu';
@@ -366,15 +359,15 @@ export function getCategorizedNegativeComments(livraisons: Livraison[]): Record<
 
 // --- Génération de rapport ---
 
-const getDonneesSectionRapport = (donnees: Livraison[], noteMoyenneGlobale: number): DonneesSectionRapport => {
-    const performancesChauffeur = getDonneesPerformanceChauffeur(donnees, noteMoyenneGlobale);
+const getDonneesSectionRapport = (donnees: Livraison[]): DonneesSectionRapport => {
+    const performancesChauffeur = getDonneesPerformanceChauffeur(donnees);
     
     const livraisonsParTransporteur: { [key: string]: Livraison[] } = {};
     donnees.forEach(l => {
         if (!livraisonsParTransporteur[l.transporteur]) livraisonsParTransporteur[l.transporteur] = [];
         livraisonsParTransporteur[l.transporteur].push(l);
     });
-    const performancesTransporteur = Object.entries(livraisonsParTransporteur).map(([nom, livraisons]) => ({ nom, ...getStatistiquesGlobales(livraisons, noteMoyenneGlobale) }));
+    const performancesTransporteur = Object.entries(livraisonsParTransporteur).map(([nom, livraisons]) => ({ nom, ...getStatistiquesGlobales(livraisons) }));
     
     const getClassementsKpi = (performances: any[], kpi: keyof StatistiquesAgregees, meilleurSiEleve: boolean): { top: EntiteClassement[], flop: EntiteClassement[] } => {
         const tries = [...performances]
@@ -440,7 +433,7 @@ const getDonneesSectionRapport = (donnees: Livraison[], noteMoyenneGlobale: numb
     const classementsNotesChauffeur = getClassementsNotesChauffeur(donnees, performancesChauffeur);
 
     return {
-        statistiques: getStatistiquesGlobales(donnees, noteMoyenneGlobale),
+        statistiques: getStatistiquesGlobales(donnees),
         classementsKpi: classementsKpi,
         meilleursCommentaires: getTopComments(donnees, 'positif', 3),
         piresCommentaires: getTopComments(donnees, 'négatif', 3),
@@ -452,10 +445,7 @@ const getDonneesSectionRapport = (donnees: Livraison[], noteMoyenneGlobale: numb
 };
 
 export const genererRapportPerformance = (donnees: Livraison[]): DonneesRapportPerformance => {
-    const donneesNoteGlobale = calculerNoteMoyenne(donnees);
-    const noteMoyenneGlobale = donneesNoteGlobale.moyenne || 4.5;
-
-    const donneesRapportGlobal = getDonneesSectionRapport(donnees, noteMoyenneGlobale);
+    const donneesRapportGlobal = getDonneesSectionRapport(donnees);
 
     const livraisonsParDepot: { [key: string]: Livraison[] } = {};
     donnees.forEach(l => {
@@ -469,7 +459,7 @@ export const genererRapportPerformance = (donnees: Livraison[]): DonneesRapportP
         return {
             nom: premierLivraison.depot,
             entrepot: premierLivraison.depot === 'Magasin' ? premierLivraison.entrepot : undefined,
-            ...getDonneesSectionRapport(donneesDepot, noteMoyenneGlobale)
+            ...getDonneesSectionRapport(donneesDepot)
         };
     });
 
@@ -506,5 +496,7 @@ export const filtrerDonneesParDepot = (donnees: Livraison[], depot: string): Liv
     if (depot === 'all') return donnees;
     return donnees.filter(l => l.depot === depot);
 };
+
+    
 
     
