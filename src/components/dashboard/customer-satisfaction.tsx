@@ -256,7 +256,7 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
             pivotData[chauffeur] = { total: 0 };
         }
         
-        pivotData[chauffeur][transporteur] = (pivotData[chauffeur][transporter] || 0) + 1;
+        pivotData[chauffeur][transporteur] = (pivotData[chauffeur][transporteur] || 0) + 1;
         pivotData[chauffeur].total = (pivotData[chauffeur].total || 0) + 1;
     });
 
