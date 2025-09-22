@@ -1,17 +1,19 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { type Livraison, type CommentaireCategorise, CATEGORIES_PROBLEMES } from '@/lib/definitions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { analyzeSentiment } from '@/lib/sentiment';
 import { getCategorizedNegativeComments } from '@/lib/analysis';
-import { AlertCircle, ThumbsDown, MessageSquare, Download } from 'lucide-react';
+import { AlertCircle, ThumbsDown, MessageSquare, Download, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import * as XLSX from 'xlsx';
 
 interface SatisfactionClientProps {
@@ -24,6 +26,66 @@ interface PivotData {
     [transporter: string]: number;
   };
 }
+
+interface CategoryPivotData {
+    [driver: string]: {
+        total: number;
+    } & {
+        [category in typeof CATEGORIES_PROBLEMES[number]]?: number
+    };
+}
+
+
+const DepotFilter = ({ depots, selectedDepots, onSelectionChange }: { depots: string[], selectedDepots: string[], onSelectionChange: (selected: string[]) => void }) => {
+    const handleCheckedChange = (depot: string, checked: boolean) => {
+        let newSelection: string[];
+        if (checked) {
+            newSelection = [...selectedDepots, depot];
+        } else {
+            newSelection = selectedDepots.filter(d => d !== depot);
+        }
+        onSelectionChange(newSelection);
+    };
+
+    const handleSelectAll = () => onSelectionChange(depots);
+    const handleDeselectAll = () => onSelectionChange([]);
+
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="outline">
+                    <Filter className="mr-2 h-4 w-4" />
+                    Filtrer par dépôt ({selectedDepots.length === depots.length ? 'Tous' : selectedDepots.length})
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-2">
+                <div className="flex justify-between items-center mb-2 px-2">
+                     <h4 className="font-medium text-sm">Dépôts</h4>
+                     <div>
+                        <Button variant="link" size="sm" onClick={handleSelectAll} className="p-1 h-auto">Tous</Button>
+                        <Button variant="link" size="sm" onClick={handleDeselectAll} className="p-1 h-auto">Aucun</Button>
+                     </div>
+                </div>
+                <ScrollArea className="h-64">
+                    <div className="space-y-1 p-2">
+                        {depots.map(depot => (
+                            <div key={depot} className="flex items-center space-x-2">
+                                <Checkbox
+                                    id={`depot-filter-${depot}`}
+                                    checked={selectedDepots.includes(depot)}
+                                    onCheckedChange={(checked) => handleCheckedChange(depot, !!checked)}
+                                />
+                                <label htmlFor={`depot-filter-${depot}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    {depot}
+                                </label>
+                            </div>
+                        ))}
+                    </div>
+                </ScrollArea>
+            </PopoverContent>
+        </Popover>
+    );
+};
 
 const NegativeCommentsSection = ({ comments }: { comments: Record<string, CommentaireCategorise[]> }) => {
     const categoriesWithComments = CATEGORIES_PROBLEMES.filter(cat => comments[cat] && comments[cat].length > 0);
@@ -54,7 +116,7 @@ const NegativeCommentsSection = ({ comments }: { comments: Record<string, Commen
         return (
             <div className="text-center text-muted-foreground py-8">
                 <MessageSquare className="mx-auto h-12 w-12" />
-                <p className="mt-4">Aucun commentaire négatif à analyser.</p>
+                <p className="mt-4">Aucun commentaire négatif à analyser pour cette sélection.</p>
             </div>
         );
     }
@@ -117,10 +179,10 @@ const LowRatingRecurrenceTable = ({ pivotData, transporters }: { pivotData: Pivo
 
     const handleExport = () => {
         const header = ['Livreur/Transporteur', ...transporters, 'Total'];
-        const dataToExport = [header];
+        const dataToExport: (string|number)[][] = [header];
 
         drivers.forEach(driver => {
-            const row = [driver];
+            const row: (string|number)[] = [driver];
             transporters.forEach(transporter => {
                 row.push(pivotData[driver][transporter] || '');
             });
@@ -128,7 +190,7 @@ const LowRatingRecurrenceTable = ({ pivotData, transporters }: { pivotData: Pivo
             dataToExport.push(row);
         });
 
-        const footer = ['Total général'];
+        const footer: (string|number)[] = ['Total général'];
         transporters.forEach(transporter => {
             footer.push(totals[transporter]);
         });
@@ -148,7 +210,7 @@ const LowRatingRecurrenceTable = ({ pivotData, transporters }: { pivotData: Pivo
                     <CardTitle>Récurrence des notes &lt;= 3</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-muted-foreground">Aucune livraison avec une note inférieure ou égale à 3 n'a été trouvée.</p>
+                    <p className="text-muted-foreground">Aucune livraison avec une note inférieure ou égale à 3 n'a été trouvée pour cette sélection.</p>
                 </CardContent>
             </Card>
         );
@@ -202,21 +264,114 @@ const LowRatingRecurrenceTable = ({ pivotData, transporters }: { pivotData: Pivo
     );
 };
 
+const CategorizedRecurrenceTable = ({ pivotData }: { pivotData: CategoryPivotData }) => {
+    const drivers = useMemo(() => Object.keys(pivotData).sort((a, b) => pivotData[b].total - pivotData[a].total), [pivotData]);
+    
+    const handleExport = () => {
+        const header = ['Livreur', ...CATEGORIES_PROBLEMES.map(c => c.charAt(0).toUpperCase() + c.slice(1)), 'Total'];
+        const dataToExport = [header];
+
+        drivers.forEach(driver => {
+            const row: (string|number)[] = [driver];
+            CATEGORIES_PROBLEMES.forEach(cat => {
+                row.push(pivotData[driver][cat] || '');
+            });
+            row.push(pivotData[driver].total);
+            dataToExport.push(row);
+        });
+
+        const worksheet = XLSX.utils.aoa_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Récurrence par Catégorie');
+        XLSX.writeFile(workbook, 'recurrence_categories_negatives.xlsx');
+    };
+
+    if (drivers.length === 0) {
+        return (
+             <Card>
+                <CardHeader>
+                    <CardTitle>Récurrence des Commentaires Négatifs par Catégorie</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground">Aucun commentaire négatif à analyser pour cette sélection.</p>
+                </CardContent>
+            </Card>
+        )
+    }
+
+    return (
+        <Card>
+             <CardHeader className="flex-row items-center justify-between">
+                <div>
+                    <CardTitle>Récurrence des Commentaires Négatifs par Catégorie</CardTitle>
+                    <CardDescription>Nombre de commentaires négatifs par livreur et par catégorie de problème.</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleExport}>
+                    <Download className="mr-2 h-4 w-4" /> Exporter
+                </Button>
+            </CardHeader>
+            <CardContent>
+                 <ScrollArea className="h-[70vh] w-full">
+                    <Table className="whitespace-nowrap">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="sticky left-0 bg-background z-10 font-bold min-w-[200px]">Livreur</TableHead>
+                                {CATEGORIES_PROBLEMES.map(cat => <TableHead key={cat} className="text-center capitalize">{cat}</TableHead>)}
+                                <TableHead className="text-center font-bold">Total</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                         <TableBody>
+                            {drivers.map(driver => (
+                                <TableRow key={driver}>
+                                    <TableCell className="sticky left-0 bg-background z-10 font-medium">{driver}</TableCell>
+                                    {CATEGORIES_PROBLEMES.map(cat => (
+                                        <TableCell key={cat} className="text-center">
+                                            {pivotData[driver][cat] || ''}
+                                        </TableCell>
+                                    ))}
+                                    <TableCell className="text-center font-bold">{pivotData[driver].total}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </ScrollArea>
+            </CardContent>
+        </Card>
+    );
+};
+
 
 export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
+  const [selectedDepots, setSelectedDepots] = useState<string[]>([]);
+
+  const uniqueDepots = useMemo(() => {
+    if (!data) return [];
+    return [...new Set(data.map(d => d.depot))].sort();
+  }, [data]);
+  
+  useEffect(() => {
+    setSelectedDepots(uniqueDepots);
+  }, [uniqueDepots]);
+  
+  const filteredData = useMemo(() => {
+    if (!data) return [];
+    if (selectedDepots.length === uniqueDepots.length) return data; // if all are selected, no need to filter
+    return data.filter(d => selectedDepots.includes(d.depot));
+  }, [data, selectedDepots, uniqueDepots]);
+
   const { 
     repartitionNotes, repartitionSentiments, noteMoyenne, sentimentMoyen, 
-    categorizedComments, lowRatingPivotData, uniqueTransporters 
+    categorizedComments, lowRatingPivotData, uniqueTransporters, categoryPivotData
   } = useMemo(() => {
-    if (!data) {
+    if (!filteredData) {
       return {
         repartitionNotes: [], repartitionSentiments: [], noteMoyenne: 0, sentimentMoyen: 0,
-        categorizedComments: {}, lowRatingPivotData: {}, uniqueTransporters: []
+        categorizedComments: {}, lowRatingPivotData: {}, uniqueTransporters: [], categoryPivotData: {}
       };
     }
     
-    const livraisonsNotees = data.filter(d => d.noteLivraison !== undefined);
-    const livraisonsCommentees = data.filter(d => d.commentaireRetour && d.commentaireRetour.trim().length > 5);
+    const livraisonsNotees = filteredData.filter(d => d.noteLivraison !== undefined);
+    const livraisonsCommentees = filteredData.filter(d => d.commentaireRetour && d.commentaireRetour.trim().length > 5);
 
     const repartitionNotes = [
       { name: '1 étoile', count: livraisonsNotees.filter(d => d.noteLivraison === 1).length },
@@ -243,10 +398,10 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
         ? sentiments.reduce((acc, s) => acc + s, 0) / sentiments.length
         : 0;
         
-    const categorizedComments = getCategorizedNegativeComments(data);
+    const categorizedComments = getCategorizedNegativeComments(filteredData);
     
     // --- Low Rating Pivot Table Data ---
-    const lowRatedDeliveries = data.filter(d => d.noteLivraison !== undefined && d.noteLivraison <= 3);
+    const lowRatedDeliveries = filteredData.filter(d => d.noteLivraison !== undefined && d.noteLivraison <= 3);
     const uniqueTransporters = [...new Set(lowRatedDeliveries.map(d => d.transporteur))].sort();
     const pivotData: PivotData = {};
     
@@ -256,15 +411,30 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
             pivotData[chauffeur] = { total: 0 };
         }
         
-        pivotData[chauffeur][transporteur] = (pivotData[chauffeur][transporteur] || 0) + 1;
+        pivotData[chauffeur][transporteur] = (pivotData[chauffeur][transporter] || 0) + 1;
         pivotData[chauffeur].total = (pivotData[chauffeur].total || 0) + 1;
     });
 
+    // --- Category Recurrence Pivot Table Data ---
+    const categoryPivotData: CategoryPivotData = {};
+    Object.entries(categorizedComments).forEach(([category, comments]) => {
+        comments.forEach(comment => {
+            const driver = comment.chauffeur;
+            if (!categoryPivotData[driver]) {
+                categoryPivotData[driver] = { total: 0 };
+            }
+            const catKey = category as typeof CATEGORIES_PROBLEMES[number];
+            categoryPivotData[driver][catKey] = (categoryPivotData[driver][catKey] || 0) + 1;
+            categoryPivotData[driver].total += 1;
+        });
+    });
+
+
     return { 
         repartitionNotes, repartitionSentiments, noteMoyenne, sentimentMoyen, 
-        categorizedComments, lowRatingPivotData: pivotData, uniqueTransporters 
+        categorizedComments, lowRatingPivotData: pivotData, uniqueTransporters, categoryPivotData
     };
-  }, [data]);
+  }, [filteredData]);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -281,9 +451,12 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
   return (
     <div className="space-y-6">
         <Card>
-          <CardHeader>
-            <CardTitle>Satisfaction Client</CardTitle>
-            <CardDescription>Répartition des notes et analyse de sentiment des commentaires.</CardDescription>
+          <CardHeader className="flex-row items-center justify-between">
+            <div>
+                <CardTitle>Satisfaction Client</CardTitle>
+                <CardDescription>Répartition des notes et analyse de sentiment des commentaires.</CardDescription>
+            </div>
+            <DepotFilter depots={uniqueDepots} selectedDepots={selectedDepots} onSelectionChange={setSelectedDepots} />
           </CardHeader>
           <CardContent className="grid md:grid-cols-2 gap-8">
             <div>
@@ -321,7 +494,11 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
         
         <LowRatingRecurrenceTable pivotData={lowRatingPivotData} transporters={uniqueTransporters} />
 
+        <CategorizedRecurrenceTable pivotData={categoryPivotData} />
+
         <NegativeCommentsSection comments={categorizedComments} />
     </div>
   );
 }
+
+  
