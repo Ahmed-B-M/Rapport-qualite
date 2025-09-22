@@ -166,7 +166,7 @@ export function getStatistiquesGlobales(livraisons: Livraison[]): StatistiquesAg
         };
     }
 
-    const { moyenne: moyenneBrute, nombre: nombreNotes } = calculerNoteMoyenne(livraisonsCloturees);
+    const { moyenne: noteMoyenne, nombre: nombreNotes } = calculerNoteMoyenne(livraisonsCloturees);
     
     const livraisonsReussies = livraisonsCloturees.filter(l => l.statut === 'Livré');
     const livraisonsAPoint = livraisonsCloturees.filter(l => l.retardSecondes !== null && l.retardSecondes >= -900 && l.retardSecondes <= 900);
@@ -177,7 +177,7 @@ export function getStatistiquesGlobales(livraisons: Livraison[]): StatistiquesAg
     return {
         totalLivraisons,
         tauxReussite: (livraisonsReussies.length / totalLivraisons) * 100,
-        noteMoyenne: moyenneBrute,
+        noteMoyenne,
         tauxPonctualite: (livraisonsAPoint.length / totalLivraisons) * 100,
         tauxNotation: (nombreNotes / totalLivraisons) * 100,
         tauxForceSurSite: (nombreForceSurSite / totalLivraisons) * 100,
@@ -253,7 +253,8 @@ const MOTS_CLES_CATEGORIES: { categorie: CategorieProbleme, motsCles: string[] }
             "odieux", "odieuse", "incorrecte", "mal poli", "catastrophe", "horrible", "pas serviable", 
             "agressive", "pressé", "impatient", "sur le trottoir", "expéditif", "fait le signe pour avoir la pièce",
             "pas professionnel", "pas très aimable", "débrouillez vous", "davantage d'aide", "mauvaise foi",
-            "laisser les sacs", "devant la maison", "mauvaise adresse"
+            "laisser les sacs", "devant la maison", "mauvaise adresse", "porter les sacs", "irrespectueux", 
+            "arrogant", "énervés", "agacé", "livrées à l'extérieur"
         ]
     },
     { 
@@ -261,7 +262,7 @@ const MOTS_CLES_CATEGORIES: { categorie: CategorieProbleme, motsCles: string[] }
         motsCles: [
             "casse", "cassé", "abimé", "abîmé", "endommagé", "ecrasé", "écrasé", "produit ouvert", 
             "huevos rotos", "état lamentable", "bouteille ouverte", "trempés", "mal préparée", "mal preparée",
-            "endommagés", "produit éclaté", "crème partout"
+            "endommagés", "produit éclaté", "crème partout", "n'importe comment"
         ]
     },
     { 
@@ -277,7 +278,7 @@ const MOTS_CLES_CATEGORIES: { categorie: CategorieProbleme, motsCles: string[] }
         motsCles: [
             "retard", "tard", "tôt", "en avance", "pas à l'heure", "attente", "attendu", 
             "jamais arrivé", "pas prévenu", "pas prévenue", "non livrée", "ponctualité", "avant le créneau",
-            "non effectuée", "après le créneau", "respecter l'horaire"
+            "non effectuée", "après le créneau", "respecter l'horaire", "pas encore été livrée"
         ]
     },
     { 
@@ -517,5 +518,6 @@ export const filtrerDonneesParDepot = (donnees: Livraison[], depot: string): Liv
     
 
     
+
 
 
