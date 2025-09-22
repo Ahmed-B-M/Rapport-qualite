@@ -44,16 +44,17 @@ export default function DashboardPage() {
   });
   
   const [printModalOpen, setPrintModalOpen] = useState(false);
-  const [selectedDepotsForPrint, setSelectedDepotsForPrint] = useState<Record<string, boolean>>({});
-  const [printableReportData, setPrintableReportData] = useState<DonneesRapportPerformance | null>(null);
+  const [selectedEntitiesForPrint, setSelectedEntitiesForPrint] = useState<Record<string, boolean>>({});
+  const [printableReportData, setPrintableReportData] = useState<{data: DonneesRapportPerformance, type: 'Dépôt' | 'Transporteur'} | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
 
   useEffect(() => {
     if (isPrinting) {
-      window.print();
-      // Reset after printing
-      setPrintableReportData(null);
-      setIsPrinting(false);
+      setTimeout(() => {
+        window.print();
+        setIsPrinting(false);
+        setPrintableReportData(null);
+      }, 500); 
     }
   }, [isPrinting]);
 
@@ -141,33 +142,57 @@ export default function DashboardPage() {
     return groupes;
   }, [livreursNonAssocies]);
 
-  // Mémoriser la génération du rapport
-  const donneesRapport = useMemo(() => genererRapportPerformance(donneesFiltrees, 'depot'), [donneesFiltrees]);
-  const donneesSynthese = useMemo(() => generateSynthesis(donneesRapport, objectifs), [donneesRapport, objectifs]);
+  const reportEntities = useMemo(() => {
+    const groupBy = (vueActive === 'report' || vueActive === 'overview') ? 'depot' : 'transporteur';
+    const entities = new Set(donneesFiltrees.map(d => {
+      if (groupBy === 'depot') {
+        return d.depot === 'Magasin' ? `${d.depot}_${d.entrepot}` : d.depot;
+      }
+      return d.transporteur;
+    }));
+    return Array.from(entities).map(e => {
+        if (groupBy === 'depot' && e.includes('_')) {
+            const [nom, entrepot] = e.split('_');
+            return { key: e, label: `${nom} (${entrepot})` };
+        }
+        return { key: e, label: e };
+    }).sort((a,b) => a.label.localeCompare(b.label));
+  }, [donneesFiltrees, vueActive]);
+  
 
   const handleOpenPrintModal = () => {
     const initialSelection: Record<string, boolean> = {};
-    donneesRapport.depots.forEach(d => {
-      const key = d.entrepot ? `${d.nom}_${d.entrepot}` : d.nom;
-      initialSelection[key] = true;
+    reportEntities.forEach(e => {
+      initialSelection[e.key] = true;
     });
-    setSelectedDepotsForPrint(initialSelection);
+    setSelectedEntitiesForPrint(initialSelection);
     setPrintModalOpen(true);
   };
   
   const handleConfirmPrint = () => {
-    const depotsToPrint: RapportDepot[] = donneesRapport.depots.filter(d => {
-        const key = d.entrepot ? `${d.nom}_${d.entrepot}` : d.nom;
-        return selectedDepotsForPrint[key];
+    const groupBy = (vueActive === 'report' || vueActive === 'overview') ? 'depot' : 'transporteur';
+    const reportType = groupBy === 'depot' ? 'Dépôt' : 'Transporteur';
+    
+    // Regenerate report data specifically for printing
+    const freshReportData = genererRapportPerformance(donneesFiltrees, groupBy);
+    
+    const entitiesToPrint: RapportDepot[] = freshReportData.depots.filter(d => {
+        let key: string;
+        if (groupBy === 'depot') {
+          key = d.entrepot ? `${d.nom}_${d.entrepot}` : d.nom;
+        } else {
+          key = d.nom;
+        }
+        return selectedEntitiesForPrint[key];
     });
 
     const reportDataForPrint: DonneesRapportPerformance = {
-        global: donneesRapport.global,
-        depots: depotsToPrint,
+        global: freshReportData.global,
+        depots: entitiesToPrint,
     };
     
+    setPrintableReportData({ data: reportDataForPrint, type: reportType });
     setPrintModalOpen(false);
-    setPrintableReportData(reportDataForPrint);
     setIsPrinting(true);
   };
 
@@ -207,7 +232,7 @@ export default function DashboardPage() {
                       <>
                         <DateRangePicker date={plageDates} onDateChange={setPlageDates} availableDates={datesUniques} />
                         <div className="flex items-center space-x-2"><Switch id="exclude-magasin" checked={exclureMagasin} onCheckedChange={setExclureMagasin} /><Label htmlFor="exclude-magasin">Exclure Magasin</Label></div>
-                        <Button variant="outline" onClick={handleOpenPrintModal}><Printer className="mr-2 h-4 w-4" /> Imprimer / PDF</Button>
+                        {(vueActive === 'report' || vueActive === 'transporters') && <Button variant="outline" onClick={handleOpenPrintModal}><Printer className="mr-2 h-4 w-4" /> Imprimer / PDF</Button>}
                         <Button variant="outline" onClick={handleReinitialiser}>Nouveau fichier</Button>
                       </>
                     )}
@@ -226,13 +251,13 @@ export default function DashboardPage() {
             <main id="main-content" className="non-printable">
               {renderContent()}
             </main>
-            {(printableReportData) && (
+            {printableReportData && isPrinting && (
               <div className="printable-version">
                 <PrintableReport 
-                  donneesRapport={printableReportData} 
-                  donneesSynthese={generateSynthesis(printableReportData, objectifs)} 
+                  donneesRapport={printableReportData.data} 
+                  donneesSynthese={generateSynthesis(printableReportData.data, objectifs)} 
                   objectifs={objectifs} 
-                  typeRapport="Dépôt"
+                  typeRapport={printableReportData.type}
                   plageDates={plageDates}
                 />
               </div>
@@ -286,26 +311,24 @@ export default function DashboardPage() {
        <Dialog open={printModalOpen} onOpenChange={setPrintModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Sélectionner les dépôts à imprimer</DialogTitle>
+            <DialogTitle>Sélectionner les entités à imprimer</DialogTitle>
             <DialogDescription>
-              Cochez les dépôts que vous souhaitez inclure dans le rapport PDF.
+              Cochez les {vueActive === 'report' ? 'dépôts' : 'transporteurs'} que vous souhaitez inclure dans le rapport.
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-4 max-h-[60vh] overflow-y-auto">
-            {donneesRapport?.depots.map(depot => {
-              const key = depot.entrepot ? `${depot.nom}_${depot.entrepot}` : depot.nom;
-              const label = depot.entrepot ? `${depot.nom} (${depot.entrepot})` : depot.nom;
+            {reportEntities.map(entity => {
               return (
-                <div key={key} className="flex items-center space-x-2">
+                <div key={entity.key} className="flex items-center space-x-2">
                   <Checkbox
-                    id={key}
-                    checked={selectedDepotsForPrint[key]}
+                    id={entity.key}
+                    checked={!!selectedEntitiesForPrint[entity.key]}
                     onCheckedChange={(checked) => {
-                      setSelectedDepotsForPrint(prev => ({ ...prev, [key]: !!checked }));
+                      setSelectedEntitiesForPrint(prev => ({ ...prev, [entity.key]: !!checked }));
                     }}
                   />
-                  <label htmlFor={key} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    {label}
+                  <label htmlFor={entity.key} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    {entity.label}
                   </label>
                 </div>
               )
@@ -320,3 +343,5 @@ export default function DashboardPage() {
     </SidebarProvider>
   );
 }
+
+    
