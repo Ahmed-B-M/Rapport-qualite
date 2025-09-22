@@ -27,7 +27,6 @@ import {
 import { Separator } from '@/components/ui/separator';
 import ReactMarkdown from 'react-markdown';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -295,27 +294,40 @@ const SectionAnalyseDetaillee = ({ donneesRapport, objectifs }: { donneesRapport
 
 const DepotFilter = ({ depots, selectedDepots, onSelectionChange }: { depots: string[], selectedDepots: string[], onSelectionChange: (selected: string[]) => void }) => {
     const handleCheckedChange = (depot: string, checked: boolean) => {
+        let newSelection: string[];
         if (checked) {
-            onSelectionChange([...selectedDepots, depot]);
+            newSelection = [...selectedDepots, depot];
         } else {
-            onSelectionChange(selectedDepots.filter(d => d !== depot));
+            newSelection = selectedDepots.filter(d => d !== depot);
         }
+        onSelectionChange(newSelection);
     };
+
+    const handleSelectAll = () => {
+        onSelectionChange(depots);
+    }
+    
+    const handleDeselectAll = () => {
+        onSelectionChange([]);
+    }
 
     return (
         <Popover>
             <PopoverTrigger asChild>
                 <Button variant="outline">
-                    Filtrer par dépôt ({selectedDepots.length === 0 ? 'Tous' : selectedDepots.length})
+                    Filtrer par dépôt ({selectedDepots.length === 0 ? 'Tous' : selectedDepots.length === depots.length ? 'Tous' : selectedDepots.length})
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-64 p-2">
-                <div className="flex justify-between items-center mb-2">
+                <div className="flex justify-between items-center mb-2 px-2">
                      <h4 className="font-medium text-sm">Dépôts</h4>
-                     <Button variant="link" size="sm" onClick={() => onSelectionChange([])}>Réinitialiser</Button>
+                     <div>
+                        <Button variant="link" size="sm" onClick={handleSelectAll} className="p-1 h-auto">Tous</Button>
+                        <Button variant="link" size="sm" onClick={handleDeselectAll} className="p-1 h-auto">Aucun</Button>
+                     </div>
                 </div>
                 <ScrollArea className="h-64">
-                    <div className="space-y-2">
+                    <div className="space-y-1 p-2">
                         {depots.map(depot => (
                             <div key={depot} className="flex items-center space-x-2">
                                 <Checkbox
@@ -323,7 +335,7 @@ const DepotFilter = ({ depots, selectedDepots, onSelectionChange }: { depots: st
                                     checked={selectedDepots.includes(depot)}
                                     onCheckedChange={(checked) => handleCheckedChange(depot, !!checked)}
                                 />
-                                <label htmlFor={`depot-filter-${depot}`} className="text-sm">
+                                <label htmlFor={`depot-filter-${depot}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                     {depot}
                                 </label>
                             </div>
@@ -351,7 +363,7 @@ export function TransporterReport({ donnees, objectifs }: TransporterReportProps
   }, [donnees, selectedDepots]);
 
   const donneesRapport = useMemo(() => {
-      if (!filteredData) return null;
+      if (!filteredData || filteredData.length === 0) return null;
       return genererRapportPerformance(filteredData, 'transporteur');
   }, [filteredData]);
 
@@ -359,9 +371,16 @@ export function TransporterReport({ donnees, objectifs }: TransporterReportProps
       if (!donneesRapport) return null;
       return generateSynthesis(donneesRapport, objectifs);
   }, [donneesRapport, objectifs]);
+  
+  React.useEffect(() => {
+      if(donnees) {
+        setSelectedDepots(depotsUniques);
+      }
+  }, [donnees, depotsUniques]);
+
 
   if (!donneesRapport || !donneesSynthese) {
-      return <div>Génération du rapport en cours...</div>;
+      return <div className="flex flex-col items-center justify-center h-full min-h-[400px]"><p className="text-muted-foreground">Aucune donnée à afficher pour la sélection. Essayez d'inclure plus de dépôts.</p></div>;
   }
 
   return (
@@ -407,3 +426,4 @@ export function TransporterReport({ donnees, objectifs }: TransporterReportProps
     </div>
   );
 }
+
