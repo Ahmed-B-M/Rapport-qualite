@@ -159,6 +159,7 @@ export default function DashboardPage() {
     setPrintableReportData(reportDataForPrint);
     setPrintModalOpen(false);
 
+    // Give the DOM time to update (close modal, set data) before printing
     setTimeout(() => {
         window.print();
         setPrintableReportData(null);
@@ -209,7 +210,7 @@ export default function DashboardPage() {
                 </div>
             </header>
             {livreursNonAssocies.length > 0 && (
-                <Alert variant="destructive" className="mb-6 cursor-pointer hover:bg-destructive/10" onClick={() => setModalLivreursOuvert(true)}>
+                <Alert variant="destructive" className="mb-6 cursor-pointer hover:bg-destructive/10 print-hide" onClick={() => setModalLivreursOuvert(true)}>
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>Attention !</AlertTitle>
                     <AlertDescription>
