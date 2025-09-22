@@ -157,12 +157,11 @@ export default function DashboardPage() {
     };
     
     setPrintableReportData(reportDataForPrint);
-    
-    // Use a timeout to ensure state is updated before printing
+    setPrintModalOpen(false);
+
     setTimeout(() => {
         window.print();
-        setPrintModalOpen(false);
-        setPrintableReportData(null); // Reset after printing
+        setPrintableReportData(null);
     }, 100);
   };
 
@@ -221,11 +220,11 @@ export default function DashboardPage() {
             <main id="main-content" className="non-printable">
               {renderContent()}
             </main>
-            {(printableReportData || (donneesRapport && !printModalOpen)) && (
+            {(printableReportData) && (
               <div className="printable-version">
                 <PrintableReport 
-                  donneesRapport={printableReportData ?? donneesRapport} 
-                  donneesSynthese={generateSynthesis(printableReportData ?? donneesRapport, objectifs)} 
+                  donneesRapport={printableReportData} 
+                  donneesSynthese={generateSynthesis(printableReportData, objectifs)} 
                   objectifs={objectifs} 
                   typeRapport="Dépôt"
                   plageDates={plageDates}
