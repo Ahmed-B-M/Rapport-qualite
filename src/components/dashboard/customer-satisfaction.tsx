@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useMemo } from 'react';
@@ -11,10 +10,19 @@ import { analyzeSentiment } from '@/lib/sentiment';
 import { getCategorizedNegativeComments } from '@/lib/analysis';
 import { AlertCircle, ThumbsDown, MessageSquare, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import * as XLSX from 'xlsx';
 
 interface SatisfactionClientProps {
   data?: Livraison[];
+}
+
+interface PivotData {
+  [driver: string]: {
+    total: number;
+    [transporter: string]: number;
+  };
 }
 
 const NegativeCommentsSection = ({ comments }: { comments: Record<string, CommentaireCategorise[]> }) => {
@@ -90,13 +98,120 @@ const NegativeCommentsSection = ({ comments }: { comments: Record<string, Commen
     );
 };
 
+const LowRatingRecurrenceTable = ({ pivotData, transporters }: { pivotData: PivotData, transporters: string[] }) => {
+    const drivers = useMemo(() => Object.keys(pivotData).sort((a, b) => a.localeCompare(b)), [pivotData]);
+    const totals = useMemo(() => {
+        const transporterTotals: { [key: string]: number } = {};
+        transporters.forEach(t => transporterTotals[t] = 0);
+        let grandTotal = 0;
+
+        drivers.forEach(driver => {
+            transporters.forEach(transporter => {
+                transporterTotals[transporter] += pivotData[driver][transporter] || 0;
+            });
+            grandTotal += pivotData[driver].total;
+        });
+
+        return { ...transporterTotals, total: grandTotal };
+    }, [pivotData, transporters, drivers]);
+
+    const handleExport = () => {
+        const header = ['Livreur/Transporteur', ...transporters, 'Total'];
+        const dataToExport = [header];
+
+        drivers.forEach(driver => {
+            const row = [driver];
+            transporters.forEach(transporter => {
+                row.push(pivotData[driver][transporter] || '');
+            });
+            row.push(pivotData[driver].total);
+            dataToExport.push(row);
+        });
+
+        const footer = ['Total général'];
+        transporters.forEach(transporter => {
+            footer.push(totals[transporter]);
+        });
+        footer.push(totals.total);
+        dataToExport.push(footer);
+
+        const worksheet = XLSX.utils.aoa_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Récurrence Notes <= 3');
+        XLSX.writeFile(workbook, 'recurrence_notes_basses.xlsx');
+    };
+
+    if (drivers.length === 0) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Récurrence des notes &lt;= 3</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground">Aucune livraison avec une note inférieure ou égale à 3 n'a été trouvée.</p>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    return (
+        <Card>
+            <CardHeader className="flex-row items-center justify-between">
+                <div>
+                    <CardTitle>Récurrence des notes &lt;= 3</CardTitle>
+                    <CardDescription>Nombre de livraisons notées 3 ou moins, par livreur et transporteur.</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleExport}>
+                    <Download className="mr-2 h-4 w-4" /> Exporter
+                </Button>
+            </CardHeader>
+            <CardContent>
+                <ScrollArea className="h-[70vh] w-full">
+                    <Table className="whitespace-nowrap">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="sticky left-0 bg-background z-10 font-bold min-w-[200px]">Livreur/Transporteur</TableHead>
+                                {transporters.map(t => <TableHead key={t} className="text-center">{t}</TableHead>)}
+                                <TableHead className="text-center font-bold">Total</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {drivers.map(driver => (
+                                <TableRow key={driver}>
+                                    <TableCell className="sticky left-0 bg-background z-10 font-medium">{driver}</TableCell>
+                                    {transporters.map(transporter => (
+                                        <TableCell key={transporter} className="text-center">
+                                            {pivotData[driver][transporter] || ''}
+                                        </TableCell>
+                                    ))}
+                                    <TableCell className="text-center font-bold">{pivotData[driver].total}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                        <TableRow className="bg-muted hover:bg-muted font-bold">
+                            <TableCell className="sticky left-0 bg-muted z-10">Total général</TableCell>
+                            {transporters.map(transporter => (
+                                <TableCell key={transporter} className="text-center">{totals[transporter]}</TableCell>
+                            ))}
+                            <TableCell className="text-center">{totals.total}</TableCell>
+                        </TableRow>
+                    </Table>
+                </ScrollArea>
+            </CardContent>
+        </Card>
+    );
+};
+
 
 export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
-  const { repartitionNotes, repartitionSentiments, noteMoyenne, sentimentMoyen, categorizedComments } = useMemo(() => {
+  const { 
+    repartitionNotes, repartitionSentiments, noteMoyenne, sentimentMoyen, 
+    categorizedComments, lowRatingPivotData, uniqueTransporters 
+  } = useMemo(() => {
     if (!data) {
       return {
         repartitionNotes: [], repartitionSentiments: [], noteMoyenne: 0, sentimentMoyen: 0,
-        categorizedComments: {}
+        categorizedComments: {}, lowRatingPivotData: {}, uniqueTransporters: []
       };
     }
     
@@ -129,8 +244,26 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
         : 0;
         
     const categorizedComments = getCategorizedNegativeComments(data);
+    
+    // --- Low Rating Pivot Table Data ---
+    const lowRatedDeliveries = data.filter(d => d.noteLivraison !== undefined && d.noteLivraison <= 3);
+    const uniqueTransporters = [...new Set(lowRatedDeliveries.map(d => d.transporteur))].sort();
+    const pivotData: PivotData = {};
+    
+    lowRatedDeliveries.forEach(delivery => {
+        const { chauffeur, transporteur } = delivery;
+        if (!pivotData[chauffeur]) {
+            pivotData[chauffeur] = { total: 0 };
+        }
+        
+        pivotData[chauffeur][transporteur] = (pivotData[chauffeur][transporter] || 0) + 1;
+        pivotData[chauffeur].total = (pivotData[chauffeur].total || 0) + 1;
+    });
 
-    return { repartitionNotes, repartitionSentiments, noteMoyenne, sentimentMoyen, categorizedComments };
+    return { 
+        repartitionNotes, repartitionSentiments, noteMoyenne, sentimentMoyen, 
+        categorizedComments, lowRatingPivotData: pivotData, uniqueTransporters 
+    };
   }, [data]);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -185,6 +318,8 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
             </div>
           </CardContent>
         </Card>
+        
+        <LowRatingRecurrenceTable pivotData={lowRatingPivotData} transporters={uniqueTransporters} />
 
         <NegativeCommentsSection comments={categorizedComments} />
     </div>
