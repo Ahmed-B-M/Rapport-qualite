@@ -99,7 +99,7 @@ const NegativeCommentsSection = ({ comments }: { comments: Record<string, Commen
 };
 
 const LowRatingRecurrenceTable = ({ pivotData, transporters }: { pivotData: PivotData, transporters: string[] }) => {
-    const drivers = useMemo(() => Object.keys(pivotData).sort((a, b) => a.localeCompare(b)), [pivotData]);
+    const drivers = useMemo(() => Object.keys(pivotData).sort((a, b) => pivotData[b].total - pivotData[a].total), [pivotData]);
     const totals = useMemo(() => {
         const transporterTotals: { [key: string]: number } = {};
         transporters.forEach(t => transporterTotals[t] = 0);
