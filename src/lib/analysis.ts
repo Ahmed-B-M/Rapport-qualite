@@ -339,6 +339,23 @@ function analyserCommentairesNegatifs(livraisons: Livraison[]): ResultatsCategor
     return resultats;
 }
 
+export function analyserCommentaires(commentaires: string[]): Record<string, { count: number }> {
+    const analyse: Record<string, { count: number }> = {};
+    for (const cat of CATEGORIES_PROBLEMES) {
+        analyse[cat] = { count: 0 };
+    }
+
+    commentaires.forEach(commentaire => {
+        const categorie = categoriserCommentaire(commentaire);
+        if (analyse[categorie]) {
+            analyse[categorie].count++;
+        }
+    });
+
+    return analyse;
+}
+
+
 export function getCategorizedNegativeComments(livraisons: Livraison[]): Record<string, CommentaireCategorise[]> {
     const commentairesNegatifs = livraisons.filter(l => 
         l.commentaireRetour && 
@@ -516,9 +533,30 @@ export const filtrerDonneesParDepot = (donnees: Livraison[], depot: string): Liv
     return donnees.filter(l => l.depot === depot);
 };
 
+export const getDonneesSerieTemporelle = (livraisons: Livraison[]): { date: string, tauxReussite: number, totalLivraisons: number }[] => {
+    const livraisonsParJour: Record<string, Livraison[]> = {};
+
+    livraisons.forEach(l => {
+        const date = l.date.split('T')[0];
+        if (!livraisonsParJour[date]) {
+            livraisonsParJour[date] = [];
+        }
+        livraisonsParJour[date].push(l);
+    });
+
+    return Object.entries(livraisonsParJour).map(([date, livraisonsDuJour]) => {
+        const stats = getStatistiquesGlobales(livraisonsDuJour);
+        return {
+            date,
+            tauxReussite: stats.tauxReussite,
+            totalLivraisons: stats.totalLivraisons
+        };
+    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+};
     
 
     
+
 
 
 

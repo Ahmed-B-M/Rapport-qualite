@@ -1,17 +1,18 @@
 
-
 'use client';
 
 import { useState, useMemo } from 'react';
 import { GlobalPerformance } from './global-performance';
 import { type Livraison, type StatistiquesAgregees } from '@/lib/definitions';
-import { filtrerDonneesParDepot, getStatistiquesGlobales, agregerStatistiquesParEntite } from '@/lib/analysis';
+import { filtrerDonneesParDepot, getStatistiquesGlobales, agregerStatistiquesParEntite, analyserCommentaires, getDonneesSerieTemporelle } from '@/lib/analysis';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList, CartesianGrid } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList, CartesianGrid, LineChart, Line, Legend } from 'recharts';
 import { StatCard } from './stat-card';
-import { CheckCircle, XCircle, Star, Clock, Percent, Users, User, Truck } from 'lucide-react';
-
+import { CheckCircle, XCircle, Star, Clock, Percent, Users, User, Truck, MessageCircle } from 'lucide-react';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { DateRange } from 'react-day-picker';
+import { subDays } from 'date-fns';
 
 interface ApercuProps {
   donnees: Livraison[];
@@ -86,42 +87,109 @@ const TransporteurPerformanceChart = ({ data }: { data: (StatistiquesAgregees & 
     );
 }
 
+const FeedbackChart = ({ data }: { data: { categorie: string, nombre: number }[] }) => {
+    if (!data || data.length === 0) {
+        return <div className="text-center text-sm text-muted-foreground">Aucun retour client à analyser pour cette sélection.</div>;
+    }
+
+    return (
+        <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={data} layout="vertical" margin={{ left: 80 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis type="category" dataKey="categorie" tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Bar dataKey="nombre" name="Nombre de mentions" fill="hsl(var(--primary))">
+                    <LabelList dataKey="nombre" position="right" />
+                </Bar>
+            </BarChart>
+        </ResponsiveContainer>
+    );
+};
+
+const TrendChart = ({ data }: { data: any[] }) => {
+    return (
+        <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis yAxisId="left" orientation="left" stroke="hsl(var(--primary))" label={{ value: 'Taux de succès (%)', angle: -90, position: 'insideLeft' }} />
+                <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--secondary))" label={{ value: 'Nb. Livraisons', angle: 90, position: 'insideRight' }} />
+                <Tooltip />
+                <Legend />
+                <Line yAxisId="left" type="monotone" dataKey="tauxReussite" name="Taux de Succès" stroke="hsl(var(--primary))" />
+                <Line yAxisId="right" type="monotone" dataKey="totalLivraisons" name="Nb. Livraisons" stroke="hsl(var(--secondary))" />
+            </LineChart>
+        </ResponsiveContainer>
+    );
+};
+
+
 export function Overview({ donnees }: ApercuProps) {
   const [depotActif, setDepotActif] = useState<string>('all');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subDays(new Date(), 29),
+    to: new Date(),
+  });
 
   const depotsUniques = useMemo(() => {
     const depots = new Set(donnees.map(d => d.depot));
     return ['all', ...Array.from(depots).sort()];
   }, [donnees]);
 
-  const donneesDepot = useMemo(() => filtrerDonneesParDepot(donnees, depotActif), [donnees, depotActif]);
-  
+  const donneesFiltrees = useMemo(() => {
+    let data = donnees;
+    if (dateRange?.from && dateRange?.to) {
+        data = data.filter(d => {
+            const date = new Date(d.date);
+            return date >= (dateRange.from as Date) && date <= (dateRange.to as Date);
+        });
+    }
+    return filtrerDonneesParDepot(data, depotActif);
+  }, [donnees, depotActif, dateRange]);
+
   const statistiquesGlobalesDepot = useMemo(() => {
-    if (!donneesDepot) return null;
-    return getStatistiquesGlobales(donneesDepot);
-  }, [donneesDepot]);
+    if (!donneesFiltrees) return null;
+    return getStatistiquesGlobales(donneesFiltrees);
+  }, [donneesFiltrees]);
 
   const statsTransporteurs = useMemo(() => {
-    const stats = agregerStatistiquesParEntite(donneesDepot, 'transporteur');
+    const stats = agregerStatistiquesParEntite(donneesFiltrees, 'transporteur');
     return Object.entries(stats).map(([nom, stat]) => ({ nom, ...stat }))
       .sort((a, b) => b.totalLivraisons - a.totalLivraisons);
-  }, [donneesDepot]);
+  }, [donneesFiltrees]);
+
+  const feedbackData = useMemo(() => {
+    const commentaires = donneesFiltrees.map(d => d.commentaireRetour).filter(Boolean) as string[];
+    const analyse = analyserCommentaires(commentaires);
+    return Object.entries(analyse)
+        .map(([categorie, { count }]) => ({ categorie, nombre: count }))
+        .filter(item => item.nombre > 0)
+        .sort((a, b) => b.nombre - a.nombre);
+  }, [donneesFiltrees]);
+
+  const trendData = useMemo(() => {
+      return getDonneesSerieTemporelle(donneesFiltrees);
+  }, [donneesFiltrees]);
 
   if (!statistiquesGlobalesDepot) {
-      return <div className="p-4 text-center">Chargement des données...</div>
+      return <div className="p-4 text-center">Chargement des données ou aucune donnée pour la sélection...</div>
   }
 
   return (
     <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <h2 className="text-2xl font-bold">Aperçu de la Performance</h2>
-            <div className="w-64">
-                <Select value={depotActif} onValueChange={setDepotActif}>
-                    <SelectTrigger><SelectValue placeholder="Filtrer par dépôt..." /></SelectTrigger>
-                    <SelectContent>
-                    {depotsUniques.map(d => <SelectItem key={d} value={d}>{d === 'all' ? 'Tous les dépôts' : d}</SelectItem>)}
-                    </SelectContent>
-                </Select>
+            <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+                <div className="w-full sm:w-64">
+                    <Select value={depotActif} onValueChange={setDepotActif}>
+                        <SelectTrigger><SelectValue placeholder="Filtrer par dépôt..." /></SelectTrigger>
+                        <SelectContent>
+                        {depotsUniques.map(d => <SelectItem key={d} value={d}>{d === 'all' ? 'Tous les dépôts' : d}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
         </div>
 
@@ -144,20 +212,51 @@ export function Overview({ donnees }: ApercuProps) {
             </CardContent>
         </Card>
 
-        {statsTransporteurs.length > 0 && (
+        <Card>
+            <CardHeader>
+                <CardTitle>Evolution de la Performance</CardTitle>
+                <CardDescription>Tendances des indicateurs clés sur la période sélectionnée.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <TrendChart data={trendData} />
+            </CardContent>
+        </Card>
+
+        <div className="grid lg:grid-cols-2 gap-6">
             <Card>
                 <CardHeader>
-                    <CardTitle>Performance par Transporteur - {depotActif === 'all' ? 'Global' : depotActif}</CardTitle>
-                    <CardDescription>Comparaison des transporteurs sur les indicateurs clés pour la sélection actuelle.</CardDescription>
+                    <CardTitle>Analyse des Retours Clients</CardTitle>
+                    <CardDescription>Principaux motifs d'insatisfaction mentionnés dans les commentaires.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <TransporteurPerformanceChart data={statsTransporteurs} />
+                    <FeedbackChart data={feedbackData} />
                 </CardContent>
             </Card>
-        )}
 
+            {statsTransporteurs.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Performance par Transporteur</CardTitle>
+                        <CardDescription>Note moyenne des transporteurs sur la période.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <BarChart data={statsTransporteurs.map(d => ({ nom: d.nom, valeur: d.noteMoyenne || 0 }))} layout="vertical" margin={{ left: 50 }}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis type="number" domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} />
+                                <YAxis type="category" dataKey="nom" tick={{ fontSize: 12 }} />
+                                <Tooltip formatter={(value: number) => `${value.toFixed(2)}/5`} />
+                                <Bar dataKey="valeur" name="Note Moyenne" fill="hsl(var(--primary))">
+                                    <LabelList dataKey="valeur" position="right" formatter={(value: number) => value.toFixed(2)} />
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+            )}
+        </div>
       <GlobalPerformance 
-        data={donneesDepot} 
+        data={donneesFiltrees} 
         depotsUniques={depotsUniques}
         depotActif={depotActif}
         setDepotActif={setDepotActif}
