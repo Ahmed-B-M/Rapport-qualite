@@ -31,9 +31,16 @@ const HEADER_MAPPING: Record<string, keyof Livraison> = {
   'Complété par': 'terminePar',
 };
 
-const getTransporteurFromChauffeur = (nomChauffeur: string): string => {
+const getTransporteurFromChauffeur = (nomChauffeur: string, depot: string): string => {
     if (!nomChauffeur || nomChauffeur.trim() === '') return 'Inconnu';
+    
     const nom = nomChauffeur.trim().toUpperCase();
+
+    // Règle spécifique pour Vitry
+    if (depot === 'Vitry' && (nom.endsWith('6') || nom.endsWith('7'))) {
+        return 'GPL';
+    }
+
     if (nom.endsWith('ID LOG')) return 'ID LOGISTICS';
     if (nom.startsWith('STT')) return 'Sous traitants';
     for (const transporteur of TRANSPORTEURS) {
@@ -84,7 +91,7 @@ export const traiterDonneesBrutes = (donneesBrutes: any[]): Livraison[] => {
     const depot = CARTE_ENTREPOT_DEPOT[entrepot] || 'Dépôt Inconnu';
     const nomChauffeur = (livraison.chauffeur || '').trim();
     
-    const transporteur = getTransporteurFromChauffeur(nomChauffeur);
+    const transporteur = getTransporteurFromChauffeur(nomChauffeur, depot);
     const chauffeur = nomChauffeur ? `${nomChauffeur} (${depot === 'Magasin' ? entrepot : depot})` : `Livreur Inconnu (${depot})`;
     
     let statut: StatutLivraison;
@@ -507,3 +514,4 @@ export const filtrerDonneesParDepot = (donnees: Livraison[], depot: string): Liv
     
 
     
+
