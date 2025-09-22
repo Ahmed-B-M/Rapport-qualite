@@ -254,7 +254,8 @@ const MOTS_CLES_CATEGORIES: { categorie: CategorieProbleme, motsCles: string[] }
             "agressive", "pressé", "impatient", "sur le trottoir", "expéditif", "fait le signe pour avoir la pièce",
             "pas professionnel", "pas très aimable", "débrouillez vous", "davantage d'aide", "mauvaise foi",
             "laisser les sacs", "devant la maison", "mauvaise adresse", "porter les sacs", "irrespectueux", 
-            "arrogant", "énervés", "agacé", "livrées à l'extérieur"
+            "arrogant", "énervés", "agacé", "livrées à l'extérieur", "brutal", "insultant", "pas descendu",
+            "livré à 400m", "trompent de rue"
         ]
     },
     { 
@@ -262,7 +263,7 @@ const MOTS_CLES_CATEGORIES: { categorie: CategorieProbleme, motsCles: string[] }
         motsCles: [
             "casse", "cassé", "abimé", "abîmé", "endommagé", "ecrasé", "écrasé", "produit ouvert", 
             "huevos rotos", "état lamentable", "bouteille ouverte", "trempés", "mal préparée", "mal preparée",
-            "endommagés", "produit éclaté", "crème partout", "n'importe comment"
+            "endommagés", "produit éclaté", "crème partout", "n'importe comment", "l'eau dans les sacs"
         ]
     },
     { 
@@ -518,6 +519,7 @@ export const filtrerDonneesParDepot = (donnees: Livraison[], depot: string): Liv
     
 
     
+
 
 
 
