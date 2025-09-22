@@ -14,7 +14,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
-    ThumbsUp, ThumbsDown, ArrowRightCircle, Target, Smile, Frown, MessageSquare, ClipboardList
+    ThumbsUp, ThumbsDown, ArrowRightCircle, Target, Smile, Frown, MessageSquare, ClipboardList, Truck
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from "@/components/ui/progress";
@@ -25,14 +25,19 @@ interface RapportImprimableProps {
   donneesRapport: DonneesRapportPerformance;
   donneesSynthese: ResultatSynthese;
   objectifs: Objectifs;
+  typeRapport: 'Dépôt' | 'Transporteur';
 }
 
-const LogoDepotImpression = ({ nomDepot, entrepot }: { nomDepot: string, entrepot?: string }) => {
-    const isMagasin = nomDepot === 'Magasin' && entrepot;
-    const nomLogo = (isMagasin ? entrepot! : nomDepot).toLowerCase().replace(/\s+/g, '-');
+const LogoEntiteImpression = ({ nom, entrepot, type }: { nom: string, entrepot?: string, type: 'Dépôt' | 'Transporteur' }) => {
+    if (type === 'Transporteur') {
+        return <Truck className="h-6 w-6 inline-block mr-2 text-gray-700"/>;
+    }
+
+    const isMagasin = nom === 'Magasin' && entrepot;
+    const nomLogo = (isMagasin ? entrepot! : nom).toLowerCase().replace(/\s+/g, '-');
     const urlLogo = `/logos/id-${nomLogo}.jpg`;
 
-    return <Image src={urlLogo} alt={`Logo ${nomDepot}`} width={30} height={30} className="rounded-full inline-block mr-2"/>;
+    return <Image src={urlLogo} alt={`Logo ${nom}`} width={30} height={30} className="rounded-full inline-block mr-2"/>;
 };
 
 // --- Composants d'aide réutilisables pour l'impression ---
@@ -188,7 +193,7 @@ const AnalyseCategorielleImpression = ({ resultats, totalCommentairesNegatifs, a
 
 
 // --- Composant principal imprimable ---
-export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: RapportImprimableProps) {
+export function PrintableReport({ donneesRapport, donneesSynthese, objectifs, typeRapport }: RapportImprimableProps) {
   if (!donneesRapport || !donneesSynthese) return null;
   
   return (
@@ -196,7 +201,7 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
         <div className="page-break flex flex-col items-center justify-center h-screen text-center">
             <Image src="/logos/logo-crf.jpg" alt="Logo CLCV" width={120} height={120} className="rounded-lg mb-6"/>
             <h1 className="text-4xl font-bold text-primary">Rapport Qualité des Livraisons</h1>
-            <p className="text-lg text-muted-foreground mt-2">Analyse détaillée pour la période sélectionnée</p>
+            <p className="text-lg text-muted-foreground mt-2">Analyse par {typeRapport} pour la période sélectionnée</p>
             <p className="text-sm text-muted-foreground mt-8">Généré le: {new Date().toLocaleDateString('fr-FR')}</p>
         </div>
 
@@ -230,39 +235,39 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs }: 
             </div>
         </div>
 
-        {/* Sections par dépôt */}
-        {donneesRapport.depots.map((depot) => {
-            const syntheseDepot = donneesSynthese.depots.find(d => (d.nom === depot.nom) && (d.entrepot === depot.entrepot));
-            if (!syntheseDepot) return null;
+        {/* Sections par entité (dépôt ou transporteur) */}
+        {donneesRapport.depots.map((entite) => {
+            const syntheseEntite = donneesSynthese.depots.find(d => (d.nom === entite.nom) && (d.entrepot === entite.entrepot));
+            if (!syntheseEntite) return null;
             
-            const titreDepot = depot.nom === 'Magasin' ? `Magasin (${depot.entrepot})` : depot.nom;
+            const titreEntite = entite.entrepot ? `${entite.nom} (${entite.entrepot})` : entite.nom;
 
             return (
-                <div className="page-break" key={titreDepot}>
+                <div className="page-break" key={titreEntite}>
                     <h2 className="text-2xl font-bold mb-4 flex items-center">
-                        <LogoDepotImpression nomDepot={depot.nom} entrepot={depot.entrepot} />
-                        {titreDepot}
+                        <LogoEntiteImpression nom={entite.nom} entrepot={entite.entrepot} type={typeRapport} />
+                        {titreEntite}
                     </h2>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                         <SectionSyntheseKPIs 
-                            titre={`Synthèse ${titreDepot}`}
-                            synthese={syntheseDepot}
-                            donneesRapport={depot}
+                            titre={`Synthèse ${titreEntite}`}
+                            synthese={syntheseEntite}
+                            donneesRapport={entite}
                             objectifs={objectifs}
                         />
                          <Card>
                             <CardHeader className="p-3">
-                                <CardTitle className="text-base">Analyse Détaillée - {titreDepot}</CardTitle>
-                                <CardDescription className="text-xs">{depot.statistiques.totalLivraisons} livraisons analysées.</CardDescription>
+                                <CardTitle className="text-base">Analyse Détaillée - {titreEntite}</CardTitle>
+                                <CardDescription className="text-xs">{entite.statistiques.totalLivraisons} livraisons analysées.</CardDescription>
                             </CardHeader>
                             <CardContent className="p-3 space-y-3">
-                                 <ClassementsNotesChauffeurImpression top={depot.chauffeursMieuxNotes} flop={depot.chauffeursMoinsBienNotes} />
+                                 <ClassementsNotesChauffeurImpression top={entite.chauffeursMieuxNotes} flop={entite.chauffeursMoinsBienNotes} />
                                 <Separator/>
-                                <ExemplesCommentairesImpression top={depot.meilleursCommentaires} flop={depot.piresCommentaires} />
+                                <ExemplesCommentairesImpression top={entite.meilleursCommentaires} flop={entite.piresCommentaires} />
                                 <Separator/>
                                 <AnalyseCategorielleImpression 
-                                    resultats={depot.resultatsCategorisation} 
-                                    totalCommentairesNegatifs={depot.totalCommentairesNegatifs}
+                                    resultats={entite.resultatsCategorisation} 
+                                    totalCommentairesNegatifs={entite.totalCommentairesNegatifs}
                                     afficherDetailsCommentaires={true}
                                 />
                             </CardContent>

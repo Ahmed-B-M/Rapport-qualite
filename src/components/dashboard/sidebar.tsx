@@ -1,7 +1,7 @@
 
 'use client';
 import { Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import { Home, BarChart2, Warehouse, Smile } from 'lucide-react';
+import { Home, BarChart2, Warehouse, Smile, Truck } from 'lucide-react';
 
 interface DashboardSidebarProps {
   activeView: string;
@@ -26,6 +26,12 @@ export function DashboardSidebar({ activeView, setActiveView }: DashboardSidebar
                          <SidebarMenuButton isActive={activeView === 'report'} onClick={() => setActiveView('report')}>
                             <BarChart2 className="h-5 w-5" />
                             Rapport Qualité
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                     <SidebarMenuItem>
+                         <SidebarMenuButton isActive={activeView === 'transporters'} onClick={() => setActiveView('transporters')}>
+                            <Truck className="h-5 w-5" />
+                            Transporteurs
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>

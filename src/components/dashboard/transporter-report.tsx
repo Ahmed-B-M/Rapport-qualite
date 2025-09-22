@@ -1,7 +1,7 @@
 
 'use client';
 import Image from 'next/image';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { 
     type Livraison, 
     type DonneesRapportPerformance, 
@@ -27,24 +27,25 @@ import {
 import { Separator } from '@/components/ui/separator';
 import ReactMarkdown from 'react-markdown';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // --- Définition des Props ---
 
-interface RapportQualiteProps {
+interface TransporterReportProps {
   donnees: Livraison[];
   objectifs: Objectifs;
 }
 
-const LogoDepot = ({ nomDepot, entrepot }: { nomDepot: string, entrepot?: string }) => {
-    const isMagasin = nomDepot === 'Magasin' && entrepot;
-    const nomLogo = (isMagasin ? entrepot! : nomDepot).toLowerCase().replace(/\s+/g, '-');
-    const urlLogo = `/logos/id-${nomLogo}.jpg`;
-
-    return <Image src={urlLogo} alt={`Logo ${nomDepot}`} width={40} height={40} className="rounded-full inline-block mr-2"/>;
+const LogoTransporteur = ({ nomTransporteur }: { nomTransporteur: string }) => {
+    return <Truck className="h-6 w-6 inline-block mr-2 text-gray-700"/>;
 };
 
 
-// --- Composants d'aide ---
+// --- Composants d'aide (réutilisés depuis QualityReport) ---
 
 const rendrePoints = (points: string[], icone: React.ReactNode) => (
     <ul className="space-y-3">
@@ -143,7 +144,7 @@ const OngletsClassementKpi = ({ donneesRapport }: { donneesRapport: DonneesSecti
                                         </div>
                                     </div>
                                     <div>
-                                        <h4 className="font-semibold text-gray-800 mb-2 flex items-center"><Truck className="h-5 w-5 mr-2"/> Classement Transporteurs</h4>
+                                        <h4 className="font-semibold text-gray-800 mb-2 flex items-center"><Warehouse className="h-5 w-5 mr-2"/> Classement Dépôts</h4>
                                         <div className="grid grid-cols-2 gap-4">
                                              <TableauClassementSimple titre="Top 3" icone={<Award className="h-4 w-4 mr-1 text-green-600"/>} donnees={donneesRapport.classementsKpi.transporteurs[kpi.key as keyof typeof donneesRapport.classementsKpi.transporteurs].top} unite={kpi.unit} />
                                             <TableauClassementSimple titre="Flop 3" icone={<UserX className="h-4 w-4 mr-1 text-red-600"/>} donnees={donneesRapport.classementsKpi.transporteurs[kpi.key as keyof typeof donneesRapport.classementsKpi.transporteurs].flop} unite={kpi.unit} />
@@ -292,13 +293,67 @@ const SectionAnalyseDetaillee = ({ donneesRapport, objectifs }: { donneesRapport
     </Card>
 );
 
+const DepotFilter = ({ depots, selectedDepots, onSelectionChange }: { depots: string[], selectedDepots: string[], onSelectionChange: (selected: string[]) => void }) => {
+    const handleCheckedChange = (depot: string, checked: boolean) => {
+        if (checked) {
+            onSelectionChange([...selectedDepots, depot]);
+        } else {
+            onSelectionChange(selectedDepots.filter(d => d !== depot));
+        }
+    };
+
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="outline">
+                    Filtrer par dépôt ({selectedDepots.length === 0 ? 'Tous' : selectedDepots.length})
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-2">
+                <div className="flex justify-between items-center mb-2">
+                     <h4 className="font-medium text-sm">Dépôts</h4>
+                     <Button variant="link" size="sm" onClick={() => onSelectionChange([])}>Réinitialiser</Button>
+                </div>
+                <ScrollArea className="h-64">
+                    <div className="space-y-2">
+                        {depots.map(depot => (
+                            <div key={depot} className="flex items-center space-x-2">
+                                <Checkbox
+                                    id={`depot-filter-${depot}`}
+                                    checked={selectedDepots.includes(depot)}
+                                    onCheckedChange={(checked) => handleCheckedChange(depot, !!checked)}
+                                />
+                                <label htmlFor={`depot-filter-${depot}`} className="text-sm">
+                                    {depot}
+                                </label>
+                            </div>
+                        ))}
+                    </div>
+                </ScrollArea>
+            </PopoverContent>
+        </Popover>
+    );
+};
+
+
 // --- Composant Principal du Rapport ---
 
-export function QualityReport({ donnees, objectifs }: RapportQualiteProps) {
+export function TransporterReport({ donnees, objectifs }: TransporterReportProps) {
+  const [selectedDepots, setSelectedDepots] = useState<string[]>([]);
+  
+  const depotsUniques = useMemo(() => [...new Set(donnees.map(d => d.depot))].sort(), [donnees]);
+
+  const filteredData = useMemo(() => {
+    if (selectedDepots.length === 0) {
+        return donnees;
+    }
+    return donnees.filter(d => selectedDepots.includes(d.depot));
+  }, [donnees, selectedDepots]);
+
   const donneesRapport = useMemo(() => {
-      if (!donnees) return null;
-      return genererRapportPerformance(donnees, 'depot');
-  }, [donnees]);
+      if (!filteredData) return null;
+      return genererRapportPerformance(filteredData, 'transporteur');
+  }, [filteredData]);
 
   const donneesSynthese = useMemo(() => {
       if (!donneesRapport) return null;
@@ -311,28 +366,25 @@ export function QualityReport({ donnees, objectifs }: RapportQualiteProps) {
 
   return (
     <div className="bg-gray-50 p-4 sm:p-6 rounded-lg">
+        <div className="flex justify-between items-center mb-8">
+             <div className="mb-6 print-header"><h1 className="text-3xl font-bold font-headline text-primary mb-2 print-title">Rapport par Transporteur</h1><p className="text-muted-foreground">Analyse globale et par transporteur.</p></div>
+             <DepotFilter depots={depotsUniques} selectedDepots={selectedDepots} onSelectionChange={setSelectedDepots} />
+        </div>
         <div className="mb-8">
-             <div className="mb-6 print-header"><h1 className="text-3xl font-bold font-headline text-primary mb-2 print-title">Rapport Qualité</h1><p className="text-muted-foreground">Analyse globale et par dépôt.</p></div>
-            <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 shadow-lg">
-                <CardHeader><CardTitle className="flex items-center text-2xl font-bold text-blue-800"><GraduationCap className="h-6 w-6 mr-3 text-blue-600" />Conclusion & Recommandations</CardTitle></CardHeader>
+            <Card className="bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200 shadow-lg">
+                <CardHeader><CardTitle className="flex items-center text-2xl font-bold text-purple-800"><GraduationCap className="h-6 w-6 mr-3 text-purple-600" />Conclusion & Recommandations</CardTitle></CardHeader>
                 <CardContent><ReactMarkdown components={{ p: ({ children }) => <p className="text-base text-gray-700 leading-relaxed">{children}</p> }}>{donneesSynthese.conclusion}</ReactMarkdown></CardContent>
             </Card>
         </div>
         <Tabs defaultValue="global">
             <TabsList className="h-auto flex-wrap justify-start gap-1">
                 <TabsTrigger value="global">Vision d'Ensemble</TabsTrigger>
-                {donneesSynthese.depots.map((depot: SyntheseDepot) => {
-                    const rapportDepot = donneesRapport.depots.find((d: RapportDepot) => d.nom === depot.nom && d.entrepot === depot.entrepot);
-                    if (!rapportDepot) return null;
-                    const key = depot.entrepot ? `${depot.nom}_${depot.entrepot}` : depot.nom;
-                    const label = depot.entrepot ? `${depot.nom} (${depot.entrepot})` : depot.nom;
-                    return (
-                        <TabsTrigger key={key} value={key}>
-                            <LogoDepot nomDepot={rapportDepot.nom} entrepot={rapportDepot.entrepot} />
-                            {label}
-                        </TabsTrigger>
-                    )
-                })}
+                {donneesSynthese.depots.map((transporteur: SyntheseDepot) => (
+                    <TabsTrigger key={transporteur.nom} value={transporteur.nom}>
+                        <LogoTransporteur nomTransporteur={transporteur.nom} />
+                        {transporteur.nom}
+                    </TabsTrigger>
+                ))}
             </TabsList>
             <TabsContent value="global" className="mt-4">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -340,14 +392,13 @@ export function QualityReport({ donnees, objectifs }: RapportQualiteProps) {
                     <div className="lg:col-span-2"><SectionAnalyseDetaillee donneesRapport={donneesRapport.global} objectifs={objectifs} /></div>
                 </div>
             </TabsContent>
-            {donneesRapport.depots.map((rapportDepot) => {
-                const syntheseDepot = donneesSynthese.depots.find((d: SyntheseDepot) => d.nom === rapportDepot.nom && d.entrepot === rapportDepot.entrepot);
-                 const key = rapportDepot.entrepot ? `${rapportDepot.nom}_${rapportDepot.entrepot}` : rapportDepot.nom;
+            {donneesRapport.depots.map((rapportTransporteur) => {
+                const syntheseTransporteur = donneesSynthese.depots.find((d: SyntheseDepot) => d.nom === rapportTransporteur.nom);
                 return (
-                    <TabsContent key={key} value={key} className="mt-4">
+                    <TabsContent key={rapportTransporteur.nom} value={rapportTransporteur.nom} className="mt-4">
                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                            <div className="lg:col-span-1">{syntheseDepot && <SectionSynthese synthese={syntheseDepot} />}</div>
-                            <div className="lg:col-span-2"><SectionAnalyseDetaillee donneesRapport={rapportDepot} objectifs={objectifs}/></div>
+                            <div className="lg:col-span-1">{syntheseTransporteur && <SectionSynthese synthese={syntheseTransporteur} />}</div>
+                            <div className="lg:col-span-2"><SectionAnalyseDetaillee donneesRapport={rapportTransporteur} objectifs={objectifs}/></div>
                         </div>
                     </TabsContent>
                 )

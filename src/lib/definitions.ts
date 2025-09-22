@@ -85,7 +85,7 @@ export type ClassementsKpiParEntite = {
     tauxPonctualite: ClassementKpi;
     tauxReussite: ClassementKpi;
   };
-  transporteurs: {
+  transporteurs: { // this can be transporters or depots
     noteMoyenne: ClassementKpi;
     sentimentMoyen: ClassementKpi;
     tauxPonctualite: ClassementKpi;
@@ -135,7 +135,7 @@ export type RapportDepot = DonneesSectionRapport & {
 
 export type DonneesRapportPerformance = {
   global: DonneesSectionRapport;
-  depots: RapportDepot[];
+  depots: RapportDepot[]; // Represents depots or transporters
 };
 
 // --- Nouveaux types pour le rapport de synthèse ---

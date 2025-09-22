@@ -11,6 +11,7 @@ import { Overview } from "@/components/dashboard/overview";
 import { WarehouseAnalytics } from "@/components/dashboard/warehouse-analytics";
 import { CustomerSatisfaction } from "@/components/dashboard/customer-satisfaction";
 import { QualityReport } from "@/components/dashboard/quality-report";
+import { TransporterReport } from "@/components/dashboard/transporter-report";
 import { PrintableReport } from "@/components/dashboard/printable-report"; 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, AlertTriangle, Settings, Printer } from "lucide-react";
@@ -131,7 +132,7 @@ export default function DashboardPage() {
   }, [livreursNonAssocies]);
 
   // Mémoriser la génération du rapport
-  const donneesRapport = useMemo(() => genererRapportPerformance(donneesFiltrees), [donneesFiltrees]);
+  const donneesRapport = useMemo(() => genererRapportPerformance(donneesFiltrees, 'depot'), [donneesFiltrees]);
   const donneesSynthese = useMemo(() => generateSynthesis(donneesRapport, objectifs), [donneesRapport, objectifs]);
 
   const handleOpenPrintModal = () => {
@@ -176,6 +177,7 @@ export default function DashboardPage() {
       case "report": return <QualityReport donnees={donneesFiltrees} objectifs={objectifs} />;
       case "warehouses": return <WarehouseAnalytics donnees={donneesFiltrees} />;
       case "satisfaction": return <CustomerSatisfaction data={donneesFiltrees} />;
+      case "transporters": return <TransporterReport donnees={donneesFiltrees} objectifs={objectifs} />;
       default: return <Overview donnees={donneesFiltrees} />;
     }
   };
@@ -225,6 +227,7 @@ export default function DashboardPage() {
                   donneesRapport={printableReportData ?? donneesRapport} 
                   donneesSynthese={generateSynthesis(printableReportData ?? donneesRapport, objectifs)} 
                   objectifs={objectifs} 
+                  typeRapport="Dépôt"
                 />
               </div>
             )}
@@ -256,7 +259,7 @@ export default function DashboardPage() {
                     {Object.entries(livreursNonAssociesParDepot).sort(([depotA], [depotB]) => depotA.localeCompare(depotB)).map(([depot, data]) => (
                         <Card key={depot}>
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-lg">{depot}</CardTitle>
+                                <CardTitle className="text-lg">{depot.replace(/_/g, ' ')}</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <ul className="list-disc pl-5 space-y-1 text-sm">

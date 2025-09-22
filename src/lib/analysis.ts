@@ -359,15 +359,16 @@ export function getCategorizedNegativeComments(livraisons: Livraison[]): Record<
 
 // --- Génération de rapport ---
 
-const getDonneesSectionRapport = (donnees: Livraison[]): DonneesSectionRapport => {
+const getDonneesSectionRapport = (donnees: Livraison[], groupBy: 'depot' | 'transporteur'): DonneesSectionRapport => {
     const performancesChauffeur = getDonneesPerformanceChauffeur(donnees);
     
-    const livraisonsParTransporteur: { [key: string]: Livraison[] } = {};
+    const livraisonsParAutreEntite: { [key: string]: Livraison[] } = {};
     donnees.forEach(l => {
-        if (!livraisonsParTransporteur[l.transporteur]) livraisonsParTransporteur[l.transporteur] = [];
-        livraisonsParTransporteur[l.transporteur].push(l);
+        const key = groupBy === 'depot' ? l.transporteur : l.depot;
+        if (!livraisonsParAutreEntite[key]) livraisonsParAutreEntite[key] = [];
+        livraisonsParAutreEntite[key].push(l);
     });
-    const performancesTransporteur = Object.entries(livraisonsParTransporteur).map(([nom, livraisons]) => ({ nom, ...getStatistiquesGlobales(livraisons) }));
+    const performancesAutreEntite = Object.entries(livraisonsParAutreEntite).map(([nom, livraisons]) => ({ nom, ...getStatistiquesGlobales(livraisons) }));
     
     const getClassementsKpi = (performances: any[], kpi: keyof StatistiquesAgregees, meilleurSiEleve: boolean): { top: EntiteClassement[], flop: EntiteClassement[] } => {
         const tries = [...performances]
@@ -390,11 +391,11 @@ const getDonneesSectionRapport = (donnees: Livraison[]): DonneesSectionRapport =
             tauxPonctualite: getClassementsKpi(performancesChauffeur, 'tauxPonctualite', true),
             tauxReussite: getClassementsKpi(performancesChauffeur, 'tauxReussite', true),
         },
-        transporteurs: {
-            noteMoyenne: getClassementsKpi(performancesTransporteur, 'noteMoyenne', true),
-            sentimentMoyen: getClassementsKpi(performancesTransporteur, 'sentimentMoyen', true),
-            tauxPonctualite: getClassementsKpi(performancesTransporteur, 'tauxPonctualite', true),
-            tauxReussite: getClassementsKpi(performancesTransporteur, 'tauxReussite', true),
+        transporteurs: { // This key is now generic
+            noteMoyenne: getClassementsKpi(performancesAutreEntite, 'noteMoyenne', true),
+            sentimentMoyen: getClassementsKpi(performancesAutreEntite, 'sentimentMoyen', true),
+            tauxPonctualite: getClassementsKpi(performancesAutreEntite, 'tauxPonctualite', true),
+            tauxReussite: getClassementsKpi(performancesAutreEntite, 'tauxReussite', true),
         }
     };
     
@@ -444,30 +445,36 @@ const getDonneesSectionRapport = (donnees: Livraison[]): DonneesSectionRapport =
     };
 };
 
-export const genererRapportPerformance = (donnees: Livraison[]): DonneesRapportPerformance => {
-    const donneesRapportGlobal = getDonneesSectionRapport(donnees);
+export const genererRapportPerformance = (donnees: Livraison[], groupBy: 'depot' | 'transporteur'): DonneesRapportPerformance => {
+    const donneesRapportGlobal = getDonneesSectionRapport(donnees, groupBy);
 
-    const livraisonsParDepot: { [key: string]: Livraison[] } = {};
+    const livraisonsParEntite: { [key: string]: Livraison[] } = {};
     donnees.forEach(l => {
-        const key = l.depot === 'Magasin' ? `Magasin_${l.entrepot}` : l.depot;
-        if (!livraisonsParDepot[key]) livraisonsParDepot[key] = [];
-        livraisonsParDepot[key].push(l);
+        let key: string;
+        if (groupBy === 'depot') {
+            key = l.depot === 'Magasin' ? `Magasin_${l.entrepot}` : l.depot;
+        } else {
+            key = l.transporteur;
+        }
+        if (!livraisonsParEntite[key]) livraisonsParEntite[key] = [];
+        livraisonsParEntite[key].push(l);
     });
 
-    const rapportsDepot: RapportDepot[] = Object.entries(livraisonsParDepot).map(([key, donneesDepot]) => {
-        const premierLivraison = donneesDepot[0];
+    const rapportsEntite: RapportDepot[] = Object.entries(livraisonsParEntite).map(([key, donneesEntite]) => {
+        const premierLivraison = donneesEntite[0];
         return {
-            nom: premierLivraison.depot,
-            entrepot: premierLivraison.depot === 'Magasin' ? premierLivraison.entrepot : undefined,
-            ...getDonneesSectionRapport(donneesDepot)
+            nom: groupBy === 'depot' ? premierLivraison.depot : premierLivraison.transporteur,
+            entrepot: (groupBy === 'depot' && premierLivraison.depot === 'Magasin') ? premierLivraison.entrepot : undefined,
+            ...getDonneesSectionRapport(donneesEntite, groupBy)
         };
     });
 
     return {
         global: donneesRapportGlobal,
-        depots: rapportsDepot.sort((a, b) => b.statistiques.totalLivraisons - a.statistiques.totalLivraisons),
+        depots: rapportsEntite.sort((a, b) => b.statistiques.totalLivraisons - a.statistiques.totalLivraisons),
     };
 };
+
 
 // --- Fonctions de filtrage ---
 
