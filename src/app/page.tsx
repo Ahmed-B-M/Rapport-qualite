@@ -2,7 +2,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { type Livraison, type Objectifs, type DonneesRapportPerformance, type RapportDepot } from "@/lib/definitions";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
@@ -46,6 +46,16 @@ export default function DashboardPage() {
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [selectedDepotsForPrint, setSelectedDepotsForPrint] = useState<Record<string, boolean>>({});
   const [printableReportData, setPrintableReportData] = useState<DonneesRapportPerformance | null>(null);
+  const [isPrinting, setIsPrinting] = useState(false);
+
+  useEffect(() => {
+    if (isPrinting) {
+      window.print();
+      // Reset after printing
+      setPrintableReportData(null);
+      setIsPrinting(false);
+    }
+  }, [isPrinting]);
 
   const datesUniques = useMemo(() => {
     const dates = new Set(donnees.map(d => new Date(d.date).setHours(0,0,0,0)));
@@ -156,14 +166,9 @@ export default function DashboardPage() {
         depots: depotsToPrint,
     };
     
-    setPrintableReportData(reportDataForPrint);
     setPrintModalOpen(false);
-
-    // Give the DOM time to update (close modal, set data) before printing
-    setTimeout(() => {
-        window.print();
-        setPrintableReportData(null);
-    }, 100);
+    setPrintableReportData(reportDataForPrint);
+    setIsPrinting(true);
   };
 
 
