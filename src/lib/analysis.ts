@@ -533,7 +533,7 @@ export const filtrerDonneesParDepot = (donnees: Livraison[], depot: string): Liv
     return donnees.filter(l => l.depot === depot);
 };
 
-export const getDonneesSerieTemporelle = (livraisons: Livraison[]): { date: string, tauxReussite: number, totalLivraisons: number }[] => {
+export const getDonneesSerieTemporelle = (livraisons: Livraison[]): { date: string, tauxReussite: number, totalLivraisons: number, noteMoyenne?: number, tauxPonctualite: number }[] => {
     const livraisonsParJour: Record<string, Livraison[]> = {};
 
     livraisons.forEach(l => {
@@ -549,13 +549,16 @@ export const getDonneesSerieTemporelle = (livraisons: Livraison[]): { date: stri
         return {
             date,
             tauxReussite: stats.tauxReussite,
-            totalLivraisons: stats.totalLivraisons
+            totalLivraisons: stats.totalLivraisons,
+            noteMoyenne: stats.noteMoyenne,
+            tauxPonctualite: stats.tauxPonctualite,
         };
     }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 };
     
 
     
+
 
 
 

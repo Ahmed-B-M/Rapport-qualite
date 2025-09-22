@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -107,18 +108,16 @@ const FeedbackChart = ({ data }: { data: { categorie: string, nombre: number }[]
     );
 };
 
-const TrendChart = ({ data }: { data: any[] }) => {
+const TrendChart = ({ data, lineKey, yAxisLabel, yAxisId = "left", color, domain }: { data: any[], lineKey: string, yAxisLabel: string, yAxisId?: "left" | "right", color: string, domain?: [number, number] }) => {
     return (
         <ResponsiveContainer width="100%" height={300}>
             <LineChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis yAxisId="left" orientation="left" stroke="hsl(var(--primary))" label={{ value: 'Taux de succès (%)', angle: -90, position: 'insideLeft' }} />
-                <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--secondary))" label={{ value: 'Nb. Livraisons', angle: 90, position: 'insideRight' }} />
+                <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                <YAxis yAxisId={yAxisId} orientation={yAxisId} stroke={color} tick={{ fontSize: 10 }} domain={domain} label={{ value: yAxisLabel, angle: -90, position: 'insideLeft', offset: 0, style: { textAnchor: 'middle', fill: color } }} />
                 <Tooltip />
                 <Legend />
-                <Line yAxisId="left" type="monotone" dataKey="tauxReussite" name="Taux de Succès" stroke="hsl(var(--primary))" />
-                <Line yAxisId="right" type="monotone" dataKey="totalLivraisons" name="Nb. Livraisons" stroke="hsl(var(--secondary))" />
+                <Line yAxisId={yAxisId} type="monotone" dataKey={lineKey} name={yAxisLabel} stroke={color} dot={false} />
             </LineChart>
         </ResponsiveContainer>
     );
@@ -214,13 +213,34 @@ export function Overview({ donnees }: ApercuProps) {
 
         <Card>
             <CardHeader>
-                <CardTitle>Evolution de la Performance</CardTitle>
-                <CardDescription>Tendances des indicateurs clés sur la période sélectionnée.</CardDescription>
+                <CardTitle>Evolution du Taux de Succès</CardTitle>
+                <CardDescription>Tendances du taux de succès sur la période sélectionnée.</CardDescription>
             </CardHeader>
             <CardContent>
-                <TrendChart data={trendData} />
+                <TrendChart data={trendData} lineKey="tauxReussite" yAxisLabel="Taux de Succès (%)" color="hsl(var(--primary))" domain={[0, 100]} />
             </CardContent>
         </Card>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle>Evolution de la Note Moyenne</CardTitle>
+                <CardDescription>Tendances de la note moyenne sur la période sélectionnée.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <TrendChart data={trendData} lineKey="noteMoyenne" yAxisLabel="Note Moyenne" color="hsl(var(--primary))" domain={[1, 5]} />
+            </CardContent>
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle>Evolution de la Ponctualité</CardTitle>
+                <CardDescription>Tendances de la ponctualité sur la période sélectionnée.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <TrendChart data={trendData} lineKey="tauxPonctualite" yAxisLabel="Taux de Ponctualité (%)" color="hsl(var(--primary))" domain={[0, 100]} />
+            </CardContent>
+        </Card>
+
 
         <div className="grid lg:grid-cols-2 gap-6">
             <Card>
