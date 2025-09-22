@@ -1,7 +1,7 @@
 
 'use client';
 import Image from 'next/image';
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { 
     type Livraison, 
     type DonneesRapportPerformance, 
@@ -426,4 +426,3 @@ export function TransporterReport({ donnees, objectifs }: TransporterReportProps
     </div>
   );
 }
-
