@@ -105,6 +105,11 @@
     break-after: avoid; /* Avoid page breaks after headers */
   }
 
+  /* Hide modals and other dialogs during print */
+  [role="dialog"] {
+    display: none !important;
+  }
+
 
   /* Ensure cards and sections don't break across pages */
   .break-inside-avoid {
