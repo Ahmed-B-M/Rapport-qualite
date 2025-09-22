@@ -316,7 +316,7 @@ export function QualityReport({ donnees, objectifs }: RapportQualiteProps) {
             </Card>
         </div>
         <Tabs defaultValue="global">
-            <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <TabsList className="h-auto flex-wrap justify-start gap-1">
                 <TabsTrigger value="global">Vision d'Ensemble</TabsTrigger>
                 {donneesSynthese.depots.map((depot: SyntheseDepot) => (
                     <TabsTrigger key={depot.nom} value={depot.nom}>
