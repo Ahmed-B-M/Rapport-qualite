@@ -4,11 +4,11 @@
 
 import { useState, useMemo } from 'react';
 import { GlobalPerformance } from './global-performance';
-import { type Livraison, type StatistiquesAgregees } from '@/lib/definitions';
+import { type Livraison, type StatistiquesAgregees, type Objectifs } from '@/lib/definitions';
 import { filtrerDonneesParDepot, getStatistiquesGlobales, agregerStatistiquesParEntite, analyserCommentaires, getDonneesSerieTemporelle } from '@/lib/analysis';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList, CartesianGrid, LineChart, Line, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList, CartesianGrid, LineChart, Line, Legend, ReferenceLine } from 'recharts';
 import { StatCard } from './stat-card';
 import { CheckCircle, XCircle, Star, Clock, Percent, Users, User, Truck, MessageCircle } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
@@ -17,6 +17,7 @@ import { subDays } from 'date-fns';
 
 interface ApercuProps {
   donnees: Livraison[];
+  objectifs: Objectifs;
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -108,7 +109,7 @@ const FeedbackChart = ({ data }: { data: { categorie: string, nombre: number }[]
     );
 };
 
-const TrendChart = ({ data, lineKey, yAxisLabel, yAxisId = "left", color, domain }: { data: any[], lineKey: string, yAxisLabel: string, yAxisId?: "left" | "right", color: string, domain?: [number, number] }) => {
+const TrendChart = ({ data, lineKey, yAxisLabel, yAxisId = "left", color, domain, objective }: { data: any[], lineKey: string, yAxisLabel: string, yAxisId?: "left" | "right", color: string, domain?: [number, number], objective?: number }) => {
     return (
         <ResponsiveContainer width="100%" height={300}>
             <LineChart data={data}>
@@ -117,6 +118,7 @@ const TrendChart = ({ data, lineKey, yAxisLabel, yAxisId = "left", color, domain
                 <YAxis yAxisId={yAxisId} orientation={yAxisId} stroke={color} tick={{ fontSize: 10 }} domain={domain} label={{ value: yAxisLabel, angle: -90, position: 'insideLeft', offset: 0, style: { textAnchor: 'middle', fill: color } }} />
                 <Tooltip />
                 <Legend />
+                {objective !== undefined && <ReferenceLine y={objective} yAxisId={yAxisId} label={{ value: 'Objectif', position: 'insideTopRight' }} stroke="hsl(var(--destructive))" strokeDasharray="3 3" />}
                 <Line yAxisId={yAxisId} type="monotone" dataKey={lineKey} name={yAxisLabel} stroke={color} dot={false} />
             </LineChart>
         </ResponsiveContainer>
@@ -124,7 +126,7 @@ const TrendChart = ({ data, lineKey, yAxisLabel, yAxisId = "left", color, domain
 };
 
 
-export function Overview({ donnees }: ApercuProps) {
+export function Overview({ donnees, objectifs }: ApercuProps) {
   const [depotActif, setDepotActif] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(new Date(), 29),
@@ -217,7 +219,14 @@ export function Overview({ donnees }: ApercuProps) {
                 <CardDescription>Tendances du taux de succès sur la période sélectionnée.</CardDescription>
             </CardHeader>
             <CardContent>
-                <TrendChart data={trendData} lineKey="tauxReussite" yAxisLabel="Taux de Succès (%)" color="hsl(var(--primary))" domain={[0, 100]} />
+                <TrendChart 
+                    data={trendData} 
+                    lineKey="tauxReussite" 
+                    yAxisLabel="Taux de Succès (%)" 
+                    color="hsl(var(--primary))" 
+                    domain={[0, 100]} 
+                    objective={100 - objectifs.tauxEchec}
+                />
             </CardContent>
         </Card>
         
@@ -227,7 +236,14 @@ export function Overview({ donnees }: ApercuProps) {
                 <CardDescription>Tendances de la note moyenne sur la période sélectionnée.</CardDescription>
             </CardHeader>
             <CardContent>
-                 <TrendChart data={trendData} lineKey="noteMoyenne" yAxisLabel="Note Moyenne" color="hsl(var(--primary))" domain={[1, 5]} />
+                 <TrendChart 
+                    data={trendData} 
+                    lineKey="noteMoyenne" 
+                    yAxisLabel="Note Moyenne" 
+                    color="hsl(var(--primary))" 
+                    domain={[1, 5]} 
+                    objective={objectifs.noteMoyenne}
+                 />
             </CardContent>
         </Card>
 
@@ -237,7 +253,14 @@ export function Overview({ donnees }: ApercuProps) {
                 <CardDescription>Tendances de la ponctualité sur la période sélectionnée.</CardDescription>
             </CardHeader>
             <CardContent>
-                 <TrendChart data={trendData} lineKey="tauxPonctualite" yAxisLabel="Taux de Ponctualité (%)" color="hsl(var(--primary))" domain={[0, 100]} />
+                 <TrendChart 
+                    data={trendData} 
+                    lineKey="tauxPonctualite" 
+                    yAxisLabel="Taux de Ponctualité (%)" 
+                    color="hsl(var(--primary))" 
+                    domain={[0, 100]}
+                    objective={objectifs.tauxPonctualite}
+                 />
             </CardContent>
         </Card>
 

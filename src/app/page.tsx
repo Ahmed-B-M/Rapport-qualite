@@ -203,12 +203,12 @@ export default function DashboardPage() {
     if (donnees.length === 0) return <FileUploader onDonneesTelechargees={handleDonneesTelechargees} setChargement={setChargement} />;
 
     switch (vueActive) {
-      case "overview": return <Overview donnees={donneesFiltrees} />;
+      case "overview": return <Overview donnees={donneesFiltrees} objectifs={objectifs} />;
       case "report": return <QualityReport donnees={donneesFiltrees} objectifs={objectifs} />;
       case "warehouses": return <WarehouseAnalytics donnees={donneesFiltrees} />;
       case "satisfaction": return <CustomerSatisfaction data={donneesFiltrees} />;
       case "transporters": return <TransporterReport donnees={donneesFiltrees} objectifs={objectifs} />;
-      default: return <Overview donnees={donneesFiltrees} />;
+      default: return <Overview donnees={donneesFiltrees} objectifs={objectifs} />;
     }
   };
 
