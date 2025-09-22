@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'Tableau de Bord Carrefour',
+  title: 'Rapport qualité clcv',
   description: 'Analysez vos données de livraison avec des informations basées sur l\'IA.',
 };
 
