@@ -10,7 +10,7 @@ import { analyzeSentiment } from '@/lib/sentiment';
 import { getCategorizedNegativeComments } from '@/lib/analysis';
 import { AlertCircle, ThumbsDown, MessageSquare, Download, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -250,13 +250,15 @@ const LowRatingRecurrenceTable = ({ pivotData, transporters }: { pivotData: Pivo
                                 </TableRow>
                             ))}
                         </TableBody>
-                        <TableRow className="bg-muted hover:bg-muted font-bold">
-                            <TableCell className="sticky left-0 bg-muted z-10">Total général</TableCell>
-                            {transporters.map(transporter => (
-                                <TableCell key={transporter} className="text-center">{totals[transporter]}</TableCell>
-                            ))}
-                            <TableCell className="text-center">{totals.total}</TableCell>
-                        </TableRow>
+                        <TableFooter>
+                            <TableRow className="bg-muted hover:bg-muted font-bold">
+                                <TableCell className="sticky left-0 bg-muted z-10">Total général</TableCell>
+                                {transporters.map(transporter => (
+                                    <TableCell key={transporter} className="text-center">{totals[transporter]}</TableCell>
+                                ))}
+                                <TableCell className="text-center">{totals.total}</TableCell>
+                            </TableRow>
+                        </TableFooter>
                     </Table>
                 </ScrollArea>
             </CardContent>
@@ -500,3 +502,5 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
     </div>
   );
 }
+
+    
