@@ -20,12 +20,16 @@ import { Separator } from '@/components/ui/separator';
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
+import { fr } from 'date-fns/locale';
 
 interface RapportImprimableProps {
   donneesRapport: DonneesRapportPerformance;
   donneesSynthese: ResultatSynthese;
   objectifs: Objectifs;
   typeRapport: 'Dépôt' | 'Transporteur';
+  plageDates: DateRange | undefined;
 }
 
 const LogoEntiteImpression = ({ nom, entrepot, type }: { nom: string, entrepot?: string, type: 'Dépôt' | 'Transporteur' }) => {
@@ -193,15 +197,22 @@ const AnalyseCategorielleImpression = ({ resultats, totalCommentairesNegatifs, a
 
 
 // --- Composant principal imprimable ---
-export function PrintableReport({ donneesRapport, donneesSynthese, objectifs, typeRapport }: RapportImprimableProps) {
+export function PrintableReport({ donneesRapport, donneesSynthese, objectifs, typeRapport, plageDates }: RapportImprimableProps) {
   if (!donneesRapport || !donneesSynthese) return null;
   
+  const formattedDateRange = plageDates?.from ? 
+    (plageDates.to ? 
+        `Période du ${format(plageDates.from, "d LLLL yyyy", { locale: fr })} au ${format(plageDates.to, "d LLLL yyyy", { locale: fr })}` 
+      : `Jour du ${format(plageDates.from, "d LLLL yyyy", { locale: fr })}`)
+    : "Toutes les dates";
+
   return (
     <div className="printable-content">
         <div className="page-break flex flex-col items-center justify-center h-screen text-center">
             <Image src="/logos/logo-crf.jpg" alt="Logo CLCV" width={120} height={120} className="rounded-lg mb-6"/>
             <h1 className="text-4xl font-bold text-primary">Rapport Qualité des Livraisons</h1>
-            <p className="text-lg text-muted-foreground mt-2">Analyse par {typeRapport} pour la période sélectionnée</p>
+            <p className="text-lg text-muted-foreground mt-2">Analyse par {typeRapport}</p>
+            <p className="text-md text-muted-foreground mt-4">{formattedDateRange}</p>
             <p className="text-sm text-muted-foreground mt-8">Généré le: {new Date().toLocaleDateString('fr-FR')}</p>
         </div>
 

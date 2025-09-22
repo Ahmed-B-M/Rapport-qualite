@@ -228,6 +228,7 @@ export default function DashboardPage() {
                   donneesSynthese={generateSynthesis(printableReportData ?? donneesRapport, objectifs)} 
                   objectifs={objectifs} 
                   typeRapport="Dépôt"
+                  plageDates={plageDates}
                 />
               </div>
             )}

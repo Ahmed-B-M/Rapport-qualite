@@ -1,5 +1,7 @@
 
 
+import { DateRange } from "react-day-picker";
+
 export type StatutLivraison = 'Livré' | 'Non livré' | 'En attente' | 'Partiellement livré';
 export type TerminePar = 'mobile' | 'web' | 'inconnu';
 export type ForceSurSite = 'Non' | 'Oui';
