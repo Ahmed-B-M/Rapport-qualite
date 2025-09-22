@@ -255,7 +255,7 @@ const MOTS_CLES_CATEGORIES: { categorie: CategorieProbleme, motsCles: string[] }
             "pas professionnel", "pas très aimable", "débrouillez vous", "davantage d'aide", "mauvaise foi",
             "laisser les sacs", "devant la maison", "mauvaise adresse", "porter les sacs", "irrespectueux", 
             "arrogant", "énervés", "agacé", "livrées à l'extérieur", "brutal", "insultant", "pas descendu",
-            "livré à 400m", "trompent de rue"
+            "livré à 400m", "trompent de rue", "jetant les sacs"
         ]
     },
     { 
@@ -263,7 +263,7 @@ const MOTS_CLES_CATEGORIES: { categorie: CategorieProbleme, motsCles: string[] }
         motsCles: [
             "casse", "cassé", "abimé", "abîmé", "endommagé", "ecrasé", "écrasé", "produit ouvert", 
             "huevos rotos", "état lamentable", "bouteille ouverte", "trempés", "mal préparée", "mal preparée",
-            "endommagés", "produit éclaté", "crème partout", "n'importe comment", "l'eau dans les sacs"
+            "endommagés", "produit éclaté", "crème partout", "n'importe comment", "l'eau dans les sacs", "produits endommages"
         ]
     },
     { 
@@ -271,7 +271,7 @@ const MOTS_CLES_CATEGORIES: { categorie: CategorieProbleme, motsCles: string[] }
         motsCles: [
             "manquant", "manque", "oubli", "pas tout", "pas reçu", "incomplet", "pas eu", 
             "produit manquant", "sac qui ne nous a pas été livré", "manquait", "pris", "mauvaise commande",
-            "problèmes avec des produits dans le sac", "pas voulu reprendre"
+            "problèmes avec des produits dans le sac", "pas voulu reprendre", "non livrés"
         ]
     },
     { 
@@ -519,6 +519,7 @@ export const filtrerDonneesParDepot = (donnees: Livraison[], depot: string): Liv
     
 
     
+
 
 
 
