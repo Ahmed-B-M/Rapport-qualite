@@ -91,14 +91,19 @@ const NegativeCommentsSection = ({ comments }: { comments: Record<string, Commen
     const categoriesWithComments = CATEGORIES_PROBLEMES.filter(cat => comments[cat] && comments[cat].length > 0);
 
     const handleExport = () => {
-        const dataToExport: { Catégorie: string, Commentaire: string, Livreur: string }[] = [];
+        const dataToExport: { Catégorie: string, Commentaire: string, Livreur: string, Dépôt: string }[] = [];
         
         categoriesWithComments.forEach(categorie => {
             comments[categorie].forEach(item => {
+                const depotMatch = item.chauffeur.match(/\(([^)]+)\)/);
+                const depot = depotMatch ? depotMatch[1] : 'Inconnu';
+                const livreur = item.chauffeur.replace(/\s*\([^)]*\)$/, '').trim();
+
                 dataToExport.push({
                     Catégorie: categorie,
                     Commentaire: item.commentaire,
-                    Livreur: item.chauffeur,
+                    Livreur: livreur,
+                    Dépôt: depot,
                 });
             });
         });
@@ -178,26 +183,27 @@ const LowRatingRecurrenceTable = ({ pivotData, transporters }: { pivotData: Pivo
     }, [pivotData, transporters, drivers]);
 
     const handleExport = () => {
-        const header = ['Livreur/Transporteur', ...transporters, 'Total'];
-        const dataToExport: (string|number)[][] = [header];
-
+        const dataToExport: any[] = [];
+        
         drivers.forEach(driver => {
-            const row: (string|number)[] = [driver];
+            const depotMatch = driver.match(/\(([^)]+)\)/);
+            const depot = depotMatch ? depotMatch[1] : 'Inconnu';
+            const livreur = driver.replace(/\s*\([^)]*\)$/, '').trim();
+
+            const rowData: any = {
+                'Livreur': livreur,
+                'Dépôt': depot,
+            };
+            
             transporters.forEach(transporter => {
-                row.push(pivotData[driver][transporter] || '');
+                rowData[transporter] = pivotData[driver][transporter] || '';
             });
-            row.push(pivotData[driver].total);
-            dataToExport.push(row);
+
+            rowData['Total'] = pivotData[driver].total;
+            dataToExport.push(rowData);
         });
 
-        const footer: (string|number)[] = ['Total général'];
-        transporters.forEach(transporter => {
-            footer.push(totals[transporter]);
-        });
-        footer.push(totals.total);
-        dataToExport.push(footer);
-
-        const worksheet = XLSX.utils.aoa_to_sheet(dataToExport);
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Récurrence Notes <= 3');
         XLSX.writeFile(workbook, 'recurrence_notes_basses.xlsx');
@@ -270,19 +276,26 @@ const CategorizedRecurrenceTable = ({ pivotData }: { pivotData: CategoryPivotDat
     const drivers = useMemo(() => Object.keys(pivotData).sort((a, b) => pivotData[b].total - pivotData[a].total), [pivotData]);
     
     const handleExport = () => {
-        const header = ['Livreur', ...CATEGORIES_PROBLEMES.map(c => c.charAt(0).toUpperCase() + c.slice(1)), 'Total'];
-        const dataToExport = [header];
+        const dataToExport: any[] = [];
 
         drivers.forEach(driver => {
-            const row: (string|number)[] = [driver];
+            const depotMatch = driver.match(/\(([^)]+)\)/);
+            const depot = depotMatch ? depotMatch[1] : 'Inconnu';
+            const livreur = driver.replace(/\s*\([^)]*\)$/, '').trim();
+            
+            const rowData: any = {
+                'Livreur': livreur,
+                'Dépôt': depot
+            };
+
             CATEGORIES_PROBLEMES.forEach(cat => {
-                row.push(pivotData[driver][cat] || '');
+                rowData[cat.charAt(0).toUpperCase() + cat.slice(1)] = pivotData[driver][cat] || '';
             });
-            row.push(pivotData[driver].total);
-            dataToExport.push(row);
+            rowData['Total'] = pivotData[driver].total;
+            dataToExport.push(rowData);
         });
 
-        const worksheet = XLSX.utils.aoa_to_sheet(dataToExport);
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Récurrence par Catégorie');
         XLSX.writeFile(workbook, 'recurrence_categories_negatives.xlsx');
@@ -502,5 +515,3 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
     </div>
   );
 }
-
-    
