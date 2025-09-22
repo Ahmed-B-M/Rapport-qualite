@@ -12,13 +12,14 @@ import {
     CATEGORIES_PROBLEMES,
     type DonneesSectionRapport,
     type ClassementKpi,
-    type EntiteClassement
+    type EntiteClassement,
+    type SerieTemporelle
 } from '@/lib/definitions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
     ThumbsUp, ThumbsDown, ArrowRightCircle, Target, Smile, Frown, MessageSquare, ClipboardList, Truck,
-    Star, Percent, Clock, MessageCircle, Award, UserX, Users, Warehouse
+    Star, Percent, Clock, MessageCircle, Award, UserX, Users, Warehouse, TrendingUp
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from "@/components/ui/progress";
@@ -27,6 +28,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
 import { fr } from 'date-fns/locale';
+import { TrendChart } from './trend-chart';
+
 
 interface RapportImprimableProps {
   donneesRapport: DonneesRapportPerformance;
@@ -34,6 +37,7 @@ interface RapportImprimableProps {
   objectifs: Objectifs;
   typeRapport: 'Dépôt' | 'Transporteur';
   plageDates: DateRange | undefined;
+  donneesTendance: SerieTemporelle;
 }
 
 const LogoEntiteImpression = ({ nom, entrepot, type }: { nom: string, entrepot?: string, type: 'Dépôt' | 'Transporteur' }) => {
@@ -259,9 +263,81 @@ const AnalyseCategorielleImpression = ({ resultats, totalCommentairesNegatifs, a
     </div>
 );
 
+const SectionTendanceImpression = ({ donneesTendance, objectifs }: { donneesTendance: SerieTemporelle, objectifs: Objectifs }) => {
+    
+    const getChartDomain = (minVal: number, maxVal: number, objective?: number): [number, number] => {
+        let min = minVal;
+        let max = maxVal;
+        if (objective !== undefined) {
+          min = Math.min(min, objective);
+          max = Math.max(max, objective);
+        }
+        const padding = (max - min) * 0.1 || 1;
+        return [Math.max(0, min - padding), Math.min(100, max + padding)];
+    }
+
+    const successDomain = getChartDomain(donneesTendance.domaines.tauxReussite.min, donneesTendance.domaines.tauxReussite.max, 100 - objectifs.tauxEchec);
+    const ratingDomain = getChartDomain(donneesTendance.domaines.noteMoyenne.min, donneesTendance.domaines.noteMoyenne.max, objectifs.noteMoyenne);
+    const punctualityDomain = getChartDomain(donneesTendance.domaines.tauxPonctualite.min, donneesTendance.domaines.tauxPonctualite.max, objectifs.tauxPonctualite);
+
+    const chartConfig = { height: 150, fontSize: 10 };
+
+    return (
+        <div className="break-inside-avoid mt-4">
+            <h4 className="text-base font-semibold mb-2 flex items-center"><TrendingUp className="h-4 w-4 mr-2"/>Évolution des Indicateurs</h4>
+            <div className="space-y-4">
+                 <Card>
+                    <CardHeader className="p-2"><CardTitle className="text-sm">Évolution du Taux de Succès</CardTitle></CardHeader>
+                    <CardContent className="p-2">
+                        <TrendChart 
+                            data={donneesTendance.points} 
+                            lineKey="tauxReussite" 
+                            yAxisLabel="Succès (%)" 
+                            color="hsl(var(--primary))" 
+                            objective={100 - objectifs.tauxEchec}
+                            domain={successDomain}
+                            height={chartConfig.height}
+                            fontSize={chartConfig.fontSize}
+                        />
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="p-2"><CardTitle className="text-sm">Évolution de la Note Moyenne</CardTitle></CardHeader>
+                    <CardContent className="p-2">
+                        <TrendChart 
+                            data={donneesTendance.points} 
+                            lineKey="noteMoyenne" 
+                            yAxisLabel="Note Moy." 
+                            color="hsl(var(--primary))" 
+                            objective={objectifs.noteMoyenne}
+                            domain={ratingDomain}
+                            height={chartConfig.height}
+                            fontSize={chartConfig.fontSize}
+                        />
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="p-2"><CardTitle className="text-sm">Évolution de la Ponctualité</CardTitle></CardHeader>
+                    <CardContent className="p-2">
+                        <TrendChart 
+                            data={donneesTendance.points} 
+                            lineKey="tauxPonctualite" 
+                            yAxisLabel="Ponctualité (%)" 
+                            color="hsl(var(--primary))"
+                            objective={objectifs.tauxPonctualite}
+                            domain={punctualityDomain}
+                            height={chartConfig.height}
+                            fontSize={chartConfig.fontSize}
+                        />
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    )
+}
 
 // --- Composant principal imprimable ---
-export function PrintableReport({ donneesRapport, donneesSynthese, objectifs, typeRapport, plageDates }: RapportImprimableProps) {
+export function PrintableReport({ donneesRapport, donneesSynthese, objectifs, typeRapport, plageDates, donneesTendance }: RapportImprimableProps) {
   if (!donneesRapport || !donneesSynthese) return null;
   
   const formattedDateRange = plageDates?.from ? 
@@ -283,33 +359,34 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs, ty
         {/* Section globale */}
         <div className="page-break">
             <h2 className="text-2xl font-bold mb-4">Vision d'Ensemble</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+            <div className="grid grid-cols-2 gap-4 items-start">
                  <SectionSyntheseKPIs 
                     titre="Synthèse Globale"
                     synthese={donneesSynthese.global}
                     donneesRapport={{statistiques: donneesRapport.global.statistiques}}
                     objectifs={objectifs}
                 />
-                <Card>
+                 <Card>
                     <CardHeader className="p-3">
                         <CardTitle className="text-base">Analyse Détaillée</CardTitle>
                         <CardDescription className="text-xs">{donneesRapport.global.statistiques.totalLivraisons} livraisons analysées.</CardDescription>
                     </CardHeader>
                     <CardContent className="p-3 space-y-3">
-                        <ClassementsNotesChauffeurImpression top={donneesRapport.global.chauffeursMieuxNotes} flop={donneesRapport.global.chauffeursMoinsBienNotes} />
+                         <ClassementsNotesChauffeurImpression top={donneesRapport.global.chauffeursMieuxNotes} flop={donneesRapport.global.chauffeursMoinsBienNotes} />
                         <Separator/>
-                        <ExemplesCommentairesImpression top={donneesRapport.global.meilleursCommentaires} flop={donneesRapport.global.piresCommentaires} />
-                        <Separator/>
-                        <AnalyseCategorielleImpression 
-                            resultats={donneesRapport.global.resultatsCategorisation} 
-                            totalCommentairesNegatifs={donneesRapport.global.totalCommentairesNegatifs}
-                            afficherDetailsCommentaires={false}
-                        />
-                        <Separator/>
-                        <ClassementsKpiImpression donneesRapport={donneesRapport.global} typeRapport={typeRapport} />
+                         <ExemplesCommentairesImpression top={donneesRapport.global.meilleursCommentaires} flop={donneesRapport.global.piresCommentaires} />
                     </CardContent>
                 </Card>
             </div>
+             <div className="grid grid-cols-2 gap-4 items-start mt-4">
+                 <AnalyseCategorielleImpression 
+                    resultats={donneesRapport.global.resultatsCategorisation} 
+                    totalCommentairesNegatifs={donneesRapport.global.totalCommentairesNegatifs}
+                    afficherDetailsCommentaires={false}
+                />
+                <SectionTendanceImpression donneesTendance={donneesTendance} objectifs={objectifs} />
+            </div>
+             <ClassementsKpiImpression donneesRapport={donneesRapport.global} typeRapport={typeRapport} />
         </div>
 
         {/* Sections par entité (dépôt ou transporteur) */}
@@ -358,5 +435,3 @@ export function PrintableReport({ donneesRapport, donneesSynthese, objectifs, ty
     </div>
   );
 }
-
-    

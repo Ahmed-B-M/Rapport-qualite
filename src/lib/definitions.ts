@@ -181,6 +181,3 @@ export type SerieTemporelle = {
         tauxPonctualite: DomaineMetrique;
     }
 };
-
-    
-

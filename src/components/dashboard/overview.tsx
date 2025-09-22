@@ -8,12 +8,13 @@ import { type Livraison, type StatistiquesAgregees, type Objectifs, type SerieTe
 import { filtrerDonneesParDepot, getStatistiquesGlobales, agregerStatistiquesParEntite, analyserCommentaires, getDonneesSerieTemporelle } from '@/lib/analysis';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList, CartesianGrid, LineChart, Line, Legend, ReferenceLine } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList, CartesianGrid, LineChart, Line, Legend } from 'recharts';
 import { StatCard } from './stat-card';
 import { CheckCircle, XCircle, Star, Clock, Percent, Users, User, Truck, MessageCircle } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
+import { TrendChart } from './trend-chart';
 
 interface ApercuProps {
   donnees: Livraison[];
@@ -79,7 +80,7 @@ const TransporteurPerformanceChart = ({ data }: { data: (StatistiquesAgregees & 
                                 <Tooltip formatter={(value: number) => `${value.toFixed(2)}%`} />
                                 <Bar dataKey={chart.kpi} name={chart.name} fill="hsl(var(--primary))" barSize={20}>
                                     <LabelList dataKey={chart.kpi} position="right" formatter={(value: number) => `${value.toFixed(2)}%`} />
-                                </Bar>
+                                 </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     </CardContent>
@@ -108,39 +109,6 @@ const FeedbackChart = ({ data }: { data: { categorie: string, nombre: number }[]
         </ResponsiveContainer>
     );
 };
-
-const TrendChart = ({ data, lineKey, yAxisLabel, yAxisId = "left", color, objective, domain }: { 
-    data: any[], 
-    lineKey: string, 
-    yAxisLabel: string, 
-    yAxisId?: "left" | "right", 
-    color: string, 
-    objective?: number,
-    domain: [number, number]
-}) => {
-    return (
-        <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                <YAxis 
-                    yAxisId={yAxisId} 
-                    orientation={yAxisId} 
-                    stroke={color} 
-                    tick={{ fontSize: 10 }}
-                    domain={domain}
-                    allowDataOverflow={true}
-                    label={{ value: yAxisLabel, angle: -90, position: 'insideLeft', offset: 0, style: { textAnchor: 'middle', fill: color } }} 
-                />
-                <Tooltip />
-                <Legend />
-                {objective !== undefined && <ReferenceLine y={objective} yAxisId={yAxisId} label={{ value: 'Objectif', position: 'insideTopRight' }} stroke="hsl(var(--destructive))" strokeDasharray="3 3" />}
-                <Line yAxisId={yAxisId} type="monotone" dataKey={lineKey} name={yAxisLabel} stroke={color} dot={false} />
-            </LineChart>
-        </ResponsiveContainer>
-    );
-};
-
 
 export function Overview({ donnees, objectifs }: ApercuProps) {
   const [depotActif, setDepotActif] = useState<string>('all');
@@ -202,7 +170,7 @@ export function Overview({ donnees, objectifs }: ApercuProps) {
       max = Math.max(max, objective);
     }
     
-    const padding = (max - min) * 0.1; // 10% padding
+    const padding = (max - min) * 0.1 || 1; // Add padding, default to 1 if max equals min
     return [Math.max(0, min - padding), Math.min(100, max + padding)];
   }
 
