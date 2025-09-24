@@ -5,7 +5,7 @@ import {
     type DonneesRapportPerformance, type ClassementsKpiParEntite, type EntiteClassement, 
     type RapportDepot, type StatutLivraison, type DonneesSectionRapport, 
     type EntiteClassementNoteChauffeur,
-    type CategorieProbleme, type CommentaireCategorise, type ResultatsCategorisation, CATEGORIES_PROBLEMES, ChauffeurProbleme
+    type CategorieProbleme, type CommentaireCategorise, type ResultatsCategorisation, CATEGORIES_PROBLEMES, ChauffeurProbleme, SerieTemporelle, PointSerieTemporelle
 } from './definitions';
 import { CARTE_ENTREPOT_DEPOT, TRANSPORTEURS } from '@/lib/constants';
 import { parse, isValid, format } from 'date-fns';
@@ -533,7 +533,7 @@ export const filtrerDonneesParDepot = (donnees: Livraison[], depot: string): Liv
     return donnees.filter(l => l.depot === depot);
 };
 
-export const getDonneesSerieTemporelle = (livraisons: Livraison[]): { date: string, tauxReussite: number, totalLivraisons: number }[] => {
+export const getDonneesSerieTemporelle = (livraisons: Livraison[]): SerieTemporelle => {
     const livraisonsParJour: Record<string, Livraison[]> = {};
 
     livraisons.forEach(l => {
@@ -544,18 +544,45 @@ export const getDonneesSerieTemporelle = (livraisons: Livraison[]): { date: stri
         livraisonsParJour[date].push(l);
     });
 
-    return Object.entries(livraisonsParJour).map(([date, livraisonsDuJour]) => {
+    let minTauxReussite = 100, maxTauxReussite = 0;
+    let minNoteMoyenne = 5, maxNoteMoyenne = 1;
+    let minTauxPonctualite = 100, maxTauxPonctualite = 0;
+
+    const points = Object.entries(livraisonsParJour).map(([date, livraisonsDuJour]) => {
         const stats = getStatistiquesGlobales(livraisonsDuJour);
+        
+        if (stats.tauxReussite < minTauxReussite) minTauxReussite = stats.tauxReussite;
+        if (stats.tauxReussite > maxTauxReussite) maxTauxReussite = stats.tauxReussite;
+        if (stats.noteMoyenne !== undefined) {
+            if (stats.noteMoyenne < minNoteMoyenne) minNoteMoyenne = stats.noteMoyenne;
+            if (stats.noteMoyenne > maxNoteMoyenne) maxNoteMoyenne = stats.noteMoyenne;
+        }
+        if (stats.tauxPonctualite < minTauxPonctualite) minTauxPonctualite = stats.tauxPonctualite;
+        if (stats.tauxPonctualite > maxTauxPonctualite) maxTauxPonctualite = stats.tauxPonctualite;
+
         return {
             date,
             tauxReussite: stats.tauxReussite,
-            totalLivraisons: stats.totalLivraisons
+            totalLivraisons: stats.totalLivraisons,
+            noteMoyenne: stats.noteMoyenne,
+            tauxPonctualite: stats.tauxPonctualite,
         };
     }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    return {
+        points,
+        domaines: {
+            tauxReussite: { min: minTauxReussite, max: maxTauxReussite },
+            noteMoyenne: { min: minNoteMoyenne, max: maxNoteMoyenne },
+            tauxPonctualite: { min: minTauxPonctualite, max: maxTauxPonctualite }
+        }
+    };
 };
     
 
     
+
+
 
 
 

@@ -4,7 +4,7 @@
 import Image from "next/image";
 import { useState, useMemo, useEffect } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { type Livraison, type Objectifs, type DonneesRapportPerformance, type RapportDepot } from "@/lib/definitions";
+import { type Livraison, type Objectifs, type DonneesRapportPerformance, type RapportDepot, type SerieTemporelle } from "@/lib/definitions";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
 import { FileUploader } from "@/components/dashboard/file-uploader";
 import { Overview } from "@/components/dashboard/overview";
@@ -22,11 +22,17 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { DateRange } from "react-day-picker";
-import { genererRapportPerformance } from '@/lib/analysis';
+import { genererRapportPerformance, getDonneesSerieTemporelle } from '@/lib/analysis';
 import { generateSynthesis } from '@/lib/synthesis';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
+
+type PrintableReportDataType = {
+  data: DonneesRapportPerformance;
+  type: 'Dépôt' | 'Transporteur';
+  trendData: SerieTemporelle;
+};
 
 export default function DashboardPage() {
   const [donnees, setDonnees] = useState<Livraison[]>([]);
@@ -45,7 +51,7 @@ export default function DashboardPage() {
   
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [selectedEntitiesForPrint, setSelectedEntitiesForPrint] = useState<Record<string, boolean>>({});
-  const [printableReportData, setPrintableReportData] = useState<{data: DonneesRapportPerformance, type: 'Dépôt' | 'Transporteur'} | null>(null);
+  const [printableReportData, setPrintableReportData] = useState<PrintableReportDataType | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
 
   useEffect(() => {
@@ -191,7 +197,9 @@ export default function DashboardPage() {
         depots: entitiesToPrint,
     };
     
-    setPrintableReportData({ data: reportDataForPrint, type: reportType });
+    const trendDataForPrint = getDonneesSerieTemporelle(donneesFiltrees);
+
+    setPrintableReportData({ data: reportDataForPrint, type: reportType, trendData: trendDataForPrint });
     setPrintModalOpen(false);
     setIsPrinting(true);
   };
@@ -203,12 +211,12 @@ export default function DashboardPage() {
     if (donnees.length === 0) return <FileUploader onDonneesTelechargees={handleDonneesTelechargees} setChargement={setChargement} />;
 
     switch (vueActive) {
-      case "overview": return <Overview donnees={donneesFiltrees} />;
+      case "overview": return <Overview donnees={donneesFiltrees} objectifs={objectifs} />;
       case "report": return <QualityReport donnees={donneesFiltrees} objectifs={objectifs} />;
       case "warehouses": return <WarehouseAnalytics donnees={donneesFiltrees} />;
       case "satisfaction": return <CustomerSatisfaction data={donneesFiltrees} />;
       case "transporters": return <TransporterReport donnees={donneesFiltrees} objectifs={objectifs} />;
-      default: return <Overview donnees={donneesFiltrees} />;
+      default: return <Overview donnees={donneesFiltrees} objectifs={objectifs} />;
     }
   };
 
@@ -259,6 +267,7 @@ export default function DashboardPage() {
                   objectifs={objectifs} 
                   typeRapport={printableReportData.type}
                   plageDates={plageDates}
+                  donneesTendance={printableReportData.trendData}
                 />
               </div>
             )}

@@ -1,9 +1,10 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
 import { GlobalPerformance } from './global-performance';
-import { type Livraison, type StatistiquesAgregees } from '@/lib/definitions';
+import { type Livraison, type StatistiquesAgregees, type Objectifs, type SerieTemporelle } from '@/lib/definitions';
 import { filtrerDonneesParDepot, getStatistiquesGlobales, agregerStatistiquesParEntite, analyserCommentaires, getDonneesSerieTemporelle } from '@/lib/analysis';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -13,9 +14,11 @@ import { CheckCircle, XCircle, Star, Clock, Percent, Users, User, Truck, Message
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
+import { TrendChart } from './trend-chart';
 
 interface ApercuProps {
   donnees: Livraison[];
+  objectifs: Objectifs;
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -77,7 +80,7 @@ const TransporteurPerformanceChart = ({ data }: { data: (StatistiquesAgregees & 
                                 <Tooltip formatter={(value: number) => `${value.toFixed(2)}%`} />
                                 <Bar dataKey={chart.kpi} name={chart.name} fill="hsl(var(--primary))" barSize={20}>
                                     <LabelList dataKey={chart.kpi} position="right" formatter={(value: number) => `${value.toFixed(2)}%`} />
-                                </Bar>
+                                 </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     </CardContent>
@@ -107,25 +110,7 @@ const FeedbackChart = ({ data }: { data: { categorie: string, nombre: number }[]
     );
 };
 
-const TrendChart = ({ data }: { data: any[] }) => {
-    return (
-        <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis yAxisId="left" orientation="left" stroke="hsl(var(--primary))" label={{ value: 'Taux de succès (%)', angle: -90, position: 'insideLeft' }} />
-                <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--secondary))" label={{ value: 'Nb. Livraisons', angle: 90, position: 'insideRight' }} />
-                <Tooltip />
-                <Legend />
-                <Line yAxisId="left" type="monotone" dataKey="tauxReussite" name="Taux de Succès" stroke="hsl(var(--primary))" />
-                <Line yAxisId="right" type="monotone" dataKey="totalLivraisons" name="Nb. Livraisons" stroke="hsl(var(--secondary))" />
-            </LineChart>
-        </ResponsiveContainer>
-    );
-};
-
-
-export function Overview({ donnees }: ApercuProps) {
+export function Overview({ donnees, objectifs }: ApercuProps) {
   const [depotActif, setDepotActif] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(new Date(), 29),
@@ -168,13 +153,30 @@ export function Overview({ donnees }: ApercuProps) {
         .sort((a, b) => b.nombre - a.nombre);
   }, [donneesFiltrees]);
 
-  const trendData = useMemo(() => {
+  const trendData: SerieTemporelle = useMemo(() => {
       return getDonneesSerieTemporelle(donneesFiltrees);
   }, [donneesFiltrees]);
 
   if (!statistiquesGlobalesDepot) {
       return <div className="p-4 text-center">Chargement des données ou aucune donnée pour la sélection...</div>
   }
+
+  const getChartDomain = (minVal: number, maxVal: number, objective?: number): [number, number] => {
+    let min = minVal;
+    let max = maxVal;
+    
+    if (objective !== undefined) {
+      min = Math.min(min, objective);
+      max = Math.max(max, objective);
+    }
+    
+    const padding = (max - min) * 0.1 || 1; // Add padding, default to 1 if max equals min
+    return [Math.max(0, min - padding), Math.min(100, max + padding)];
+  }
+
+  const successDomain = getChartDomain(trendData.domaines.tauxReussite.min, trendData.domaines.tauxReussite.max, 100 - objectifs.tauxEchec);
+  const ratingDomain = getChartDomain(trendData.domaines.noteMoyenne.min, trendData.domaines.noteMoyenne.max, objectifs.noteMoyenne);
+  const punctualityDomain = getChartDomain(trendData.domaines.tauxPonctualite.min, trendData.domaines.tauxPonctualite.max, objectifs.tauxPonctualite);
 
   return (
     <div className="space-y-6">
@@ -214,13 +216,55 @@ export function Overview({ donnees }: ApercuProps) {
 
         <Card>
             <CardHeader>
-                <CardTitle>Evolution de la Performance</CardTitle>
-                <CardDescription>Tendances des indicateurs clés sur la période sélectionnée.</CardDescription>
+                <CardTitle>Evolution du Taux de Succès</CardTitle>
+                <CardDescription>Tendances du taux de succès sur la période sélectionnée.</CardDescription>
             </CardHeader>
             <CardContent>
-                <TrendChart data={trendData} />
+                <TrendChart 
+                    data={trendData.points} 
+                    lineKey="tauxReussite" 
+                    yAxisLabel="Taux de Succès (%)" 
+                    color="hsl(var(--primary))" 
+                    objective={100 - objectifs.tauxEchec}
+                    domain={successDomain}
+                />
             </CardContent>
         </Card>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle>Evolution de la Note Moyenne</CardTitle>
+                <CardDescription>Tendances de la note moyenne sur la période sélectionnée.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <TrendChart 
+                    data={trendData.points} 
+                    lineKey="noteMoyenne" 
+                    yAxisLabel="Note Moyenne" 
+                    color="hsl(var(--primary))" 
+                    objective={objectifs.noteMoyenne}
+                    domain={ratingDomain}
+                 />
+            </CardContent>
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle>Evolution de la Ponctualité</CardTitle>
+                <CardDescription>Tendances de la ponctualité sur la période sélectionnée.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <TrendChart 
+                    data={trendData.points} 
+                    lineKey="tauxPonctualite" 
+                    yAxisLabel="Taux de Ponctualité (%)" 
+                    color="hsl(var(--primary))"
+                    objective={objectifs.tauxPonctualite}
+                    domain={punctualityDomain}
+                 />
+            </CardContent>
+        </Card>
+
 
         <div className="grid lg:grid-cols-2 gap-6">
             <Card>
