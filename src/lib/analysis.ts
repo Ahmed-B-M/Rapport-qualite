@@ -140,7 +140,7 @@ const calculerNoteMoyenne = (donnees: Livraison[]): { moyenne?: number, nombre: 
 
 const calculerSentimentMoyen = (donnees: Livraison[]): number | undefined => {
   const livraisonsCommentees = donnees.filter(l => l.commentaireRetour && l.commentaireRetour.trim().length > 5);
-  if (livraisonsCommentees.length === 0) return { ...output };
+  if (livraisonsCommentees.length === 0) return undefined;
   const scoreTotal = livraisonsCommentees.reduce((sum, l) => sum + analyzeSentiment(l.commentaireRetour!, l.noteLivraison).score, 0);
   return scoreTotal / livraisonsCommentees.length;
 }
@@ -398,7 +398,7 @@ const getDonneesSectionRapport = (donnees: Livraison[], groupingKey: 'depot' | '
       tauxPonctualite: getClassementsKpi(performancesChauffeur, 'tauxPonctualite', true),
       tauxReussite: getClassementsKpi(performancesChauffeur, 'tauxReussite', true),
     },
-    transporteurs: {
+    transporteurs: { // This key is semantic, it can be depots or transporters based on groupingKey
       noteMoyenne: getClassementsKpi(performancesAutreEntite, 'noteMoyenne', true),
       sentimentMoyen: getClassementsKpi(performancesAutreEntite, 'sentimentMoyen', true),
       tauxPonctualite: getClassementsKpi(performancesAutreEntite, 'tauxPonctualite', true),
@@ -526,5 +526,6 @@ export const getOverallStats = (deliveries: any[]) => {
   throw new Error('Function not implemented.');
 }
 export const sendEmail = (emailDetails: { to: string, subject: string, body: string }) => {
-  window.location.href = `mailto:${emailDetails.to}?subject=${encodeURIComponent(emailDetails.subject)}&body=${encodeURIComponent(emailDetails.body)}`;
+  const mailtoLink = `mailto:${emailDetails.to}?subject=${encodeURIComponent(emailDetails.subject)}&body=${encodeURIComponent(emailDetails.body)}`;
+  window.open(mailtoLink, '_blank');
 };

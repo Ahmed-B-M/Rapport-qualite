@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { analyzeSentiment } from '@/lib/sentiment';
-import { getCategorizedNegativeComments } from '@/lib/analysis';
+import { getCategorizedNegativeComments, sendEmail } from '@/lib/analysis';
 import { AlertCircle, ThumbsDown, MessageSquare, Download, Filter, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import * as XLSX from 'xlsx';
 import { EmailPreviewDialog } from './email-preview-dialog';
+import { ChartContainer } from '@/components/ui/chart';
 
 interface SatisfactionClientProps {
   data?: Livraison[];
@@ -37,6 +38,13 @@ interface CategoryPivotData {
         [category in typeof CATEGORIES_PROBLEMES[number]]?: number
     };
 }
+
+const chartConfig = {
+    nombre: {
+      label: "Nombre",
+      color: "hsl(var(--primary))",
+    },
+};
 
 
 const DepotFilter = ({ depots, selectedDepots, onSelectionChange }: { depots: string[], selectedDepots: string[], onSelectionChange: (selected: string[]) => void }) => {
@@ -390,20 +398,20 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
     const livraisonsCommentees = filteredData.filter(d => d.commentaireRetour && d.commentaireRetour.trim().length > 5);
 
     const repartitionNotes = [
-      { name: '1 étoile', count: livraisonsNotees.filter(d => d.noteLivraison === 1).length },
-      { name: '2 étoiles', count: livraisonsNotees.filter(d => d.noteLivraison === 2).length },
-      { name: '3 étoiles', count: livraisonsNotees.filter(d => d.noteLivraison === 3).length },
-      { name: '4 étoiles', count: livraisonsNotees.filter(d => d.noteLivraison === 4).length },
-      { name: '5 étoiles', count: livraisonsNotees.filter(d => d.noteLivraison === 5).length },
+      { name: '1 étoile', nombre: livraisonsNotees.filter(d => d.noteLivraison === 1).length },
+      { name: '2 étoiles', nombre: livraisonsNotees.filter(d => d.noteLivraison === 2).length },
+      { name: '3 étoiles', nombre: livraisonsNotees.filter(d => d.noteLivraison === 3).length },
+      { name: '4 étoiles', nombre: livraisonsNotees.filter(d => d.noteLivraison === 4).length },
+      { name: '5 étoiles', nombre: livraisonsNotees.filter(d => d.noteLivraison === 5).length },
     ];
 
     const sentiments = livraisonsCommentees.map(d => analyzeSentiment(d.commentaireRetour!, d.noteLivraison).score);
     const repartitionSentiments = [
-        { name: 'Très négatif (0-2)', count: sentiments.filter(s => s <= 2).length },
-        { name: 'Négatif (2-4)', count: sentiments.filter(s => s > 2 && s <= 4).length },
-        { name: 'Neutre (4-6)', count: sentiments.filter(s => s > 4 && s <= 6).length },
-        { name: 'Positif (6-8)', count: sentiments.filter(s => s > 6 && s <= 8).length },
-        { name: 'Très positif (8-10)', count: sentiments.filter(s => s > 8).length },
+        { name: 'Très négatif (0-2)', nombre: sentiments.filter(s => s <= 2).length },
+        { name: 'Négatif (2-4)', nombre: sentiments.filter(s => s > 2 && s <= 4).length },
+        { name: 'Neutre (4-6)', nombre: sentiments.filter(s => s > 4 && s <= 6).length },
+        { name: 'Positif (6-8)', nombre: sentiments.filter(s => s > 6 && s <= 8).length },
+        { name: 'Très positif (8-10)', nombre: sentiments.filter(s => s > 8).length },
     ];
     
     const noteMoyenne = livraisonsNotees.length > 0
@@ -468,7 +476,8 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
             <style>
                 body { font-family: sans-serif; }
                 h2 { color: #333; border-bottom: 2px solid #eee; padding-bottom: 5px; }
-                table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+                h3 { color: #555; }
+                table { border-collapse: collapse; width: 100%; margin-bottom: 20px; font-size: 12px; }
                 th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
                 th { background-color: #f2f2f2; }
                 tr:nth-child(even) { background-color: #f9f9f9; }
@@ -503,7 +512,7 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
         if(depotCategoryDrivers.length > 0) {
             body += `<h3>Récurrence par catégorie</h3>`;
             body += '<table><thead><tr><th>Livreur</th>';
-            CATEGORIES_PROBLEMES.forEach(cat => body += `<th>${cat}</th>`);
+            CATEGORIES_PROBLEMES.forEach(cat => body += `<th>${cat.charAt(0).toUpperCase() + cat.slice(1)}</th>`);
             body += '<th>Total</th></tr></thead><tbody>';
 
             depotCategoryDrivers.sort(([, a], [, b]) => b.total - a.total).forEach(([driver, data]) => {
@@ -519,9 +528,12 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
     });
 
     body += '</body></html>';
-
-    setEmailBody(body);
-    setIsEmailPreviewOpen(true);
+    
+    sendEmail({
+        to: '',
+        subject: 'Synthèse de la satisfaction client',
+        body: body,
+    });
   };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -567,31 +579,31 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
               <h3 className="text-center font-semibold mb-2">
                 Répartition des notes ({noteMoyenne.toFixed(2)}/5 en moyenne)
               </h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={repartitionNotes} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
+              <ChartContainer config={chartConfig} className="min-h-[200px] w-full" id="notes-chart">
+                <BarChart accessibilityLayer data={repartitionNotes} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
                   <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                   <YAxis allowDecimals={false} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]}>
-                    <LabelList dataKey="count" position="top" />
+                  <Bar dataKey="nombre" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]}>
+                    <LabelList dataKey="nombre" position="top" />
                   </Bar>
                 </BarChart>
-              </ResponsiveContainer>
+              </ChartContainer>
             </div>
             <div>
                 <h3 className="text-center font-semibold mb-2">
                     Analyse de sentiment ({sentimentMoyen.toFixed(2)}/10 en moyenne)
                 </h3>
-                <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={repartitionSentiments} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
+                <ChartContainer config={chartConfig} className="min-h-[200px] w-full" id="sentiment-chart">
+                    <BarChart accessibilityLayer data={repartitionSentiments} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
                         <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                         <YAxis allowDecimals={false} />
                         <Tooltip content={<CustomTooltip />} />
-                        <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]}>
-                            <LabelList dataKey="count" position="top" />
+                        <Bar dataKey="nombre" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]}>
+                            <LabelList dataKey="nombre" position="top" />
                         </Bar>
                     </BarChart>
-                </ResponsiveContainer>
+                </ChartContainer>
             </div>
           </CardContent>
         </Card>

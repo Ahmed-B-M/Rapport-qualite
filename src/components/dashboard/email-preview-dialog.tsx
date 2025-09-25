@@ -10,7 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { Copy } from "lucide-react";
+import { Copy, Send } from "lucide-react";
+import { sendEmail } from "@/lib/analysis";
 
 interface EmailPreviewDialogProps {
   isOpen: boolean;
@@ -26,7 +27,6 @@ export function EmailPreviewDialog({
   const { toast } = useToast();
 
   const handleCopy = () => {
-    // We need to convert the HTML to plain text for a better copy-paste experience
     const plainTextBody = new DOMParser().parseFromString(emailBody, "text/html").documentElement.textContent || "";
     
     navigator.clipboard.writeText(plainTextBody).then(
@@ -46,6 +46,14 @@ export function EmailPreviewDialog({
       }
     );
   };
+  
+  const handleSendEmail = () => {
+    sendEmail({
+        to: '',
+        subject: 'Synthèse de la satisfaction client',
+        body: emailBody,
+    });
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -53,16 +61,20 @@ export function EmailPreviewDialog({
         <DialogHeader>
           <DialogTitle>Aperçu de l'e-mail de synthèse</DialogTitle>
           <DialogDescription>
-            Copiez le contenu ci-dessous et collez-le dans votre client de messagerie.
+            Copiez le contenu ou envoyez-le directement via votre client de messagerie.
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="h-[60vh] border rounded-md p-4">
+        <ScrollArea className="h-[60vh] border rounded-md p-4 bg-white">
           <div dangerouslySetInnerHTML={{ __html: emailBody }} />
         </ScrollArea>
-        <DialogFooter>
-          <Button onClick={handleCopy}>
+        <DialogFooter className="gap-2">
+          <Button onClick={handleCopy} variant="outline">
             <Copy className="mr-2 h-4 w-4" />
             Copier le contenu
+          </Button>
+          <Button onClick={handleSendEmail}>
+            <Send className="mr-2 h-4 w-4" />
+            Ouvrir l'e-mail
           </Button>
         </DialogFooter>
       </DialogContent>
