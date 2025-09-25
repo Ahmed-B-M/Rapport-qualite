@@ -101,13 +101,14 @@ export type ExempleCommentaire = {
     chauffeur: string;
 };
 
-export const CATEGORIES_PROBLEMES = ["casse articles", "article manquant", "ponctualité", "rupture chaine de froid", "attitude livreur", "autre"] as const;
+export const CATEGORIES_PROBLEMES = ["attitude livreur", "produit(s) cassé(s)", "produits manquants", "ponctualité", "rupture chaine de froid", "non pertinent", "autre"] as const;
 export type CategorieProbleme = typeof CATEGORIES_PROBLEMES[number];
 
 export type CommentaireCategorise = {
     categorie: CategorieProbleme;
     commentaire: string;
     chauffeur: string;
+    depot: string;
 };
 
 export type ChauffeurProbleme = {

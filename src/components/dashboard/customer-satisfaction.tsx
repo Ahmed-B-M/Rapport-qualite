@@ -8,7 +8,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList } 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { analyzeSentiment } from '@/lib/sentiment';
 import { getCategorizedNegativeComments } from '@/lib/analysis';
-import { AlertCircle, ThumbsDown, MessageSquare, Download, Filter } from 'lucide-react';
+import { AlertCircle, ThumbsDown, MessageSquare, Download, Filter, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -23,6 +23,7 @@ interface SatisfactionClientProps {
 interface PivotData {
   [driver: string]: {
     total: number;
+    depot: string;
     [transporter: string]: number;
   };
 }
@@ -96,8 +97,7 @@ const NegativeCommentsSection = ({ comments }: { comments: Record<string, Commen
         
         categoriesWithComments.forEach(categorie => {
             comments[categorie].forEach(item => {
-                const depotMatch = item.chauffeur.match(/\(([^)]+)\)/);
-                const depot = depotMatch ? depotMatch[1] : 'Inconnu';
+                const depot = item.depot || 'Inconnu';
                 const livreur = item.chauffeur.replace(/\s*\([^)]*\)$/, '').trim();
 
                 dataToExport.push({
@@ -153,7 +153,7 @@ const NegativeCommentsSection = ({ comments }: { comments: Record<string, Commen
                                 {comments[categorie].map((item, index) => (
                                     <div key={index} className="border-l-4 border-destructive pl-4 py-2 bg-destructive/5 rounded-r-md">
                                         <p className="italic text-sm">"{item.commentaire}"</p>
-                                        <p className="text-xs text-muted-foreground mt-2 font-medium">- {item.chauffeur}</p>
+                                        <p className="text-xs text-muted-foreground mt-2 font-medium">- {item.chauffeur} ({item.depot})</p>
                                     </div>
                                 ))}
                                 </div>
@@ -187,9 +187,8 @@ const LowRatingRecurrenceTable = ({ pivotData, transporters }: { pivotData: Pivo
         const dataToExport: any[] = [];
         
         drivers.forEach(driver => {
-            const depotMatch = driver.match(/\(([^)]+)\)/);
-            const depot = depotMatch ? depotMatch[1] : 'Inconnu';
-            const livreur = driver.replace(/\s*\([^)]*\)$/, '').trim();
+            const depot = pivotData[driver].depot || 'Inconnu';
+            const livreur = driver;
 
             const rowData: any = {
                 'Livreur': livreur,
@@ -247,7 +246,7 @@ const LowRatingRecurrenceTable = ({ pivotData, transporters }: { pivotData: Pivo
                         <TableBody>
                             {drivers.map(driver => (
                                 <TableRow key={driver}>
-                                    <TableCell className="sticky left-0 bg-background z-10 font-medium">{driver}</TableCell>
+                                    <TableCell className="sticky left-0 bg-background z-10 font-medium">{driver} ({pivotData[driver].depot})</TableCell>
                                     {transporters.map(transporter => (
                                         <TableCell key={transporter} className="text-center">
                                             {pivotData[driver][transporter] || ''}
@@ -377,7 +376,7 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
     repartitionNotes, repartitionSentiments, noteMoyenne, sentimentMoyen, 
     categorizedComments, lowRatingPivotData, uniqueTransporters, categoryPivotData
   } = useMemo(() => {
-    if (!filteredData) {
+    if (!filteredData || filteredData.length === 0) {
       return {
         repartitionNotes: [], repartitionSentiments: [], noteMoyenne: 0, sentimentMoyen: 0,
         categorizedComments: {}, lowRatingPivotData: {}, uniqueTransporters: [], categoryPivotData: {}
@@ -420,13 +419,14 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
     const pivotData: PivotData = {};
     
     lowRatedDeliveries.forEach(delivery => {
-        const { chauffeur, transporteur } = delivery;
-        if (!pivotData[chauffeur]) {
-            pivotData[chauffeur] = { total: 0 };
+        const { chauffeur, transporteur, depot } = delivery;
+        const driverName = chauffeur.replace(/\s*\([^)]*\)$/, '').trim();
+        if (!pivotData[driverName]) {
+            pivotData[driverName] = { total: 0, depot: depot };
         }
         
-        pivotData[chauffeur][transporteur] = (pivotData[chauffeur][transporteur] || 0) + 1;
-        pivotData[chauffeur].total = (pivotData[chauffeur].total || 0) + 1;
+        pivotData[driverName][transporteur] = (pivotData[driverName][transporteur] || 0) + 1;
+        pivotData[driverName].total = (pivotData[driverName].total || 0) + 1;
     });
 
     // --- Category Recurrence Pivot Table Data ---
@@ -434,8 +434,7 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
     Object.entries(categorizedComments).forEach(([category, comments]) => {
         comments.forEach(comment => {
             const driverFullName = comment.chauffeur;
-            const depotMatch = driverFullName.match(/\(([^)]+)\)/);
-            const depot = depotMatch ? depotMatch[1] : 'Inconnu';
+            const depot = comment.depot;
             const driverName = driverFullName.replace(/\s*\([^)]*\)$/, '').trim();
             
             if (!categoryPivotData[driverName]) {
@@ -454,6 +453,80 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
     };
   }, [filteredData]);
 
+  const handleGenerateEmail = () => {
+    const depots = [...new Set(Object.values(lowRatingPivotData).map(d => d.depot))];
+    const magasinDepots = depots.filter(d => d.toLowerCase().includes('magasin'));
+    const otherDepots = depots.filter(d => !d.toLowerCase().includes('magasin'));
+    const sortedDepots = [...otherDepots.sort(), ...magasinDepots.sort()];
+
+    let emailBody = `
+        <html>
+        <head>
+            <style>
+                body { font-family: sans-serif; }
+                h2 { color: #333; border-bottom: 2px solid #eee; padding-bottom: 5px; }
+                table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+            </style>
+        </head>
+        <body>
+            <h1>Synthèse de la satisfaction client</h1>
+    `;
+
+    sortedDepots.forEach(depot => {
+        emailBody += `<h2>${depot}</h2>`;
+
+        // Low Rating Table
+        const depotLowRatingDrivers = Object.entries(lowRatingPivotData).filter(([_, data]) => data.depot === depot);
+        if (depotLowRatingDrivers.length > 0) {
+            emailBody += `<h3>Récurrence notes &lt;= 3</h3>`;
+            emailBody += '<table><thead><tr><th>Livreur/Transporteur</th>';
+            uniqueTransporters.forEach(t => emailBody += `<th>${t}</th>`);
+            emailBody += '<th>Total</th></tr></thead><tbody>';
+            
+            depotLowRatingDrivers.sort(([, a], [, b]) => b.total - a.total).forEach(([driver, data]) => {
+                emailBody += `<tr><td>${driver}</td>`;
+                uniqueTransporters.forEach(t => emailBody += `<td>${data[t] || ''}</td>`);
+                emailBody += `<td>${data.total}</td></tr>`;
+            });
+
+            emailBody += '</tbody></table>';
+        } else {
+            emailBody += `<p>Aucune récurrence de note basse pour ce dépôt.</p>`
+        }
+
+
+        // Categorized Recurrence Table
+        const depotCategoryDrivers = Object.entries(categoryPivotData).filter(([_, data]) => data.depot === depot);
+        if(depotCategoryDrivers.length > 0) {
+            emailBody += `<h3>Récurrence par catégorie</h3>`;
+            emailBody += '<table><thead><tr><th>Livreur</th>';
+            CATEGORIES_PROBLEMES.forEach(cat => emailBody += `<th>${cat}</th>`);
+            emailBody += '<th>Total</th></tr></thead><tbody>';
+
+            depotCategoryDrivers.sort(([, a], [, b]) => b.total - a.total).forEach(([driver, data]) => {
+                emailBody += `<tr><td>${driver}</td>`;
+                CATEGORIES_PROBLEMES.forEach(cat => emailBody += `<td>${data[cat] || ''}</td>`);
+                emailBody += `<td>${data.total}</td></tr>`;
+            });
+
+            emailBody += '</tbody></table>';
+        } else {
+            emailBody += `<p>Aucune récurrence par catégorie pour ce dépôt.</p>`
+        }
+
+    });
+
+    emailBody += '</body></html>';
+
+    const subject = "Synthèse Satisfaction Client";
+    const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+
+    window.location.href = mailtoLink;
+  };
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -466,6 +539,16 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
     return null;
   };
 
+  if (!data || data.length === 0) {
+      return (
+          <div className="text-center p-8">
+              <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground" />
+              <h3 className="mt-4 text-lg font-medium">Aucune donnée de satisfaction</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Chargez un fichier pour commencer l'analyse.</p>
+          </div>
+      )
+  }
+
   return (
     <div className="space-y-6">
         <Card>
@@ -474,7 +557,13 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
                 <CardTitle>Satisfaction Client</CardTitle>
                 <CardDescription>Répartition des notes et analyse de sentiment des commentaires.</CardDescription>
             </div>
-            <DepotFilter depots={uniqueDepots} selectedDepots={selectedDepots} onSelectionChange={setSelectedDepots} />
+            <div className="flex items-center gap-2">
+                <DepotFilter depots={uniqueDepots} selectedDepots={selectedDepots} onSelectionChange={setSelectedDepots} />
+                <Button variant="outline" onClick={handleGenerateEmail}>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Générer E-mail de Synthèse
+                </Button>
+            </div>
           </CardHeader>
           <CardContent className="grid md:grid-cols-2 gap-8">
             <div>
@@ -518,5 +607,3 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
     </div>
   );
 }
-
-    
