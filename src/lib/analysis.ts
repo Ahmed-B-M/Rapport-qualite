@@ -140,7 +140,7 @@ const calculerNoteMoyenne = (donnees: Livraison[]): { moyenne?: number, nombre: 
 
 const calculerSentimentMoyen = (donnees: Livraison[]): number | undefined => {
   const livraisonsCommentees = donnees.filter(l => l.commentaireRetour && l.commentaireRetour.trim().length > 5);
-  if (livraisonsCommentees.length === 0) return undefined;
+  if (livraisonsCommentees.length === 0) return { ...output };
   const scoreTotal = livraisonsCommentees.reduce((sum, l) => sum + analyzeSentiment(l.commentaireRetour!, l.noteLivraison).score, 0);
   return scoreTotal / livraisonsCommentees.length;
 }
@@ -382,10 +382,10 @@ const getClassementsNotesChauffeur = (
 };
 
 
-const getDonneesSectionRapport = (donnees: Livraison[], groupBy: 'depot' | 'transporteur'): DonneesSectionRapport => {
+const getDonneesSectionRapport = (donnees: Livraison[], groupingKey: 'depot' | 'transporteur'): DonneesSectionRapport => {
   const performancesChauffeur = getDonneesPerformanceChauffeur(donnees);
 
-  const autreCle = groupBy === 'depot' ? 'transporteur' : 'depot';
+  const autreCle = groupingKey === 'depot' ? 'transporteur' : 'depot';
   const livraisonsParAutreEntite = groupBy(donnees, autreCle);
   const performancesAutreEntite = Object.entries(livraisonsParAutreEntite).map(([nom, livraisons]) => ({
     nom, ...getStatistiquesGlobales(livraisons)
@@ -425,14 +425,14 @@ const getDonneesSectionRapport = (donnees: Livraison[], groupBy: 'depot' | 'tran
   };
 };
 
-export const genererRapportPerformance = (donnees: Livraison[], groupBy: 'depot' | 'transporteur'): DonneesRapportPerformance => {
-  const donneesRapportGlobal = getDonneesSectionRapport(donnees, groupBy);
+export const genererRapportPerformance = (donnees: Livraison[], groupingKey: 'depot' | 'transporteur'): DonneesRapportPerformance => {
+  const donneesRapportGlobal = getDonneesSectionRapport(donnees, groupingKey);
 
   const getGroupKey = (l: Livraison) => {
-    if (groupBy === 'depot' && l.depot === 'Magasin') {
+    if (groupingKey === 'depot' && l.depot === 'Magasin') {
       return `Magasin_${l.entrepot}`;
     }
-    return l[groupBy];
+    return l[groupingKey];
   };
 
   const livraisonsParEntite = groupBy(donnees, { get: getGroupKey });
@@ -440,13 +440,13 @@ export const genererRapportPerformance = (donnees: Livraison[], groupBy: 'depot'
 
   const rapportsEntite: RapportDepot[] = Object.values(livraisonsParEntite).map((donneesEntite) => {
     const premierLivraison = donneesEntite[0];
-    const nom = groupBy === 'depot' ? premierLivraison.depot : premierLivraison.transporteur;
-    const entrepot = (groupBy === 'depot' && premierLivraison.depot === 'Magasin') ? premierLivraison.entrepot : undefined;
+    const nom = groupingKey === 'depot' ? premierLivraison.depot : premierLivraison.transporteur;
+    const entrepot = (groupingKey === 'depot' && premierLivraison.depot === 'Magasin') ? premierLivraison.entrepot : undefined;
 
     return {
       nom,
       entrepot,
-      ...getDonneesSectionRapport(donneesEntite, groupBy)
+      ...getDonneesSectionRapport(donneesEntite, groupingKey)
     };
   });
 
@@ -520,4 +520,11 @@ export const getDonneesSerieTemporelle = (livraisons: Livraison[]): SerieTempore
     }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
     return { points, domaines };
+};
+
+export const getOverallStats = (deliveries: any[]) => {
+  throw new Error('Function not implemented.');
+}
+export const sendEmail = (emailDetails: { to: string, subject: string, body: string }) => {
+  window.location.href = `mailto:${emailDetails.to}?subject=${encodeURIComponent(emailDetails.subject)}&body=${encodeURIComponent(emailDetails.body)}`;
 };

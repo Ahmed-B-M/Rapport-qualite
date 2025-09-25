@@ -1,9 +1,9 @@
 
-import { type Livraison, type StatistiquesAgregees } from './definitions';
+import { type Livraison, type StatistiquesAgregees, type ClassementMetrique } from './definitions';
 import { CARTE_ENTREPOT_DEPOT, TRANSPORTEURS } from './constants';
 import { parse, isValid, format } from 'date-fns';
 import {
-  getOverallStats as getAnalysisOverallStats,
+  getStatistiquesGlobales as getAnalysisOverallStats,
 } from './analysis';
 
 
