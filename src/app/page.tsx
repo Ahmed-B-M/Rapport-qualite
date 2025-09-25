@@ -10,6 +10,7 @@ import { FileUploader } from "@/components/dashboard/file-uploader";
 import { Overview } from "@/components/dashboard/overview";
 import { WarehouseAnalytics } from "@/components/dashboard/warehouse-analytics";
 import { CustomerSatisfaction } from "@/components/dashboard/customer-satisfaction";
+import { TransporterSatisfaction } from "@/components/dashboard/transporter-satisfaction";
 import { QualityReport } from "@/components/dashboard/quality-report";
 import { TransporterReport } from "@/components/dashboard/transporter-report";
 import { PrintableReport } from "@/components/dashboard/printable-report"; 
@@ -215,6 +216,7 @@ export default function DashboardPage() {
       case "report": return <QualityReport donnees={donneesFiltrees} objectifs={objectifs} />;
       case "warehouses": return <WarehouseAnalytics donnees={donneesFiltrees} />;
       case "satisfaction": return <CustomerSatisfaction data={donneesFiltrees} />;
+      case "transporter-satisfaction": return <TransporterSatisfaction data={donneesFiltrees} />;
       case "transporters": return <TransporterReport donnees={donneesFiltrees} objectifs={objectifs} />;
       default: return <Overview donnees={donneesFiltrees} objectifs={objectifs} />;
     }

@@ -46,6 +46,12 @@ export function DashboardSidebar({ activeView, setActiveView }: DashboardSidebar
                             Satisfaction Client
                         </SidebarMenuButton>
                     </SidebarMenuItem>
+                    <SidebarMenuItem>
+                         <SidebarMenuButton isActive={activeView === 'transporter-satisfaction'} onClick={() => setActiveView('transporter-satisfaction')}>
+                            <Truck className="h-5 w-5" />
+                            Satisfaction Transporteur
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarContent>
             <SidebarFooter>
