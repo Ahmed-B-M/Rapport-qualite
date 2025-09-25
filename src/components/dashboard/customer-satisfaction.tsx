@@ -15,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import * as XLSX from 'xlsx';
+import { EmailPreviewDialog } from './email-preview-dialog';
 
 interface SatisfactionClientProps {
   data?: Livraison[];
@@ -356,6 +357,8 @@ const CategorizedRecurrenceTable = ({ pivotData }: { pivotData: CategoryPivotDat
 
 export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
   const [selectedDepots, setSelectedDepots] = useState<string[]>([]);
+  const [isEmailPreviewOpen, setIsEmailPreviewOpen] = useState(false);
+  const [emailBody, setEmailBody] = useState("");
 
   const uniqueDepots = useMemo(() => {
     if (!data) return [];
@@ -459,7 +462,7 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
     const otherDepots = depots.filter(d => !d.toLowerCase().includes('magasin'));
     const sortedDepots = [...otherDepots.sort(), ...magasinDepots.sort()];
 
-    let emailBody = `
+    let body = `
         <html>
         <head>
             <style>
@@ -476,55 +479,49 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
     `;
 
     sortedDepots.forEach(depot => {
-        emailBody += `<h2>${depot}</h2>`;
+        body += `<h2>${depot}</h2>`;
 
-        // Low Rating Table
         const depotLowRatingDrivers = Object.entries(lowRatingPivotData).filter(([_, data]) => data.depot === depot);
         if (depotLowRatingDrivers.length > 0) {
-            emailBody += `<h3>Récurrence notes &lt;= 3</h3>`;
-            emailBody += '<table><thead><tr><th>Livreur/Transporteur</th>';
-            uniqueTransporters.forEach(t => emailBody += `<th>${t}</th>`);
-            emailBody += '<th>Total</th></tr></thead><tbody>';
+            body += `<h3>Récurrence notes &lt;= 3</h3>`;
+            body += '<table><thead><tr><th>Livreur/Transporteur</th>';
+            uniqueTransporters.forEach(t => body += `<th>${t}</th>`);
+            body += '<th>Total</th></tr></thead><tbody>';
             
             depotLowRatingDrivers.sort(([, a], [, b]) => b.total - a.total).forEach(([driver, data]) => {
-                emailBody += `<tr><td>${driver}</td>`;
-                uniqueTransporters.forEach(t => emailBody += `<td>${data[t] || ''}</td>`);
-                emailBody += `<td>${data.total}</td></tr>`;
+                body += `<tr><td>${driver}</td>`;
+                uniqueTransporters.forEach(t => body += `<td>${data[t] || ''}</td>`);
+                body += `<td>${data.total}</td></tr>`;
             });
 
-            emailBody += '</tbody></table>';
+            body += '</tbody></table>';
         } else {
-            emailBody += `<p>Aucune récurrence de note basse pour ce dépôt.</p>`
+            body += `<p>Aucune récurrence de note basse pour ce dépôt.</p>`
         }
 
-
-        // Categorized Recurrence Table
         const depotCategoryDrivers = Object.entries(categoryPivotData).filter(([_, data]) => data.depot === depot);
         if(depotCategoryDrivers.length > 0) {
-            emailBody += `<h3>Récurrence par catégorie</h3>`;
-            emailBody += '<table><thead><tr><th>Livreur</th>';
-            CATEGORIES_PROBLEMES.forEach(cat => emailBody += `<th>${cat}</th>`);
-            emailBody += '<th>Total</th></tr></thead><tbody>';
+            body += `<h3>Récurrence par catégorie</h3>`;
+            body += '<table><thead><tr><th>Livreur</th>';
+            CATEGORIES_PROBLEMES.forEach(cat => body += `<th>${cat}</th>`);
+            body += '<th>Total</th></tr></thead><tbody>';
 
             depotCategoryDrivers.sort(([, a], [, b]) => b.total - a.total).forEach(([driver, data]) => {
-                emailBody += `<tr><td>${driver}</td>`;
-                CATEGORIES_PROBLEMES.forEach(cat => emailBody += `<td>${data[cat] || ''}</td>`);
-                emailBody += `<td>${data.total}</td></tr>`;
+                body += `<tr><td>${driver}</td>`;
+                CATEGORIES_PROBLEMES.forEach(cat => body += `<td>${data[cat] || ''}</td>`);
+                body += `<td>${data.total}</td></tr>`;
             });
 
-            emailBody += '</tbody></table>';
+            body += '</tbody></table>';
         } else {
-            emailBody += `<p>Aucune récurrence par catégorie pour ce dépôt.</p>`
+            body += `<p>Aucune récurrence par catégorie pour ce dépôt.</p>`
         }
-
     });
 
-    emailBody += '</body></html>';
+    body += '</body></html>';
 
-    const subject = "Synthèse Satisfaction Client";
-    const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
-
-    window.location.href = mailtoLink;
+    setEmailBody(body);
+    setIsEmailPreviewOpen(true);
   };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -604,6 +601,12 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
         <CategorizedRecurrenceTable pivotData={categoryPivotData} />
 
         <NegativeCommentsSection comments={categorizedComments} />
+        
+        <EmailPreviewDialog 
+            isOpen={isEmailPreviewOpen} 
+            onOpenChange={setIsEmailPreviewOpen} 
+            emailBody={emailBody} 
+        />
     </div>
   );
 }
