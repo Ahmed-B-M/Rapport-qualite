@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { analyzeSentiment } from '@/lib/sentiment';
-import { getCategorizedNegativeComments, sendEmail } from '@/lib/analysis';
+import { getCategorizedNegativeComments } from '@/lib/analysis';
 import { AlertCircle, ThumbsDown, MessageSquare, Download, Filter, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
@@ -471,20 +471,27 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
     const sortedDepots = [...otherDepots.sort(), ...magasinDepots.sort()];
 
     let body = `
-        <html>
+      <html>
         <head>
-            <style>
-                body { font-family: sans-serif; }
-                h2 { color: #333; border-bottom: 2px solid #eee; padding-bottom: 5px; }
-                h3 { color: #555; }
-                table { border-collapse: collapse; width: 100%; margin-bottom: 20px; font-size: 12px; }
-                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                th { background-color: #f2f2f2; }
-                tr:nth-child(even) { background-color: #f9f9f9; }
-            </style>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; color: #333; line-height: 1.5; }
+            .container { max-width: 800px; margin: 20px auto; padding: 20px; border: 1px solid #eee; border-radius: 8px; background-color: #f9f9f9; }
+            h1 { color: #2c3e50; font-size: 24px; text-align: center; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 20px; }
+            h2 { color: #3498db; font-size: 20px; margin-top: 30px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+            h3 { color: #2980b9; font-size: 16px; margin-top: 20px; }
+            p { margin-bottom: 15px; }
+            table { border-collapse: collapse; width: 100%; margin-bottom: 20px; font-size: 14px; }
+            th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+            th { background-color: #ecf0f1; font-weight: bold; }
+            tr:nth-child(even) { background-color: #fdfdfd; }
+            .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #777; }
+          </style>
         </head>
         <body>
-            <h1>Synthèse de la satisfaction client</h1>
+          <div class="container">
+            <h1>Synthèse de la Satisfaction Client</h1>
+            <p>Bonjour,</p>
+            <p>Je vous envoie ci-dessous un résumé de la satisfaction client pour la période sélectionnée.</p>
     `;
 
     sortedDepots.forEach(depot => {
@@ -492,15 +499,15 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
 
         const depotLowRatingDrivers = Object.entries(lowRatingPivotData).filter(([_, data]) => data.depot === depot);
         if (depotLowRatingDrivers.length > 0) {
-            body += `<h3>Récurrence notes &lt;= 3</h3>`;
+            body += `<h3>Récurrence des notes inférieures ou égales à 3</h3>`;
             body += '<table><thead><tr><th>Livreur/Transporteur</th>';
             uniqueTransporters.forEach(t => body += `<th>${t}</th>`);
             body += '<th>Total</th></tr></thead><tbody>';
             
             depotLowRatingDrivers.sort(([, a], [, b]) => b.total - a.total).forEach(([driver, data]) => {
                 body += `<tr><td>${driver}</td>`;
-                uniqueTransporters.forEach(t => body += `<td>${data[t] || ''}</td>`);
-                body += `<td>${data.total}</td></tr>`;
+                uniqueTransporters.forEach(t => body += `<td style="text-align: center;">${data[t] || ''}</td>`);
+                body += `<td style="text-align: center; font-weight: bold;">${data.total}</td></tr>`;
             });
 
             body += '</tbody></table>';
@@ -510,15 +517,15 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
 
         const depotCategoryDrivers = Object.entries(categoryPivotData).filter(([_, data]) => data.depot === depot);
         if(depotCategoryDrivers.length > 0) {
-            body += `<h3>Récurrence par catégorie</h3>`;
+            body += `<h3>Récurrence par catégorie de problème</h3>`;
             body += '<table><thead><tr><th>Livreur</th>';
             CATEGORIES_PROBLEMES.forEach(cat => body += `<th>${cat.charAt(0).toUpperCase() + cat.slice(1)}</th>`);
             body += '<th>Total</th></tr></thead><tbody>';
 
             depotCategoryDrivers.sort(([, a], [, b]) => b.total - a.total).forEach(([driver, data]) => {
                 body += `<tr><td>${driver}</td>`;
-                CATEGORIES_PROBLEMES.forEach(cat => body += `<td>${data[cat] || ''}</td>`);
-                body += `<td>${data.total}</td></tr>`;
+                CATEGORIES_PROBLEMES.forEach(cat => body += `<td style="text-align: center;">${data[cat] || ''}</td>`);
+                body += `<td style="text-align: center; font-weight: bold;">${data.total}</td></tr>`;
             });
 
             body += '</tbody></table>';
@@ -527,13 +534,16 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
         }
     });
 
-    body += '</body></html>';
-    
-    sendEmail({
-        to: '',
-        subject: 'Synthèse de la satisfaction client',
-        body: body,
-    });
+    body += `
+          <div class="footer">
+            <p>Ce rapport a été généré automatiquement.</p>
+          </div>
+        </div>
+      </body>
+    </html>`;
+
+    setEmailBody(body);
+    setIsEmailPreviewOpen(true);
   };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
