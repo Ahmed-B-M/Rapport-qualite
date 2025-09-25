@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Delivery } from '@/lib/definitions';
+import { Delivery, Objectifs } from '@/lib/definitions';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import {
     Dialog,
@@ -23,6 +23,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface TransporterSatisfactionProps {
     data: Delivery[];
+    objectifs: Objectifs;
 }
 
 const RecurrenceByCategory = ({ deliveries }: { deliveries: Delivery[] }) => {
@@ -112,38 +113,21 @@ const RecurrenceByCategory = ({ deliveries }: { deliveries: Delivery[] }) => {
 };
 
 
-const RecurrenceLowRatingsByTransporter = ({ deliveries }: { deliveries: Delivery[] }) => {
-    const lowRatingDeliveries = deliveries.filter(d => d.noteLivraison !== null && d.noteLivraison <= 3);
+const RecurrenceLowRatingsByTransporter = ({ deliveries, objectifs }: { deliveries: Delivery[]; objectifs: Objectifs }) => {
+    const lowRatingDeliveries = deliveries.filter(d => typeof d.noteLivraison === 'number' && d.noteLivraison <= 3);
 
-    const lowRatingDataByTransporter = lowRatingDeliveries.reduce((acc, d) => {
-        const transporter = d.transporteur;
-        const driver = d.chauffeur;
-        if (!acc[transporter]) {
-            acc[transporter] = {};
+    const dataByDepot = lowRatingDeliveries.reduce((acc, d) => {
+        const depot = d.depot;
+        if (!acc[depot]) {
+            acc[depot] = [];
         }
-        if (!acc[transporter][driver]) {
-            acc[transporter][driver] = 0;
-        }
-        acc[transporter][driver]++;
+        acc[depot].push(d);
         return acc;
-    }, {} as Record<string, Record<string, number>>);
+    }, {} as Record<string, Delivery[]>);
 
-    const transportersWithLowRatings = Object.keys(lowRatingDataByTransporter).sort();
-    
-    const avgRatings = transportersWithLowRatings.reduce((acc, transporter) => {
-        const ratedDeliveries = deliveries.filter(
-            d => d.transporteur === transporter && d.noteLivraison !== null
-        );
-        if (ratedDeliveries.length > 0) {
-            const total = ratedDeliveries.reduce((sum, d) => sum + d.noteLivraison!, 0);
-            acc[transporter] = (total / ratedDeliveries.length).toFixed(2);
-        } else {
-            acc[transporter] = "N/A";
-        }
-        return acc;
-    }, {} as Record<string, string>);
+    const depotsWithLowRatings = Object.keys(dataByDepot).sort();
 
-    if (transportersWithLowRatings.length === 0) {
+    if (depotsWithLowRatings.length === 0) {
         return (
             <Card>
                 <CardHeader>
@@ -159,38 +143,83 @@ const RecurrenceLowRatingsByTransporter = ({ deliveries }: { deliveries: Deliver
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Récurrence des Mauvaises Notes (≤ 3) par Transporteur et Livreur</CardTitle>
+                <CardTitle>Récurrence des Mauvaises Notes (≤ 3) par Dépôt</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="space-y-4">
-                    {transportersWithLowRatings.map(transporter => {
-                        const driverRatings = lowRatingDataByTransporter[transporter];
-                        const totalLowRatings = Object.values(driverRatings).reduce((sum, count) => sum + count, 0);
+                <div className="space-y-6">
+                    {depotsWithLowRatings.map(depot => {
+                        const depotLowRatingDeliveries = dataByDepot[depot];
+
+                        const lowRatingDataByTransporter = depotLowRatingDeliveries.reduce((acc, d) => {
+                            const transporter = d.transporteur;
+                            const driver = d.chauffeur;
+                            if (!acc[transporter]) {
+                                acc[transporter] = {};
+                            }
+                            if (!acc[transporter][driver]) {
+                                acc[transporter][driver] = 0;
+                            }
+                            acc[transporter][driver]++;
+                            return acc;
+                        }, {} as Record<string, Record<string, number>>);
+
+                        const transportersInDepot = Object.keys(lowRatingDataByTransporter).sort();
+
+                        const avgRatings = transportersInDepot.reduce((acc, transporter) => {
+                            const ratedDeliveriesInDepot = deliveries.filter(
+                                d => d.depot === depot && d.transporteur === transporter && typeof d.noteLivraison === 'number'
+                            );
+
+                            if (ratedDeliveriesInDepot.length > 0) {
+                                const total = ratedDeliveriesInDepot.reduce((sum, d) => sum + d.noteLivraison!, 0);
+                                acc[transporter] = (total / ratedDeliveriesInDepot.length).toFixed(2);
+                            } else {
+                                acc[transporter] = "N/A";
+                            }
+                            return acc;
+                        }, {} as Record<string, string>);
+
                         return (
-                            <div key={transporter}>
-                                <h3 className="font-bold text-lg">{transporter} <span className="text-sm font-normal text-muted-foreground">- Note moyenne: {avgRatings[transporter]} / 5</span></h3>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Livreur</TableHead>
-                                            <TableHead className="text-right">Nombre de mauvaises notes</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {Object.entries(driverRatings)
-                                            .sort(([, a], [, b]) => b - a)
-                                            .map(([driver, count]) => (
-                                                <TableRow key={driver}>
-                                                    <TableCell>{driver}</TableCell>
-                                                    <TableCell className="text-right">{count}</TableCell>
-                                                </TableRow>
-                                            ))}
-                                        <TableRow className="font-bold bg-muted">
-                                            <TableCell>Total</TableCell>
-                                            <TableCell className="text-right">{totalLowRatings}</TableCell>
-                                        </TableRow>
-                                    </TableBody>
-                                </Table>
+                            <div key={depot}>
+                                <h2 className="text-xl font-semibold mb-2 border-b pb-1">{depot}</h2>
+                                {transportersInDepot.map(transporter => {
+                                    const driverRatings = lowRatingDataByTransporter[transporter];
+                                    const totalLowRatings = Object.values(driverRatings).reduce((sum, count) => sum + count, 0);
+                                    const avgRating = parseFloat(avgRatings[transporter]);
+                                    const isBelowObjective = !isNaN(avgRating) && avgRating < objectifs.noteMoyenne;
+
+                                    return (
+                                        <div key={transporter} className="mb-4">
+                                            <h3 className="font-bold text-lg">{transporter} 
+                                                <span className={`text-sm font-normal ${isBelowObjective ? 'text-red-500' : 'text-muted-foreground'}`}>
+                                                    - Note moyenne (dépôt): {avgRatings[transporter]} / 5
+                                                </span>
+                                            </h3>
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Livreur</TableHead>
+                                                        <TableHead className="text-right">Nombre de mauvaises notes</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {Object.entries(driverRatings)
+                                                        .sort(([, a], [, b]) => b - a)
+                                                        .map(([driver, count]) => (
+                                                            <TableRow key={driver}>
+                                                                <TableCell>{driver}</TableCell>
+                                                                <TableCell className="text-right">{count}</TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    <TableRow className="font-bold bg-muted">
+                                                        <TableCell>Total</TableCell>
+                                                        <TableCell className="text-right">{totalLowRatings}</TableCell>
+                                                    </TableRow>
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    )
+                                })}
                             </div>
                         )
                     })}
@@ -201,7 +230,7 @@ const RecurrenceLowRatingsByTransporter = ({ deliveries }: { deliveries: Deliver
 }
 
 
-export function TransporterSatisfaction({ data }: TransporterSatisfactionProps) {
+export function TransporterSatisfaction({ data, objectifs }: TransporterSatisfactionProps) {
     const { toast } = useToast()
     const [selectedDepots, setSelectedDepots] = useState<string[]>([]);
 
@@ -216,7 +245,7 @@ export function TransporterSatisfaction({ data }: TransporterSatisfactionProps) 
 
     const avgTransporterRatings = useMemo(() => {
         const transporterRatings = filteredData
-            .filter(d => d.noteLivraison !== null)
+            .filter(d => typeof d.noteLivraison === 'number')
             .reduce((acc, d) => {
                 if (!acc[d.transporteur]) {
                     acc[d.transporteur] = { total: 0, count: 0 };
@@ -255,6 +284,7 @@ export function TransporterSatisfaction({ data }: TransporterSatisfactionProps) 
             .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
             .summary-item { font-size: 15px; color: #4a5568; }
             .total-row { background-color: #f7fafc; font-weight: bold; }
+            .text-red { color: #e53e3e; }
         </style>
         <div class="container">
             <h1>Synthèse de la Satisfaction Transporteur</h1>
@@ -262,10 +292,9 @@ export function TransporterSatisfaction({ data }: TransporterSatisfactionProps) 
     
         const depotsToProcess = selectedDepots.length > 0 ? selectedDepots.map(d => ({ name: d, data: data.filter(item => item.depot === d) })) : depots.map(d => ({ name: d, data: data.filter(item => item.depot === d) }));
     
-        // Global Summary
+        const ratedDeliveries = depotsToProcess.flatMap(d => d.data).filter(i => typeof i.noteLivraison === 'number');
         const totalDeliveries = depotsToProcess.reduce((sum, d) => sum + d.data.length, 0);
-        const totalLowRatings = depotsToProcess.reduce((sum, d) => sum + d.data.filter(i => i.noteLivraison !== null && i.noteLivraison <= 3).length, 0);
-        const ratedDeliveries = depotsToProcess.flatMap(d => d.data).filter(i => i.noteLivraison !== null);
+        const totalLowRatings = ratedDeliveries.filter(i => i.noteLivraison! <= 3).length;
         const overallAvgRating = ratedDeliveries.length > 0 ? ratedDeliveries.reduce((sum, i) => sum + i.noteLivraison!, 0) / ratedDeliveries.length : 0;
         
         body += `
@@ -275,14 +304,14 @@ export function TransporterSatisfaction({ data }: TransporterSatisfactionProps) 
                 <div class="summary-item"><strong>Nombre total de livraisons:</strong> ${totalDeliveries}</div>
                 <div class="summary-item"><strong>Note moyenne globale:</strong> ${overallAvgRating.toFixed(2)} / 5</div>
                 <div class="summary-item"><strong>Total des mauvaises notes (≤ 3):</strong> ${totalLowRatings}</div>
-                <div class="summary-item"><strong>Taux de mauvaises notes:</strong> ${totalDeliveries > 0 ? ((totalLowRatings / totalDeliveries) * 100).toFixed(2) : 0}%</div>
+                <div class="summary-item"><strong>Taux de mauvaises notes:</strong> ${ratedDeliveries.length > 0 ? ((totalLowRatings / ratedDeliveries.length) * 100).toFixed(2) : 0}%</div>
             </div>
         </div>
         `;
 
         depotsToProcess.forEach(depot => {
             body += `<h2>Dépot: ${depot.name}</h2>`;
-            const lowRatingDeliveries = depot.data.filter(d => d.noteLivraison !== null && d.noteLivraison <= 3);
+            const lowRatingDeliveries = depot.data.filter(d => typeof d.noteLivraison === 'number' && d.noteLivraison <= 3);
             const lowRatingDataByTransporter = lowRatingDeliveries.reduce((acc, d) => {
                 const transporter = d.transporteur;
                 const driver = d.chauffeur;
@@ -302,13 +331,14 @@ export function TransporterSatisfaction({ data }: TransporterSatisfactionProps) 
                 body += '<h3>Récurrence des Mauvaises Notes par Livreur</h3>';
                 transportersWithLowRatings.forEach(transporter => {
                     const transporterDeliveriesInDepot = depot.data.filter(
-                        d => d.transporteur === transporter && d.noteLivraison !== null
+                        d => d.transporteur === transporter && typeof d.noteLivraison === 'number'
                     );
                     let avgRatingDisplay = "";
                     if (transporterDeliveriesInDepot.length > 0) {
                         const totalRating = transporterDeliveriesInDepot.reduce((sum, d) => sum + d.noteLivraison!, 0);
-                        const avgRating = (totalRating / transporterDeliveriesInDepot.length).toFixed(2);
-                        avgRatingDisplay = ` - <i>Note moyenne: ${avgRating} / 5</i>`;
+                        const avgRating = (totalRating / transporterDeliveriesInDepot.length);
+                        const isBelow = avgRating < objectifs.noteMoyenne;
+                        avgRatingDisplay = ` - <i ${isBelow ? 'class="text-red"' : ''}>Note moyenne: ${avgRating.toFixed(2)} / 5</i>`;
                     }
                     
                     body += `<h4>Transporteur: ${transporter}${avgRatingDisplay}</h4>`;
@@ -375,10 +405,10 @@ export function TransporterSatisfaction({ data }: TransporterSatisfactionProps) 
                     </DialogTrigger>
                     <DialogContent className="max-w-4xl">
                         <DialogHeader>
-                        <DialogTitle>Email de Synthèse</DialogTitle>
-                        <DialogDescription>
-                            Voici un aperçu de l'email de synthèse. Vous pouvez le copier et le coller dans votre client de messagerie.
-                        </DialogDescription>
+                            <DialogTitle>Email de Synthèse</DialogTitle>
+                            <DialogDescription>
+                                Voici un aperçu de l'email de synthèse. Vous pouvez le copier et le coller dans votre client de messagerie.
+                            </DialogDescription>
                         </DialogHeader>
                         <ScrollArea className="h-[60vh] mt-4">
                             <div dangerouslySetInnerHTML={{ __html: generateEmailBody() }} />
@@ -408,7 +438,7 @@ export function TransporterSatisfaction({ data }: TransporterSatisfactionProps) 
                 </CardContent>
             </Card>
 
-            <RecurrenceLowRatingsByTransporter deliveries={filteredData} />
+            <RecurrenceLowRatingsByTransporter deliveries={filteredData} objectifs={objectifs} />
 
             <RecurrenceByCategory deliveries={filteredData} />
         </div>

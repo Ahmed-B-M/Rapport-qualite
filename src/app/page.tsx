@@ -216,7 +216,7 @@ export default function DashboardPage() {
       case "report": return <QualityReport donnees={donneesFiltrees} objectifs={objectifs} />;
       case "warehouses": return <WarehouseAnalytics donnees={donneesFiltrees} />;
       case "satisfaction": return <CustomerSatisfaction data={donneesFiltrees} />;
-      case "transporter-satisfaction": return <TransporterSatisfaction data={donneesFiltrees} />;
+      case "transporter-satisfaction": return <TransporterSatisfaction data={donneesFiltrees} objectifs={objectifs} />;
       case "transporters": return <TransporterReport donnees={donneesFiltrees} objectifs={objectifs} />;
       default: return <Overview donnees={donneesFiltrees} objectifs={objectifs} />;
     }
