@@ -26,7 +26,9 @@ interface PivotData {
   [driver: string]: {
     total: number;
     depot: string;
-    [transporter: string]: number;
+    sumOfRatings: number;
+    numberOfRatings: number;
+    [transporter: string]: number | string;
   };
 }
 
@@ -184,7 +186,7 @@ const LowRatingRecurrenceTable = ({ pivotData, transporters }: { pivotData: Pivo
 
         drivers.forEach(driver => {
             transporters.forEach(transporter => {
-                transporterTotals[transporter] += pivotData[driver][transporter] || 0;
+                transporterTotals[transporter] += (pivotData[driver][transporter] as number) || 0;
             });
             grandTotal += pivotData[driver].total;
         });
@@ -198,9 +200,11 @@ const LowRatingRecurrenceTable = ({ pivotData, transporters }: { pivotData: Pivo
         drivers.forEach(driver => {
             const depot = pivotData[driver].depot || 'Inconnu';
             const livreur = driver;
+            const avgRating = (pivotData[driver].sumOfRatings / pivotData[driver].numberOfRatings).toFixed(2);
+            const totalRatings = pivotData[driver].numberOfRatings;
 
             const rowData: any = {
-                'Livreur': livreur,
+                'Livreur': `${livreur} (note moyenne: ${avgRating} / ${totalRatings} notes)`,
                 'Dépôt': depot,
             };
             
@@ -253,17 +257,23 @@ const LowRatingRecurrenceTable = ({ pivotData, transporters }: { pivotData: Pivo
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {drivers.map(driver => (
-                                <TableRow key={driver}>
-                                    <TableCell className="sticky left-0 bg-background z-10 font-medium">{driver} ({pivotData[driver].depot})</TableCell>
-                                    {transporters.map(transporter => (
-                                        <TableCell key={transporter} className="text-center">
-                                            {pivotData[driver][transporter] || ''}
+                            {drivers.map(driver => {
+                                const { depot, sumOfRatings, numberOfRatings } = pivotData[driver];
+                                const avgRating = (sumOfRatings / numberOfRatings).toFixed(2);
+                                return (
+                                    <TableRow key={driver}>
+                                        <TableCell className="sticky left-0 bg-background z-10 font-medium">
+                                            {driver} ({depot}) - (note moyenne: {avgRating} / {numberOfRatings} notes)
                                         </TableCell>
-                                    ))}
-                                    <TableCell className="text-center font-bold">{pivotData[driver].total}</TableCell>
-                                </TableRow>
-                            ))}
+                                        {transporters.map(transporter => (
+                                            <TableCell key={transporter} className="text-center">
+                                                {pivotData[driver][transporter] || ''}
+                                            </TableCell>
+                                        ))}
+                                        <TableCell className="text-center font-bold">{pivotData[driver].total}</TableCell>
+                                    </TableRow>
+                                );
+                            })}
                         </TableBody>
                         <TableFooter>
                             <TableRow className="bg-muted hover:bg-muted font-bold">
@@ -429,15 +439,27 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
     const uniqueTransporters = [...new Set(lowRatedDeliveries.map(d => d.transporteur))].sort();
     const pivotData: PivotData = {};
     
-    lowRatedDeliveries.forEach(delivery => {
-        const { chauffeur, transporteur, depot } = delivery;
+    filteredData.forEach(delivery => {
+        const { chauffeur, transporteur, depot, noteLivraison } = delivery;
+        if (noteLivraison === undefined) return;
+
         const driverName = chauffeur.replace(/\s*\([^)]*\)$/, '').trim();
         if (!pivotData[driverName]) {
-            pivotData[driverName] = { total: 0, depot: depot };
+            pivotData[driverName] = { 
+                total: 0, 
+                depot: depot,
+                sumOfRatings: 0,
+                numberOfRatings: 0
+            };
         }
         
-        pivotData[driverName][transporteur] = (pivotData[driverName][transporteur] || 0) + 1;
-        pivotData[driverName].total = (pivotData[driverName].total || 0) + 1;
+        if(noteLivraison <= 3) {
+            pivotData[driverName][transporteur] = (pivotData[driverName][transporteur] || 0) + 1;
+            pivotData[driverName].total = (pivotData[driverName].total || 0) + 1;
+        }
+
+        pivotData[driverName].sumOfRatings += noteLivraison;
+        pivotData[driverName].numberOfRatings += 1;
     });
 
     // --- Category Recurrence Pivot Table Data ---
@@ -497,7 +519,7 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
     sortedDepots.forEach(depot => {
         body += `<h2>${depot}</h2>`;
 
-        const depotLowRatingDrivers = Object.entries(lowRatingPivotData).filter(([_, data]) => data.depot === depot);
+        const depotLowRatingDrivers = Object.entries(lowRatingPivotData).filter(([_, data]) => data.depot === depot && data.total > 0);
         if (depotLowRatingDrivers.length > 0) {
             body += `<h3>Récurrence des notes inférieures ou égales à 3</h3>`;
             body += '<table><thead><tr><th>Livreur/Transporteur</th>';
@@ -505,7 +527,9 @@ export function CustomerSatisfaction({ data }: SatisfactionClientProps) {
             body += '<th>Total</th></tr></thead><tbody>';
             
             depotLowRatingDrivers.sort(([, a], [, b]) => b.total - a.total).forEach(([driver, data]) => {
-                body += `<tr><td>${driver}</td>`;
+                const avgRating = (data.sumOfRatings / data.numberOfRatings).toFixed(2);
+                const totalRatings = data.numberOfRatings;
+                body += `<tr><td>${driver} (note moyenne: ${avgRating} / ${totalRatings} notes)</td>`;
                 uniqueTransporters.forEach(t => body += `<td style="text-align: center;">${data[t] || ''}</td>`);
                 body += `<td style="text-align: center; font-weight: bold;">${data.total}</td></tr>`;
             });

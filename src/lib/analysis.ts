@@ -130,10 +130,10 @@ export const traiterDonneesBrutes = (donneesBrutes: any[]): Livraison[] => {
 
 // --- Calcul des KPI ---
 
-const calculerNoteMoyenne = (donnees: Livraison[]): { moyenne?: number, nombre: number } => {
+const calculerNoteMoyenne = (donnees: Livraison[]): { moyenne: number, nombre: number } => {
   const livraisonsNotees = donnees.filter(l => l.noteLivraison != null);
   const nombre = livraisonsNotees.length;
-  if (nombre === 0) return { moyenne: undefined, nombre: 0 };
+  if (nombre === 0) return { moyenne: 0, nombre: 0 };
   const totalNotes = livraisonsNotees.reduce((sum, l) => sum + (l.noteLivraison || 0), 0);
   return { moyenne: totalNotes / nombre, nombre };
 }
@@ -151,7 +151,7 @@ export const getStatistiquesGlobales = (livraisons: Livraison[]): StatistiquesAg
 
   if (totalLivraisons === 0) {
     return {
-      totalLivraisons: 0, tauxReussite: 0, noteMoyenne: undefined, tauxPonctualite: 0, tauxNotation: 0,
+      totalLivraisons: 0, tauxReussite: 0, noteMoyenne: 0, tauxPonctualite: 0, tauxNotation: 0,
       tauxForceSurSite: 0, tauxForceSansContact: 0, tauxCompletionWeb: 0, sentimentMoyen: undefined, nombreNotes: 0,
       nombreLivraisonsReussies: 0, nombreRetards: 0, nombreForceSurSite: 0, nombreForceSansContact: 0, nombreCompletionWeb: 0
     };
@@ -416,8 +416,8 @@ const getDonneesSectionRapport = (donnees: Livraison[], groupingKey: 'depot' | '
   return {
     statistiques: getStatistiquesGlobales(donnees),
     classementsKpi,
-    meilleursCommentaires: getTopComments(donnees, 'positif', 3),
-    piresCommentaires: getTopComments(donnees, 'négatif', 3),
+    meilleursCommentaires: getTopComments(donnees, 'positif', 3, performancesChauffeur),
+    piresCommentaires: getTopComments(donnees, 'négatif', 3, performancesChauffeur),
     chauffeursMieuxNotes: classementsNotesChauffeur.top,
     chauffeursMoinsBienNotes: classementsNotesChauffeur.flop,
     resultatsCategorisation: analyserCommentairesNegatifs(donnees),
@@ -525,7 +525,11 @@ export const getDonneesSerieTemporelle = (livraisons: Livraison[]): SerieTempore
 export const getOverallStats = (deliveries: any[]) => {
   throw new Error('Function not implemented.');
 }
-export const sendEmail = (emailDetails: { to: string, subject: string, body: string }) => {
-  const mailtoLink = `mailto:${emailDetails.to}?subject=${encodeURIComponent(emailDetails.subject)}&body=${encodeURIComponent(emailDetails.body)}`;
-  window.open(mailtoLink, '_blank');
+export const sendEmail = (emailDetails: { to: string, subject: string }) => {
+  const baseUrl = "https://mail.google.com/mail/?view=cm&fs=1";
+  const to = `&to=${encodeURIComponent(emailDetails.to)}`;
+  const subject = `&su=${encodeURIComponent(emailDetails.subject)}`;
+  const gmailLink = `${baseUrl}${to}${subject}`;
+  
+  window.open(gmailLink, '_blank');
 };

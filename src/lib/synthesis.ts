@@ -100,10 +100,12 @@ function generatePointsForScope(
     }
 
     if (data.meilleursCommentaires.length > 0) {
-        points.forces.push(`Les commentaires clients sont globalement très positifs, menés par des livreurs comme ${data.meilleursCommentaires[0].chauffeur}.`);
+        const bestDriver = data.meilleursCommentaires[0];
+        points.forces.push(`Les commentaires clients sont globalement très positifs, menés par des livreurs comme ${bestDriver.chauffeur} (${bestDriver.noteMoyenne.toFixed(2)}/5 sur ${bestDriver.totalNotes} notes).`);
     }
     if (data.piresCommentaires.length > 0) {
-        points.faiblesses.push(`Certains clients ont exprimé leur mécontentement, notamment concernant les livraisons effectuées par ${data.piresCommentaires[0].chauffeur}.`);
+        const worstDriver = data.piresCommentaires[0];
+        points.faiblesses.push(`Certains clients ont exprimé leur mécontentement, notamment concernant les livraisons effectuées par ${worstDriver.chauffeur} (${worstDriver.noteMoyenne.toFixed(2)}/5 sur ${worstDriver.totalNotes} notes).`);
     }
 
     let overallStatus: 'positif' | 'négatif' | 'mitigé';
@@ -145,5 +147,3 @@ Le rapport met en évidence une performance **${globalSynthesis.global === 'posi
         conclusion: conclusion.trim()
     };
 }
-
-    

@@ -1,5 +1,4 @@
 
-
 import { DateRange } from "react-day-picker";
 
 export type StatutLivraison = 'Livré' | 'Non livré' | 'En attente' | 'Partiellement livré';
@@ -29,7 +28,7 @@ export type Livraison = {
 export type StatistiquesAgregees = {
   totalLivraisons: number;
   tauxReussite: number;
-  noteMoyenne?: number;
+  noteMoyenne: number;
   tauxPonctualite: number;
   tauxNotation: number;
   tauxForceSurSite: number;
@@ -99,6 +98,8 @@ export type ExempleCommentaire = {
     commentaire: string;
     score: number;
     chauffeur: string;
+    noteMoyenne: number;
+    totalNotes: number;
 };
 
 export const CATEGORIES_PROBLEMES = ["attitude livreur", "produit(s) cassé(s)", "produits manquants", "ponctualité", "rupture chaine de froid", "non pertinent", "autre"] as const;

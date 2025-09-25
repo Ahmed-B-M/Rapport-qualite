@@ -1,6 +1,6 @@
 
 import Sentiment from 'sentiment';
-import { type Livraison, type ExempleCommentaire } from './definitions';
+import { type Livraison, type ExempleCommentaire, type PerformanceChauffeur } from './definitions';
 
 const sentiment = new Sentiment();
 
@@ -81,25 +81,35 @@ export function analyzeSentiment(text: string, rating?: number): SentimentResult
 }
 
 export function getTopComments(
-    deliveries: Livraison[],
-    sentimentType: 'positif' | 'négatif',
-    count: number = 3
-  ): ExempleCommentaire[] {
-    const allComments = deliveries
-      .filter(d => d.commentaireRetour && d.commentaireRetour.trim().length > 1)
-      .map(d => ({
+  deliveries: Livraison[],
+  sentimentType: 'positif' | 'négatif',
+  count: number = 3,
+  performancesChauffeur: PerformanceChauffeur[]
+): ExempleCommentaire[] {
+  const performancesMap = new Map(
+    performancesChauffeur.map(p => [p.chauffeur, { noteMoyenne: p.noteMoyenne, totalNotes: p.nombreNotes }])
+  );
+
+  const allComments = deliveries
+    .filter(d => d.commentaireRetour && d.commentaireRetour.trim().length > 1)
+    .map(d => {
+      const perf = performancesMap.get(d.chauffeur) || { noteMoyenne: 0, totalNotes: 0 };
+      return {
         commentaire: d.commentaireRetour!,
         score: analyzeSentiment(d.commentaireRetour!, d.noteLivraison).score,
         chauffeur: d.chauffeur,
-      }));
-  
-    if (sentimentType === 'positif') {
-      const positiveComments = allComments.filter(c => c.score > 7);
-      positiveComments.sort((a, b) => b.score - a.score);
-      return positiveComments.slice(0, count);
-    } else {
-      const negativeComments = allComments.filter(c => c.score < 4);
-      negativeComments.sort((a, b) => a.score - b.score);
-      return negativeComments.slice(0, count);
-    }
+        noteMoyenne: perf.noteMoyenne,
+        totalNotes: perf.totalNotes,
+      };
+    });
+
+  if (sentimentType === 'positif') {
+    const positiveComments = allComments.filter(c => c.score > 7);
+    positiveComments.sort((a, b) => b.score - a.score);
+    return positiveComments.slice(0, count);
+  } else {
+    const negativeComments = allComments.filter(c => c.score < 4);
+    negativeComments.sort((a, b) => a.score - b.score);
+    return negativeComments.slice(0, count);
+  }
 }
