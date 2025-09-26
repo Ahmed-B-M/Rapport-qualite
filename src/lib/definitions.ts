@@ -129,6 +129,7 @@ export type DonneesSectionRapport = {
     chauffeursMoinsBienNotes: EntiteClassement[];
     resultatsCategorisation: ResultatsCategorisation;
     totalCommentairesNegatifs: number;
+    commentaires: CommentaireCategorise[];
 };
 
 export type RapportDepot = DonneesSectionRapport & {

@@ -225,7 +225,7 @@ const ExemplesCommentaires = ({ top, flop }: { top: ExempleCommentaire[], flop: 
     </div>
 )
 
-const StatefulAnalyseCategorielle = ({ resultats: initialResultats, commentaires: initialCommentaires }: { resultats: ResultatsCategorisation, commentaires: CommentaireCategorise[] }) => {
+const StatefulAnalyseCategorielle = ({ commentaires: initialCommentaires }: { commentaires: CommentaireCategorise[] }) => {
     const [commentaires, setCommentaires] = useState<CommentaireCategorise[]>(initialCommentaires);
     const [openPopover, setOpenPopover] = useState<string | null>(null);
 
@@ -243,69 +243,47 @@ const StatefulAnalyseCategorielle = ({ resultats: initialResultats, commentaires
         );
         setOpenPopover(null); 
     };
-
-    const resultatsMisAJour = useMemo(() => {
-        const newResultats: ResultatsCategorisation = CATEGORIES_PROBLEMES.reduce((acc, cat) => {
-            acc[cat] = [];
-            return acc;
-        }, {} as ResultatsCategorisation);
-
-        const commentairesParCategorie = commentaires.reduce((acc, comm) => {
+    
+    const commentairesParCategorie = useMemo(() => {
+        return commentaires.reduce((acc, comm) => {
             if (!acc[comm.categorie]) {
                 acc[comm.categorie] = [];
             }
             acc[comm.categorie].push(comm);
             return acc;
         }, {} as Record<CategorieProbleme, CommentaireCategorise[]>);
-
-        for (const categorie in commentairesParCategorie) {
-            const commentaires = commentairesParCategorie[categorie as CategorieProbleme];
-            const chauffeurs = commentaires.reduce((acc, comm) => {
-                let chauffeur = acc.find(ch => ch.nom === comm.chauffeur);
-                if (!chauffeur) {
-                    chauffeur = { nom: comm.chauffeur, recurrence: 0, exemplesCommentaires: [] };
-                    acc.push(chauffeur);
-                }
-                chauffeur.recurrence++;
-                chauffeur.exemplesCommentaires.push(comm.commentaire);
-                return acc;
-            }, [] as { nom: string; recurrence: number; exemplesCommentaires: string[] }[]);
-            newResultats[categorie as CategorieProbleme] = chauffeurs.sort((a, b) => b.recurrence - a.recurrence);
-        }
-
-        return newResultats;
     }, [commentaires]);
-    
-    const hasData = useMemo(() => commentaires.length > 0, [commentaires]);
 
-    if (!hasData) {
+    const categoriesAvecCommentaires = CATEGORIES_PROBLEMES.filter(cat => commentairesParCategorie[cat]?.length > 0);
+
+    if (categoriesAvecCommentaires.length === 0) {
         return null;
     }
 
     return (
         <div>
             <h3 className="text-lg font-semibold mb-4 flex items-center"><ClipboardList className="h-5 w-5 mr-2" />Analyse des Commentaires Négatifs</h3>
-            <Tabs defaultValue={CATEGORIES_PROBLEMES[0]} className="w-full">
+            <Tabs defaultValue={categoriesAvecCommentaires[0]} className="w-full">
                 <TabsList className="grid w-full grid-cols-4">
                     {CATEGORIES_PROBLEMES.map(cat => (
-                        <TabsTrigger key={cat} value={cat} disabled={!resultatsMisAJour[cat] || resultatsMisAJour[cat].length === 0}>{cat}</TabsTrigger>
+                        <TabsTrigger key={cat} value={cat} disabled={!commentairesParCategorie[cat] || commentairesParCategorie[cat].length === 0}>{cat}</TabsTrigger>
                     ))}
                 </TabsList>
-                {CATEGORIES_PROBLEMES.map(cat => (
+                {categoriesAvecCommentaires.map(cat => (
                     <TabsContent key={cat} value={cat}>
                         <Card>
                             <CardContent className="p-4">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Commentaire</TableHead>
+                                            <TableHead className="w-2/5">Commentaire</TableHead>
                                             <TableHead>Livreur</TableHead>
-                                            <TableHead>Depot</TableHead>
+                                            <TableHead>Dépôt</TableHead>
                                             <TableHead className="text-right">Action</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {commentaires.filter(c => c.categorie === cat).map((comm, index) => (
+                                        {commentairesParCategorie[cat].map((comm, index) => (
                                             <TableRow key={index}>
                                                 <TableCell className="max-w-[300px] truncate italic">"{comm.commentaire}"</TableCell>
                                                 <TableCell>{comm.chauffeur}</TableCell>
@@ -313,9 +291,9 @@ const StatefulAnalyseCategorielle = ({ resultats: initialResultats, commentaires
                                                 <TableCell className="text-right">
                                                     <Popover open={openPopover === `${cat}-${index}`} onOpenChange={(isOpen) => setOpenPopover(isOpen ? `${cat}-${index}` : null)}>
                                                         <PopoverTrigger asChild>
-                                                            <Button variant="outline" role="combobox" aria-expanded={openPopover === `${cat}-${index}`} className="w-[200px] justify-between">
+                                                            <Button variant="outline" role="combobox" aria-expanded={openPopover === `${cat}-${index}`} className="w-[150px] justify-between text-xs h-8">
                                                                 Déplacer vers...
-                                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                                <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
                                                             </Button>
                                                         </PopoverTrigger>
                                                         <PopoverContent className="w-[200px] p-0">
@@ -323,7 +301,7 @@ const StatefulAnalyseCategorielle = ({ resultats: initialResultats, commentaires
                                                                 <CommandInput placeholder="Changer catégorie..." />
                                                                 <CommandEmpty>Aucune catégorie.</CommandEmpty>
                                                                 <CommandGroup>
-                                                                    {CATEGORIES_PROBLEMES.map(newCat => (
+                                                                    {CATEGORIES_PROBLEMES.filter(c => c !== cat).map(newCat => (
                                                                         <CommandItem
                                                                             key={newCat}
                                                                             value={newCat}
@@ -352,19 +330,6 @@ const StatefulAnalyseCategorielle = ({ resultats: initialResultats, commentaires
 
 
 const SectionAnalyseDetaillee = ({ donneesRapport, objectifs }: { donneesRapport: DonneesSectionRapport, objectifs: Objectifs }) => {
-    const commentairesNegatifs = useMemo(() => {
-        return CATEGORIES_PROBLEMES.flatMap(cat => 
-            donneesRapport.resultatsCategorisation[cat]?.flatMap(chauffeur => 
-                chauffeur.exemplesCommentaires.map(commentaire => ({
-                    categorie: cat,
-                    commentaire,
-                    chauffeur: chauffeur.nom,
-                    depot: 'N/A' // ou essayer de retrouver le dépôt si possible
-                }))
-            ) || []
-        );
-    }, [donneesRapport.resultatsCategorisation]);
-    
     return (
     <Card>
         <CardHeader>
@@ -383,7 +348,7 @@ const SectionAnalyseDetaillee = ({ donneesRapport, objectifs }: { donneesRapport
             <Separator />
             <ExemplesCommentaires top={donneesRapport.meilleursCommentaires} flop={donneesRapport.piresCommentaires} />
             <Separator />
-            <StatefulAnalyseCategorielle resultats={donneesRapport.resultatsCategorisation} commentaires={commentairesNegatifs} />
+            <StatefulAnalyseCategorielle commentaires={donneesRapport.commentaires} />
             <Separator />
             <OngletsClassementKpi donneesRapport={donneesRapport} />
         </CardContent>

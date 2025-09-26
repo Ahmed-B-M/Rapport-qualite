@@ -256,35 +256,23 @@ export const analyserCommentaires = (commentaires: string[]): Record<string, { c
     return analyse;
 };
 
-export const getCategorizedNegativeComments = (livraisons: Livraison[]): Record<string, CommentaireCategorise[]> => {
+export const getCategorizedNegativeComments = (livraisons: Livraison[]): CommentaireCategorise[] => {
     const commentairesNegatifs = livraisons.filter(l => 
         l.commentaireRetour && 
         l.commentaireRetour.trim().length > 5 &&
         analyzeSentiment(l.commentaireRetour, l.noteLivraison).score < 5
     );
 
-    const categorizedComments = commentairesNegatifs.map(l => ({
+    return commentairesNegatifs.map(l => ({
         categorie: categoriserCommentaire(l.commentaireRetour!),
         commentaire: l.commentaireRetour!,
         chauffeur: l.chauffeur,
         depot: l.depot
     }));
-    
-    const groupedComments: Record<string, CommentaireCategorise[]> = {};
-    
-    CATEGORIES_PROBLEMES.forEach(cat => {
-        groupedComments[cat] = [];
-    });
-
-    categorizedComments.forEach(comment => {
-        groupedComments[comment.categorie].push(comment);
-    });
-
-    return groupedComments;
 };
 
 
-const analyserCommentairesNegatifs = (livraisons: Livraison[]): ResultatsCategorisation => {
+const analyserCommentairesNegatifs = (livraisons: Livraison[]): { resultats: ResultatsCategorisation, commentaires: CommentaireCategorise[] } => {
   const commentairesNegatifs = livraisons.filter(l =>
     l.commentaireRetour &&
     l.commentaireRetour.trim().length > 5 &&
@@ -294,7 +282,8 @@ const analyserCommentairesNegatifs = (livraisons: Livraison[]): ResultatsCategor
   const commentairesCategorises = commentairesNegatifs.map(l => ({
     categorie: categoriserCommentaire(l.commentaireRetour!),
     commentaire: l.commentaireRetour!,
-    chauffeur: l.chauffeur
+    chauffeur: l.chauffeur,
+    depot: l.depot
   }));
 
   const resultats: ResultatsCategorisation = {
@@ -319,7 +308,7 @@ const analyserCommentairesNegatifs = (livraisons: Livraison[]): ResultatsCategor
       .sort((a, b) => b.recurrence - a.recurrence);
   });
 
-  return resultats;
+  return { resultats, commentaires: commentairesCategorises };
 };
 
 
@@ -410,11 +399,8 @@ const getDonneesSectionRapport = (donnees: Livraison[], groupingKey: 'depot' | '
   };
 
   const classementsNotesChauffeur = getClassementsNotesChauffeur(donnees, performancesChauffeur);
+  const { resultats: resultatsCategorisation, commentaires } = analyserCommentairesNegatifs(donnees);
 
-  const commentairesNegatifs = donnees.filter(l =>
-    l.commentaireRetour && l.commentaireRetour.trim().length > 5 &&
-    analyzeSentiment(l.commentaireRetour, l.noteLivraison).score < 5
-  );
 
   return {
     statistiques: getStatistiquesGlobales(donnees),
@@ -423,8 +409,9 @@ const getDonneesSectionRapport = (donnees: Livraison[], groupingKey: 'depot' | '
     piresCommentaires: getTopComments(donnees, 'négatif', 3, performancesChauffeur),
     chauffeursMieuxNotes: classementsNotesChauffeur.top,
     chauffeursMoinsBienNotes: classementsNotesChauffeur.flop,
-    resultatsCategorisation: analyserCommentairesNegatifs(donnees),
-    totalCommentairesNegatifs: commentairesNegatifs.length,
+    resultatsCategorisation,
+    commentaires,
+    totalCommentairesNegatifs: commentaires.length,
   };
 };
 
