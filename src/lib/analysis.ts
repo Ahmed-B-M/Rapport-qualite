@@ -3,7 +3,6 @@ import {
   type Livraison, type StatistiquesAgregees, type PerformanceChauffeur,
   type DonneesRapportPerformance, type ClassementsKpiParEntite, type EntiteClassement,
   type RapportDepot, type StatutLivraison, type DonneesSectionRapport,
-  type EntiteClassementNoteChauffeur,
   type CategorieProbleme, type CommentaireCategorise, type ResultatsCategorisation, CATEGORIES_PROBLEMES, ChauffeurProbleme, SerieTemporelle, PointSerieTemporelle
 } from './definitions';
 import { CARTE_ENTREPOT_DEPOT, TRANSPORTEURS } from '@/lib/constants';
@@ -354,7 +353,7 @@ const getClassementsKpi = <T extends { totalLivraisons: number; nombreNotes: num
 const getClassementsNotesChauffeur = (
   donnees: Livraison[],
   performancesChauffeur: PerformanceChauffeur[]
-): { top: EntiteClassementNoteChauffeur[], flop: EntiteClassementNoteChauffeur[] } => {
+): { top: EntiteClassement[], flop: EntiteClassement[] } => {
   const notesParChauffeur: Record<string, { positif: number, negatif: number }> = {};
   donnees.forEach(({ chauffeur, noteLivraison }) => {
     if (noteLivraison) {
@@ -368,6 +367,7 @@ const getClassementsNotesChauffeur = (
 
   const mapper = (type: 'positif' | 'negatif') => ([nom, comptes]: [string, { positif: number, negatif: number }]) => ({
     nom,
+    valeur: 0,
     nombre: comptes[type],
     noteMoyenne: performancesMap.get(nom)
   });

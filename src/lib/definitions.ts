@@ -65,14 +65,13 @@ export type Objectifs = {
 export type EntiteClassement = {
   nom: string;
   valeur: number;
-  totalLivraisons: number;
+  totalLivraisons?: number; // Rendu optionnel
+  nombre?: number; // Ajouté depuis EntiteClassementNoteChauffeur
+  noteMoyenne?: number; // Ajouté depuis EntiteClassementNoteChauffeur
+  livraisonsRatees?: number; // Pourrait être utile
+  nombreNotes?: number; // Pourrait être utile
 };
 
-export type EntiteClassementNoteChauffeur = {
-    nom: string;
-    nombre: number;
-    noteMoyenne?: number;
-};
 
 export type ClassementKpi = {
   top: EntiteClassement[];
@@ -126,8 +125,8 @@ export type DonneesSectionRapport = {
     classementsKpi: ClassementsKpiParEntite;
     meilleursCommentaires: ExempleCommentaire[];
     piresCommentaires: ExempleCommentaire[];
-    chauffeursMieuxNotes: EntiteClassementNoteChauffeur[];
-    chauffeursMoinsBienNotes: EntiteClassementNoteChauffeur[];
+    chauffeursMieuxNotes: EntiteClassement[];
+    chauffeursMoinsBienNotes: EntiteClassement[];
     resultatsCategorisation: ResultatsCategorisation;
     totalCommentairesNegatifs: number;
 };

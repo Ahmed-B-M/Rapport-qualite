@@ -8,7 +8,7 @@ import {
     type Objectifs, 
     type DonneesSectionRapport, 
     type ExempleCommentaire, 
-    type EntiteClassementNoteChauffeur,
+    type EntiteClassement,
     type ResultatSynthese,
     type SyntheseDepot,
     type ResultatsCategorisation,
@@ -159,7 +159,7 @@ const OngletsClassementKpi = ({ donneesRapport }: { donneesRapport: DonneesSecti
     );
 };
 
-const ClassementsNotesChauffeur = ({ top, flop }: { top: EntiteClassementNoteChauffeur[], flop: EntiteClassementNoteChauffeur[] }) => (
+const ClassementsNotesChauffeur = ({ top, flop }: { top: EntiteClassement[], flop: EntiteClassement[] }) => (
     <div>
         <h3 className="text-lg font-semibold mb-4">Classement des Livreurs par Volume de Notes</h3>
         <div className="grid md:grid-cols-2 gap-6">

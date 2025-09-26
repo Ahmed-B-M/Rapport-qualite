@@ -1,7 +1,7 @@
 "use client";
 
 import React, { forwardRef } from 'react';
-import { type DonneesRapportPerformance, type Objectifs, type SyntheseDepot, type ResultatSynthese, type DonneesSectionRapport, type SerieTemporelle } from '@/lib/definitions';
+import { type DonneesRapportPerformance, type Objectifs, type SyntheseDepot, type ResultatSynthese, type DonneesSectionRapport, type SerieTemporelle, EntiteClassement } from '@/lib/definitions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { CheckCircle, XCircle, TrendingUp, TrendingDown } from 'lucide-react';
@@ -206,8 +206,8 @@ const AnalyseSection = ({ title, data, type }: { title: string, data: DonneesSec
                             <li key={c.nom} className="flex justify-between">
                                 <span>{c.nom.replace(/\s*\([^)]*\)$/, '').trim()}</span>
                                 <span className="font-semibold">
-                                    {type === 'echecs' ? `${(100 - c.valeur).toFixed(2)}%` : `${(c as any).noteMoyenne.toFixed(2)}/5`}
-                                    <span className="text-gray-500 text-2xs"> ({type === 'echecs' ? `${(c as any).livraisonsRatees} cas` : `${(c as any).nombre} notes`})</span>
+                                    {type === 'echecs' ? `${(100 - c.valeur).toFixed(2)}%` : `${c.noteMoyenne?.toFixed(2)}/5`}
+                                    <span className="text-gray-500 text-2xs"> ({type === 'echecs' ? `${c.livraisonsRatees} cas` : `${c.nombre} notes`})</span>
                                 </span>
                             </li>
                         ))}
@@ -223,7 +223,7 @@ const AnalyseSection = ({ title, data, type }: { title: string, data: DonneesSec
                                 <span>{t.nom}</span>
                                 <span className="font-semibold">
                                      {type === 'echecs' ? `${(100 - t.valeur).toFixed(2)}%` : `${t.valeur.toFixed(2)}/5`}
-                                      <span className="text-gray-500 text-2xs"> ({type === 'echecs' ? `${(t as any).livraisonsRatees} cas` : `${(t as any).nombreNotes} notes`})</span>
+                                      <span className="text-gray-500 text-2xs"> ({type === 'echecs' ? `${t.livraisonsRatees} cas` : `${t.nombreNotes} notes`})</span>
                                 </span>
                             </li>
                         ))}

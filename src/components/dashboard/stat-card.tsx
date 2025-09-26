@@ -11,7 +11,7 @@ interface CarteStatistiqueProps {
   directionTendance?: 'up' | 'down'; // up signifie que plus haut c'est mieux, down signifie que plus bas c'est mieux
 }
 
-const IndicateurTendance = ({ valeur, valeurPrecedente, direction }: { valeur: number, valeurPrecedente: number, direction: 'up' | 'down' }) => {
+const IndicateurTendance = ({ valeur, valeurPrecedente, direction }: { valeur: string | number, valeurPrecedente: number, direction: 'up' | 'down' }) => {
   const valeurNumerique = typeof valeur === 'string' ? parseFloat(valeur.replace('%','')) : valeur;
   
   if (isNaN(valeurNumerique) || isNaN(valeurPrecedente) || valeurPrecedente === 0) {
@@ -34,8 +34,6 @@ const IndicateurTendance = ({ valeur, valeurPrecedente, direction }: { valeur: n
 
 export const StatCard: React.FC<CarteStatistiqueProps> = ({ titre, valeur, icone, description, valeurPrecedente, directionTendance }) => {
   
-  const valeurNumeriquePourTendance = typeof valeur === 'string' ? parseFloat(valeur.replace('%','')) : valeur;
-
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -47,7 +45,7 @@ export const StatCard: React.FC<CarteStatistiqueProps> = ({ titre, valeur, icone
         <div className="flex justify-between items-center">
           <p className="text-xs text-muted-foreground">{description}</p>
           {valeurPrecedente !== undefined && directionTendance && (
-            <IndicateurTendance valeur={valeurNumeriquePourTendance} valeurPrecedente={valeurPrecedente} direction={directionTendance} />
+            <IndicateurTendance valeur={valeur} valeurPrecedente={valeurPrecedente} direction={directionTendance} />
           )}
         </div>
       </CardContent>

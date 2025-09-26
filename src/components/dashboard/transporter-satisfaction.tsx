@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Delivery, Objectifs } from '@/lib/definitions';
+import { Livraison, Objectifs } from '@/lib/definitions';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import {
     Dialog,
@@ -22,12 +22,12 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 
 
 interface TransporterSatisfactionProps {
-    data: Delivery[];
+    data: Livraison[];
     objectifs: Objectifs;
 }
 
-const RecurrenceByCategory = ({ deliveries }: { deliveries: Delivery[] }) => {
-    const negativeComments = deliveries.filter(d => d.noteLivraison !== null && d.noteLivraison <= 3 && d.commentaireRetour);
+const RecurrenceByCategory = ({ deliveries }: { deliveries: Livraison[] }) => {
+    const negativeComments = deliveries.filter(d => d.noteLivraison !== null && typeof d.noteLivraison !== 'undefined' && d.noteLivraison <= 3 && d.commentaireRetour);
 
     const categoryCounts = negativeComments.reduce((acc, d) => {
         const category = d.commentaireRetour!;
@@ -113,7 +113,7 @@ const RecurrenceByCategory = ({ deliveries }: { deliveries: Delivery[] }) => {
 };
 
 
-const RecurrenceLowRatingsByTransporter = ({ deliveries, objectifs }: { deliveries: Delivery[]; objectifs: Objectifs }) => {
+const RecurrenceLowRatingsByTransporter = ({ deliveries, objectifs }: { deliveries: Livraison[]; objectifs: Objectifs }) => {
     const lowRatingDeliveries = deliveries.filter(d => typeof d.noteLivraison === 'number' && d.noteLivraison <= 3);
 
     const dataByDepot = lowRatingDeliveries.reduce((acc, d) => {
@@ -123,7 +123,7 @@ const RecurrenceLowRatingsByTransporter = ({ deliveries, objectifs }: { deliveri
         }
         acc[depot].push(d);
         return acc;
-    }, {} as Record<string, Delivery[]>);
+    }, {} as Record<string, Livraison[]>);
 
     const depotsWithLowRatings = Object.keys(dataByDepot).sort();
 
