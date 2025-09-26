@@ -1,7 +1,7 @@
 
 'use client';
 import Image from 'next/image';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { 
     type Livraison, 
     type DonneesRapportPerformance, 
@@ -13,7 +13,9 @@ import {
     type SyntheseDepot,
     type ResultatsCategorisation,
     CATEGORIES_PROBLEMES,
-    type RapportDepot
+    type RapportDepot,
+    type CommentaireCategorise,
+    type CategorieProbleme
 } from '@/lib/definitions';
 import { genererRapportPerformance } from '@/lib/analysis';
 import { generateSynthesis } from '@/lib/synthesis';
@@ -22,11 +24,14 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
     ThumbsUp, ThumbsDown, GraduationCap, ArrowRightCircle, Target, CheckCircle, XCircle, 
-    Clock, Star, MessageCircle, Truck, Award, UserX, Smile, Frown, Users, Percent, BarChart, ClipboardList
+    Clock, Star, MessageCircle, Truck, Award, UserX, Smile, Frown, Users, Percent, BarChart, ClipboardList, ChevronsUpDown
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import ReactMarkdown from 'react-markdown';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 
 // --- Définition des Props ---
 
@@ -220,8 +225,58 @@ const ExemplesCommentaires = ({ top, flop }: { top: ExempleCommentaire[], flop: 
     </div>
 )
 
-const AnalyseCategorielle = ({ resultats }: { resultats: ResultatsCategorisation }) => {
-    const hasData = useMemo(() => CATEGORIES_PROBLEMES.some(cat => resultats[cat] && resultats[cat].length > 0), [resultats]);
+const StatefulAnalyseCategorielle = ({ resultats: initialResultats, commentaires: initialCommentaires }: { resultats: ResultatsCategorisation, commentaires: CommentaireCategorise[] }) => {
+    const [commentaires, setCommentaires] = useState<CommentaireCategorise[]>(initialCommentaires);
+    const [openPopover, setOpenPopover] = useState<string | null>(null);
+
+    useEffect(() => {
+        setCommentaires(initialCommentaires);
+    }, [initialCommentaires]);
+
+    const handleCategoryChange = (commentaire: CommentaireCategorise, newCategory: CategorieProbleme) => {
+        setCommentaires(prevCommentaires => 
+            prevCommentaires.map(c => 
+                c.commentaire === commentaire.commentaire && c.chauffeur === commentaire.chauffeur 
+                    ? { ...c, categorie: newCategory } 
+                    : c
+            )
+        );
+        setOpenPopover(null); 
+    };
+
+    const resultatsMisAJour = useMemo(() => {
+        const newResultats: ResultatsCategorisation = CATEGORIES_PROBLEMES.reduce((acc, cat) => {
+            acc[cat] = [];
+            return acc;
+        }, {} as ResultatsCategorisation);
+
+        const commentairesParCategorie = commentaires.reduce((acc, comm) => {
+            if (!acc[comm.categorie]) {
+                acc[comm.categorie] = [];
+            }
+            acc[comm.categorie].push(comm);
+            return acc;
+        }, {} as Record<CategorieProbleme, CommentaireCategorise[]>);
+
+        for (const categorie in commentairesParCategorie) {
+            const commentaires = commentairesParCategorie[categorie as CategorieProbleme];
+            const chauffeurs = commentaires.reduce((acc, comm) => {
+                let chauffeur = acc.find(ch => ch.nom === comm.chauffeur);
+                if (!chauffeur) {
+                    chauffeur = { nom: comm.chauffeur, recurrence: 0, exemplesCommentaires: [] };
+                    acc.push(chauffeur);
+                }
+                chauffeur.recurrence++;
+                chauffeur.exemplesCommentaires.push(comm.commentaire);
+                return acc;
+            }, [] as { nom: string; recurrence: number; exemplesCommentaires: string[] }[]);
+            newResultats[categorie as CategorieProbleme] = chauffeurs.sort((a, b) => b.recurrence - a.recurrence);
+        }
+
+        return newResultats;
+    }, [commentaires]);
+    
+    const hasData = useMemo(() => commentaires.length > 0, [commentaires]);
 
     if (!hasData) {
         return null;
@@ -230,44 +285,87 @@ const AnalyseCategorielle = ({ resultats }: { resultats: ResultatsCategorisation
     return (
         <div>
             <h3 className="text-lg font-semibold mb-4 flex items-center"><ClipboardList className="h-5 w-5 mr-2" />Analyse des Commentaires Négatifs</h3>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {CATEGORIES_PROBLEMES.map(cat => {
-                    const chauffeurs = resultats[cat];
-                    if (!chauffeurs || chauffeurs.length === 0) return null;
-
-                    return (
-                        <Card key={cat} className="flex flex-col">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-base capitalize">{cat}</CardTitle>
-                            </CardHeader>
-                            <CardContent className="flex-grow">
+            <Tabs defaultValue={CATEGORIES_PROBLEMES[0]} className="w-full">
+                <TabsList className="grid w-full grid-cols-4">
+                    {CATEGORIES_PROBLEMES.map(cat => (
+                        <TabsTrigger key={cat} value={cat} disabled={!resultatsMisAJour[cat] || resultatsMisAJour[cat].length === 0}>{cat}</TabsTrigger>
+                    ))}
+                </TabsList>
+                {CATEGORIES_PROBLEMES.map(cat => (
+                    <TabsContent key={cat} value={cat}>
+                        <Card>
+                            <CardContent className="p-4">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
+                                            <TableHead>Commentaire</TableHead>
                                             <TableHead>Livreur</TableHead>
-                                            <TableHead className="text-right">Cas</TableHead>
+                                            <TableHead>Depot</TableHead>
+                                            <TableHead className="text-right">Action</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {chauffeurs.slice(0, 5).map(chauffeur => (
-                                            <TableRow key={chauffeur.nom}>
-                                                <TableCell className="text-sm truncate max-w-[150px]">{chauffeur.nom}</TableCell>
-                                                <TableCell className="text-right font-bold">{chauffeur.recurrence}</TableCell>
+                                        {commentaires.filter(c => c.categorie === cat).map((comm, index) => (
+                                            <TableRow key={index}>
+                                                <TableCell className="max-w-[300px] truncate italic">"{comm.commentaire}"</TableCell>
+                                                <TableCell>{comm.chauffeur}</TableCell>
+                                                <TableCell>{comm.depot}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <Popover open={openPopover === `${cat}-${index}`} onOpenChange={(isOpen) => setOpenPopover(isOpen ? `${cat}-${index}` : null)}>
+                                                        <PopoverTrigger asChild>
+                                                            <Button variant="outline" role="combobox" aria-expanded={openPopover === `${cat}-${index}`} className="w-[200px] justify-between">
+                                                                Déplacer vers...
+                                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-[200px] p-0">
+                                                            <Command>
+                                                                <CommandInput placeholder="Changer catégorie..." />
+                                                                <CommandEmpty>Aucune catégorie.</CommandEmpty>
+                                                                <CommandGroup>
+                                                                    {CATEGORIES_PROBLEMES.map(newCat => (
+                                                                        <CommandItem
+                                                                            key={newCat}
+                                                                            value={newCat}
+                                                                            onSelect={() => handleCategoryChange(comm, newCat)}
+                                                                        >
+                                                                            {newCat}
+                                                                        </CommandItem>
+                                                                    ))}
+                                                                </CommandGroup>
+                                                            </Command>
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                </TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
                                 </Table>
                             </CardContent>
                         </Card>
-                    );
-                })}
-            </div>
+                    </TabsContent>
+                ))}
+            </Tabs>
         </div>
     );
 };
 
 
-const SectionAnalyseDetaillee = ({ donneesRapport, objectifs }: { donneesRapport: DonneesSectionRapport, objectifs: Objectifs }) => (
+const SectionAnalyseDetaillee = ({ donneesRapport, objectifs }: { donneesRapport: DonneesSectionRapport, objectifs: Objectifs }) => {
+    const commentairesNegatifs = useMemo(() => {
+        return CATEGORIES_PROBLEMES.flatMap(cat => 
+            donneesRapport.resultatsCategorisation[cat]?.flatMap(chauffeur => 
+                chauffeur.exemplesCommentaires.map(commentaire => ({
+                    categorie: cat,
+                    commentaire,
+                    chauffeur: chauffeur.nom,
+                    depot: 'N/A' // ou essayer de retrouver le dépôt si possible
+                }))
+            ) || []
+        );
+    }, [donneesRapport.resultatsCategorisation]);
+    
+    return (
     <Card>
         <CardHeader>
             <CardTitle className="flex items-center"><BarChart className="h-5 w-5 mr-2" />Analyse Détaillée</CardTitle>
@@ -285,12 +383,12 @@ const SectionAnalyseDetaillee = ({ donneesRapport, objectifs }: { donneesRapport
             <Separator />
             <ExemplesCommentaires top={donneesRapport.meilleursCommentaires} flop={donneesRapport.piresCommentaires} />
             <Separator />
-            <AnalyseCategorielle resultats={donneesRapport.resultatsCategorisation} />
+            <StatefulAnalyseCategorielle resultats={donneesRapport.resultatsCategorisation} commentaires={commentairesNegatifs} />
             <Separator />
             <OngletsClassementKpi donneesRapport={donneesRapport} />
         </CardContent>
     </Card>
-);
+)};
 
 // --- Composant Principal du Rapport ---
 
