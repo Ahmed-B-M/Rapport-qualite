@@ -49,6 +49,7 @@
       const chartConfig = {
           nombre: {
             label: "Nombre",
+            color: "hsl(var(--primary))",
           },
       };
       
@@ -183,7 +184,7 @@
       
       const LowRatingRecurrenceTable = ({ pivotData, transporters }: { pivotData: PivotData, transporters: string[] }) => {
           const drivers = useMemo(() => Object.keys(pivotData).sort((a, b) => pivotData[b].total - pivotData[a].total), [pivotData]);
-          const totals = useMemo(() => {
+          const totals: TransporterTotals = useMemo(() => {
               const transporterTotals: { [key: string]: number } = {};
               transporters.forEach(t => transporterTotals[t] = 0);
               let grandTotal = 0;
@@ -661,3 +662,5 @@
         );
       }
       
+
+    
