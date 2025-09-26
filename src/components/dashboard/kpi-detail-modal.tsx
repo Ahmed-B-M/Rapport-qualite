@@ -1,9 +1,7 @@
-
 "use client";
 
 import { useMemo } from 'react';
-import { type Livraison, type StatistiquesAgregees } from '@/lib/definitions';
-import { type ClassementMetrique } from '@/lib/data-processing';
+import { type Livraison, type StatistiquesAgregees, type ClassementMetrique } from '@/lib/definitions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
