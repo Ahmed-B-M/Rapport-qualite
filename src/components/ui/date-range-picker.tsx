@@ -26,11 +26,14 @@ interface DateRangePickerProps extends React.HTMLAttributes<HTMLDivElement> {
 export function DateRangePicker({
   date,
   onDateChange,
-  availableDates = [],
+  availableDates,
   className,
 }: DateRangePickerProps) {
   
   const isDateDisabled = (day: Date) => {
+    if (!availableDates || availableDates.length === 0) {
+      return false;
+    }
     return !availableDates.some(
       availableDate => new Date(availableDate).setHours(0,0,0,0) === new Date(day).setHours(0,0,0,0)
     );
@@ -44,7 +47,7 @@ export function DateRangePicker({
             id="date"
             variant={"outline"}
             className={cn(
-              "w-[260px] justify-start text-left font-normal",
+              "w-[300px] justify-start text-left font-normal",
               !date && "text-muted-foreground"
             )}
           >
@@ -52,18 +55,18 @@ export function DateRangePicker({
             {date?.from ? (
               date.to ? (
                 <>
-                  {format(date.from, "d LLL, y", { locale: fr })} -{" "}
-                  {format(date.to, "d LLL, y", { locale: fr })}
+                  {format(date.from, "LLL dd, y", { locale: fr })} -{" "}
+                  {format(date.to, "LLL dd, y", { locale: fr })}
                 </>
               ) : (
-                format(date.from, "d LLL, y", { locale: fr })
+                format(date.from, "LLL dd, y", { locale: fr })
               )
             ) : (
-              <span>Choisissez une période</span>
+              <span>Choisissez une plage de dates</span>
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="end">
+        <PopoverContent className="w-auto p-0" align="start">
           <Calendar
             initialFocus
             mode="range"
