@@ -100,86 +100,89 @@ const SectionRapport = ({ titre, synthese, donneesRapport, objectifs }: SectionR
 
 // --- Main Printable Component ---
 
-export const PrintableReport = forwardRef<HTMLDivElement, { 
-    donneesRapport: DonneesRapportPerformance, 
-    donneesSynthese: ResultatSynthese, 
-    objectifs: Objectifs,
-    dateRange: string,
-    depotSelectionne: string
-}>(({ donneesRapport, donneesSynthese, objectifs, dateRange, depotSelectionne }, ref) => {
+interface PrintableReportProps {
+    donneesRapport: DonneesRapportPerformance;
+    donneesSynthese: ResultatSynthese;
+    objectifs: Objectifs;
+    dateRange: string;
+    depotSelectionne: string;
+}
 
-    return (
-        <div ref={ref} className="bg-white text-gray-900 text-xs p-4 print-container">
-            {/* Header */}
-            <header className="mb-6">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <h1 className="text-2xl font-bold">Rapport de Performance Qualité</h1>
-                        <p className="text-gray-600">Généré le {new Date().toLocaleDateString('fr-FR')}</p>
+export const PrintableReport = forwardRef<HTMLDivElement, PrintableReportProps>(
+    ({ donneesRapport, donneesSynthese, objectifs, dateRange, depotSelectionne }, ref) => {
+        return (
+            <div ref={ref} className="bg-white text-gray-900 text-xs p-4 print-container">
+                {/* Header */}
+                <header className="mb-6">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h1 className="text-2xl font-bold">Rapport de Performance Qualité</h1>
+                            <p className="text-gray-600">Généré le {new Date().toLocaleDateString('fr-FR')}</p>
+                        </div>
+                        <div className="text-right">
+                             <img src="/logos/logo-crf.jpg" alt="Logo" className="h-12" />
+                        </div>
                     </div>
-                    <div className="text-right">
-                         <img src="/logos/logo-crf.jpg" alt="Logo" className="h-12" />
+                    <div className="mt-4 text-sm">
+                        <p><span className="font-semibold">Période :</span> {dateRange}</p>
+                        <p><span className="font-semibold">Dépôt(s) :</span> {depotSelectionne}</p>
                     </div>
-                </div>
-                <div className="mt-4 text-sm">
-                    <p><span className="font-semibold">Période :</span> {dateRange}</p>
-                    <p><span className="font-semibold">Dépôt(s) :</span> {depotSelectionne}</p>
-                </div>
-            </header>
-            
-            <main>
-                {/* Global Section */}
-                <SectionRapport
-                    titre="Synthèse Globale"
-                    synthese={donneesSynthese.global}
-                    donneesRapport={{statistiques: donneesRapport.global.statistiques}}
-                    objectifs={objectifs}
-                />
-                 <Card className="break-inside-avoid-page mb-4">
-                    <CardHeader>
-                        <CardTitle className="text-lg">Analyse Détaillée Globale</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <AnalyseSection title="Analyse des Échecs" data={donneesRapport.global} type="echecs" />
-                        <Separator className="my-3"/>
-                        <AnalyseSection title="Analyse de la Satisfaction Client" data={donneesRapport.global} type="satisfaction" />
-                    </CardContent>
-                </Card>
+                </header>
+                
+                <main>
+                    {/* Global Section */}
+                    <SectionRapport
+                        titre="Synthèse Globale"
+                        synthese={donneesSynthese.global}
+                        donneesRapport={{statistiques: donneesRapport.global.statistiques}}
+                        objectifs={objectifs}
+                    />
+                     <Card className="break-inside-avoid-page mb-4">
+                        <CardHeader>
+                            <CardTitle className="text-lg">Analyse Détaillée Globale</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <AnalyseSection title="Analyse des Échecs" data={donneesRapport.global} type="echecs" />
+                            <Separator className="my-3"/>
+                            <AnalyseSection title="Analyse de la Satisfaction Client" data={donneesRapport.global} type="satisfaction" />
+                        </CardContent>
+                    </Card>
 
-                <div className="page-break"><!-- Page break for printing --></div>
+                    <div className="page-break"><!-- Page break for printing --></div>
 
-                {/* Depot Sections */}
-                {donneesRapport.depots.map((depotData, index) => {
-                    const syntheseDepot = donneesSynthese.depots.find(d => d.nom === depotData.nom);
-                    if (!syntheseDepot) return null;
+                    {/* Depot Sections */}
+                    {donneesRapport.depots.map((depotData, index) => {
+                        const syntheseDepot = donneesSynthese.depots.find(d => d.nom === depotData.nom);
+                        if (!syntheseDepot) return null;
 
-                    return (
-                        <React.Fragment key={depotData.nom}>
-                            <SectionRapport
-                                titre={`Synthèse - ${depotData.nom}`}
-                                synthese={syntheseDepot}
-                                donneesRapport={{statistiques: depotData.statistiques}}
-                                objectifs={objectifs}
-                            />
-                             <Card className="break-inside-avoid-page mb-4">
-                                <CardHeader>
-                                    <CardTitle className="text-lg">Analyse Détaillée - {depotData.nom}</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <AnalyseSection title="Analyse des Échecs" data={depotData} type="echecs" />
-                                    <Separator className="my-3"/>
-                                    <AnalyseSection title="Analyse de la Satisfaction Client" data={depotData} type="satisfaction" />
-                                </CardContent>
-                            </Card>
-                            {/* Add page break except for the last element */}
-                            {index < donneesRapport.depots.length - 1 && <div className="page-break"></div>}
-                        </React.Fragment>
-                    );
-                })}
-            </main>
-        </div>
-    );
-});
+                        return (
+                            <React.Fragment key={depotData.nom}>
+                                <SectionRapport
+                                    titre={`Synthèse - ${depotData.nom}`}
+                                    synthese={syntheseDepot}
+                                    donneesRapport={{statistiques: depotData.statistiques}}
+                                    objectifs={objectifs}
+                                />
+                                 <Card className="break-inside-avoid-page mb-4">
+                                    <CardHeader>
+                                        <CardTitle className="text-lg">Analyse Détaillée - {depotData.nom}</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <AnalyseSection title="Analyse des Échecs" data={depotData} type="echecs" />
+                                        <Separator className="my-3"/>
+                                        <AnalyseSection title="Analyse de la Satisfaction Client" data={depotData} type="satisfaction" />
+                                    </CardContent>
+                                </Card>
+                                {/* Add page break except for the last element */}
+                                {index < donneesRapport.depots.length - 1 && <div className="page-break"></div>}
+                            </React.Fragment>
+                        );
+                    })}
+                </main>
+            </div>
+        );
+    }
+);
 
 PrintableReport.displayName = 'PrintableReport';
 
@@ -285,26 +288,30 @@ const PrintStyles = () => (
     `}</style>
 );
 
-export const ComponentToPrint = forwardRef<HTMLDivElement, { 
-    donneesRapport: DonneesRapportPerformance, 
-    donneesSynthese: ResultatSynthese, 
-    objectifs: Objectifs,
-    dateRange: string,
-    depotSelectionne: string
-}>(({ donneesRapport, donneesSynthese, objectifs, dateRange, depotSelectionne }, ref) => {
-    return (
-        <div>
-            <PrintStyles />
-            <PrintableReport 
-                ref={ref} 
-                donneesRapport={donneesRapport} 
-                donneesSynthese={donneesSynthese} 
-                objectifs={objectifs}
-                dateRange={dateRange}
-                depotSelectionne={depotSelectionne}
-            />
-        </div>
-    );
-});
+interface ComponentToPrintProps {
+    donneesRapport: DonneesRapportPerformance;
+    donneesSynthese: ResultatSynthese;
+    objectifs: Objectifs;
+    dateRange: string;
+    depotSelectionne: string;
+}
+
+export const ComponentToPrint = forwardRef<HTMLDivElement, ComponentToPrintProps>(
+    ({ donneesRapport, donneesSynthese, objectifs, dateRange, depotSelectionne }, ref) => {
+        return (
+            <div>
+                <PrintStyles />
+                <PrintableReport 
+                    ref={ref} 
+                    donneesRapport={donneesRapport} 
+                    donneesSynthese={donneesSynthese} 
+                    objectifs={objectifs}
+                    dateRange={dateRange}
+                    depotSelectionne={depotSelectionne}
+                />
+            </div>
+        );
+    }
+);
 
 ComponentToPrint.displayName = 'ComponentToPrint';
