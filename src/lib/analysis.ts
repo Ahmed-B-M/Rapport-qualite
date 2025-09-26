@@ -57,16 +57,19 @@ const convertirDateExcel = (serial: number): Date => {
 };
 
 const formaterDate = (valeurDate: any): string => {
-  if (!valeurDate) return 'N/A';
-  if (valeurDate instanceof Date) return format(valeurDate, 'yyyy-MM-dd');
-  if (typeof valeurDate === 'number' && valeurDate > 1) {
-    return format(convertirDateExcel(valeurDate), 'yyyy-MM-dd');
-  }
-  if (typeof valeurDate === 'string') {
-    const dateAnalysee = parse(valeurDate, 'dd/MM/yyyy', new Date());
-    return isValid(dateAnalysee) ? format(dateAnalysee, 'yyyy-MM-dd') : valeurDate;
-  }
-  return String(valeurDate);
+    if (!valeurDate) return '';
+    let dateObj;
+    if (valeurDate instanceof Date) {
+        dateObj = valeurDate;
+    } else if (typeof valeurDate === 'number' && valeurDate > 1) {
+        dateObj = convertirDateExcel(valeurDate);
+    } else if (typeof valeurDate === 'string') {
+        dateObj = parse(valeurDate, 'dd/MM/yyyy', new Date());
+    }
+    if (dateObj && isValid(dateObj)) {
+        return format(dateObj, 'yyyy-MM-dd');
+    }
+    return '';
 };
 
 const getStatutLivraison = (statutBrut: string): StatutLivraison => {
@@ -478,8 +481,9 @@ export const filtrerDonneesParPeriode = (donnees: Livraison[], periode: string, 
   }
 
   return donnees.filter(l => {
+    if (!l.date) return false;
     const dateLivraison = new Date(l.date);
-    return dateLivraison >= dateDebut && dateLivraison < dateFin;
+    return isValid(dateLivraison) && dateLivraison >= dateDebut && dateLivraison < dateFin;
   });
 };
 
