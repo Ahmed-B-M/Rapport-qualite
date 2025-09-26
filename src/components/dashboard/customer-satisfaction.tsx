@@ -106,13 +106,14 @@
           );
       };
       
-      const NegativeCommentsSection = ({ initialComments }: { initialComments: CommentaireCategorise[] }) => {
-        const [comments, setComments] = useState<CommentaireCategorise[]>(initialComments);
+      const NegativeCommentsSection = ({ 
+        comments,
+        setComments
+      }: { 
+        comments: CommentaireCategorise[];
+        setComments: React.Dispatch<React.SetStateAction<CommentaireCategorise[]>>;
+      }) => {
         const [openPopover, setOpenPopover] = useState<string | null>(null);
-
-        useEffect(() => {
-            setComments(initialComments);
-        }, [initialComments]);
 
         const handleCategoryChange = (commentaire: CommentaireCategorise, newCategory: CategorieProbleme) => {
             setComments(prevCommentaires =>
@@ -448,6 +449,7 @@
         const [selectedDepots, setSelectedDepots] = useState<string[]>([]);
         const [isEmailPreviewOpen, setIsEmailPreviewOpen] = useState(false);
         const [emailBody, setEmailBody] = useState("");
+        const [categorizedComments, setCategorizedComments] = useState<CommentaireCategorise[]>([]);
       
         const uniqueDepots = useMemo(() => {
           if (!data) return [];
@@ -463,15 +465,21 @@
           if (selectedDepots.length === uniqueDepots.length) return data; // if all are selected, no need to filter
           return data.filter(d => selectedDepots.includes(d.depot));
         }, [data, selectedDepots, uniqueDepots]);
+
+        useEffect(() => {
+            if (filteredData) {
+                setCategorizedComments(getCategorizedNegativeComments(filteredData));
+            }
+        }, [filteredData]);
       
         const { 
           repartitionNotes, repartitionSentiments, noteMoyenne, sentimentMoyen, 
-          categorizedComments, lowRatingPivotData, uniqueTransporters, categoryPivotData
+          lowRatingPivotData, uniqueTransporters, categoryPivotData
         } = useMemo(() => {
           if (!filteredData || filteredData.length === 0) {
             return {
               repartitionNotes: [], repartitionSentiments: [], noteMoyenne: 0, sentimentMoyen: 0,
-              categorizedComments: [], lowRatingPivotData: {}, uniqueTransporters: [], categoryPivotData: {}
+              lowRatingPivotData: {}, uniqueTransporters: [], categoryPivotData: {}
             };
           }
           
@@ -503,8 +511,6 @@
               ? sentiments.reduce((acc, s) => acc + s, 0) / sentiments.length
               : 0;
               
-          const categorizedComments = getCategorizedNegativeComments(filteredData);
-          
           // --- Low Rating Pivot Table Data ---
           const lowRatedDeliveries = filteredData.filter(d => d.noteLivraison !== undefined && d.noteLivraison <= 3);
           const uniqueTransporters = [...new Set(lowRatedDeliveries.map(d => d.transporteur))].sort();
@@ -551,9 +557,9 @@
       
           return { 
               repartitionNotes, repartitionSentiments, noteMoyenne, sentimentMoyen, 
-              categorizedComments, lowRatingPivotData: pivotData, uniqueTransporters, categoryPivotData
+              lowRatingPivotData: pivotData, uniqueTransporters, categoryPivotData
           };
-        }, [filteredData]);
+        }, [filteredData, categorizedComments]);
       
         const handleGenerateEmail = () => {
           const depots = [...new Set(Object.values(lowRatingPivotData).map(d => d.depot))];
@@ -715,7 +721,7 @@
       
               <CategorizedRecurrenceTable pivotData={categoryPivotData} />
       
-              <NegativeCommentsSection initialComments={categorizedComments} />
+              <NegativeCommentsSection comments={categorizedComments} setComments={setCategorizedComments} />
               
               <EmailPreviewDialog 
                   isOpen={isEmailPreviewOpen} 
@@ -731,3 +737,4 @@
     
 
     
+
