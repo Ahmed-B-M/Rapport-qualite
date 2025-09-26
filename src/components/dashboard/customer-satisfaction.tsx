@@ -225,7 +225,6 @@
                                                                       {CATEGORIES_PROBLEMES.filter(c => c !== categorie).map(newCat => (
                                                                           <CommandItem
                                                                               key={newCat}
-                                                                              value={newCat}
                                                                               onSelect={() => handleCategoryChange(item, newCat)}
                                                                           >
                                                                               {newCat}
@@ -737,4 +736,5 @@
     
 
     
+
 

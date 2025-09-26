@@ -304,7 +304,6 @@ const StatefulAnalyseCategorielle = ({ commentaires: initialCommentaires }: { co
                                                                     {CATEGORIES_PROBLEMES.filter(c => c !== cat).map(newCat => (
                                                                         <CommandItem
                                                                             key={newCat}
-                                                                            value={newCat}
                                                                             onSelect={() => handleCategoryChange(comm, newCat)}
                                                                         >
                                                                             {newCat}
