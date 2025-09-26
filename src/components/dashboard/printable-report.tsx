@@ -1,10 +1,11 @@
 "use client";
 
 import React, { forwardRef } from 'react';
-import { type DonneesRapportPerformance, type Objectifs, type SyntheseDepot, type ResultatSynthese, type DonneesSectionRapport } from '@/lib/definitions';
+import { type DonneesRapportPerformance, type Objectifs, type SyntheseDepot, type ResultatSynthese, type DonneesSectionRapport, type SerieTemporelle } from '@/lib/definitions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { CheckCircle, XCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import { DateRange } from 'react-day-picker';
 
 // --- Sub-components for report sections ---
 
@@ -106,6 +107,9 @@ interface PrintableReportProps {
     objectifs: Objectifs;
     dateRange: string;
     depotSelectionne: string;
+    typeRapport: "Dépôt" | "Transporteur";
+    plageDates: DateRange | undefined;
+    donneesTendance: SerieTemporelle;
 }
 
 export const PrintableReport = forwardRef<HTMLDivElement, PrintableReportProps>(
@@ -289,10 +293,13 @@ interface ComponentToPrintProps {
     objectifs: Objectifs;
     dateRange: string;
     depotSelectionne: string;
+    typeRapport: "Dépôt" | "Transporteur";
+    plageDates: DateRange | undefined;
+    donneesTendance: SerieTemporelle;
 }
 
 export const ComponentToPrint = forwardRef<HTMLDivElement, ComponentToPrintProps>(
-    function ComponentToPrint({ donneesRapport, donneesSynthese, objectifs, dateRange, depotSelectionne }, ref) {
+    function ComponentToPrint({ donneesRapport, donneesSynthese, objectifs, dateRange, depotSelectionne, typeRapport, plageDates, donneesTendance }, ref) {
         return (
             <div>
                 <PrintStyles />
@@ -303,6 +310,9 @@ export const ComponentToPrint = forwardRef<HTMLDivElement, ComponentToPrintProps
                     objectifs={objectifs}
                     dateRange={dateRange}
                     depotSelectionne={depotSelectionne}
+                    typeRapport={typeRapport}
+                    plageDates={plageDates}
+                    donneesTendance={donneesTendance}
                 />
             </div>
         );
