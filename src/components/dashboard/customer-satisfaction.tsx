@@ -29,7 +29,7 @@
           sumOfRatings: number;
           numberOfRatings: number;
         } & {
-          [transporter: string]: number;
+          [transporter: string]: number | string;
         };
       }
       
@@ -665,4 +665,6 @@
       
 
     
+    
+
     
