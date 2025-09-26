@@ -41,10 +41,14 @@
           };
       }
       
+      interface TransporterTotals {
+        total: number;
+        [key: string]: number;
+      }
+      
       const chartConfig = {
           nombre: {
             label: "Nombre",
-            color: "hsl(var(--primary))",
           },
       };
       
