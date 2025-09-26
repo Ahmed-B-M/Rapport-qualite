@@ -535,19 +535,17 @@
       
           // --- Category Recurrence Pivot Table Data ---
           const categoryPivotData: CategoryPivotData = {};
-          Object.entries(categorizedComments).forEach(([category, comments]) => {
-              (comments as CommentaireCategorise[]).forEach(comment => {
-                  const driverFullName = comment.chauffeur;
-                  const depot = comment.depot;
-                  const driverName = driverFullName.replace(/\s*\([^)]*\)$/, '').trim();
-                  
-                  if (!categoryPivotData[driverName]) {
-                      categoryPivotData[driverName] = { total: 0, depot: depot };
-                  }
-                  const catKey = category as typeof CATEGORIES_PROBLEMES[number];
-                  categoryPivotData[driverName][catKey] = (categoryPivotData[driverName][catKey] || 0) + 1;
-                  categoryPivotData[driverName].total += 1;
-              });
+          categorizedComments.forEach(comment => {
+              const driverFullName = comment.chauffeur;
+              const depot = comment.depot;
+              const driverName = driverFullName.replace(/\s*\([^)]*\)$/, '').trim();
+              
+              if (!categoryPivotData[driverName]) {
+                  categoryPivotData[driverName] = { total: 0, depot: depot };
+              }
+              const catKey = comment.categorie;
+              categoryPivotData[driverName][catKey] = (categoryPivotData[driverName][catKey] || 0) + 1;
+              categoryPivotData[driverName].total += 1;
           });
       
       
