@@ -1,0 +1,11 @@
+--- a/node_modules/next-international/dist/common/create-get-static-props.js
++++ b/node_modules/next-international/dist/common/create-get-static-props.js
+@@ -1,7 +1,7 @@
+ "use strict";
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.createGetStaticProps = void 0;
+-const create_get_static_props_1 = require("next/dist/build/templates/create-get-static-props");
++// const create_get_static_props_1 = require("next/dist/build/templates/create-get-static-props");
+ function createGetStaticProps(locales) {
+     return (context) => {
+         const locale = locales.find((locale) => locale.locale === context.locale);
