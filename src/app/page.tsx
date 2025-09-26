@@ -166,6 +166,24 @@ export default function DashboardPage() {
     }).sort((a,b) => a.label.localeCompare(b.label));
   }, [donneesFiltrees, vueActive]);
   
+  const dateRangeString = useMemo(() => {
+    if (!plageDates?.from) return "Toutes les dates";
+    const fromDate = new Date(plageDates.from).toLocaleDateString('fr-FR');
+    const toDate = plageDates.to ? new Date(plageDates.to).toLocaleDateString('fr-FR') : fromDate;
+    if (fromDate === toDate) return `Le ${fromDate}`;
+    return `Du ${fromDate} au ${toDate}`;
+  }, [plageDates]);
+
+  const depotSelectionneString = useMemo(() => {
+      const selected = Object.keys(selectedEntitiesForPrint).filter(key => selectedEntitiesForPrint[key]);
+      if (selected.length === 0 || selected.length === reportEntities.length) {
+          return vueActive === 'transporters' ? 'Tous les transporteurs' : 'Tous les dépôts';
+      }
+      return reportEntities
+          .filter(e => selected.includes(e.key))
+          .map(e => e.label)
+          .join(', ');
+  }, [selectedEntitiesForPrint, reportEntities, vueActive]);
 
   const handleOpenPrintModal = () => {
     const initialSelection: Record<string, boolean> = {};
@@ -270,6 +288,8 @@ export default function DashboardPage() {
                   typeRapport={printableReportData.type}
                   plageDates={plageDates}
                   donneesTendance={printableReportData.trendData}
+                  dateRange={dateRangeString}
+                  depotSelectionne={depotSelectionneString}
                 />
               </div>
             )}
