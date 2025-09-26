@@ -1,437 +1,310 @@
+"use client";
 
-'use client';
-import React from "react";
-import Image from "next/image";
-import { 
-    type DonneesRapportPerformance, 
-    type ResultatSynthese,
-    type Objectifs,
-    type EntiteClassementNoteChauffeur,
-    type ExempleCommentaire,
-    type ResultatsCategorisation,
-    CATEGORIES_PROBLEMES,
-    type DonneesSectionRapport,
-    type ClassementKpi,
-    type EntiteClassement,
-    type SerieTemporelle
-} from '@/lib/definitions';
+import React, { forwardRef } from 'react';
+import { type DonneesRapportPerformance, type Objectifs, type SyntheseDepot, type ResultatSynthese, type DonneesSectionRapport } from '@/lib/definitions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { 
-    ThumbsUp, ThumbsDown, ArrowRightCircle, Target, Smile, Frown, MessageSquare, ClipboardList, Truck,
-    Star, Percent, Clock, MessageCircle, Award, UserX, Users, Warehouse, TrendingUp
-} from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { DateRange } from "react-day-picker";
-import { format } from "date-fns";
-import { fr } from 'date-fns/locale';
-import { TrendChart } from './trend-chart';
+import { CheckCircle, XCircle, TrendingUp, TrendingDown } from 'lucide-react';
 
+// --- Sub-components for report sections ---
 
-interface RapportImprimableProps {
-  donneesRapport: DonneesRapportPerformance;
-  donneesSynthese: ResultatSynthese;
-  objectifs: Objectifs;
-  typeRapport: 'Dépôt' | 'Transporteur';
-  plageDates: DateRange | undefined;
-  donneesTendance: SerieTemporelle;
-}
-
-const LogoEntiteImpression = ({ nom, entrepot, type }: { nom: string, entrepot?: string, type: 'Dépôt' | 'Transporteur' }) => {
-    if (type === 'Transporteur') {
-        return <Truck className="h-6 w-6 inline-block mr-2 text-gray-700"/>;
+const KpiCard = ({ title, value, target, isRate = true, higherIsBetter = true }: { title: string, value: number | undefined, target: number, isRate?: boolean, higherIsBetter?: boolean }) => {
+    if (value === undefined) {
+        return (
+            <div className="flex flex-col items-center justify-center p-2 text-center bg-gray-50 rounded-lg">
+                <span className="text-xs font-semibold text-gray-600">{title}</span>
+                <span className="text-lg font-bold text-gray-400">N/A</span>
+            </div>
+        );
     }
 
-    const isMagasin = nom === 'Magasin' && entrepot;
-    const nomLogo = (isMagasin ? entrepot! : nom).toLowerCase().replace(/\s+/g, '-');
-    const urlLogo = `/logos/id-${nomLogo}.jpg`;
-
-    return <Image src={urlLogo} alt={`Logo ${nom}`} width={30} height={30} className="rounded-full inline-block mr-2"/>;
-};
-
-// --- Composants d'aide réutilisables pour l'impression ---
-
-const KpiBar = ({ titre, valeur, objectif, meilleurSiEleve, unite = '%' }: { titre: string, valeur: number | undefined, objectif: number, meilleurSiEleve: boolean, unite?: string }) => {
-    if (valeur === undefined) return null;
-
-    const atteintObjectif = meilleurSiEleve ? valeur >= objectif : valeur <= objectif;
-    const progression = meilleurSiEleve ? (valeur / objectif) * 100 : (objectif / valeur) * 100;
+    const displayValue = isRate ? `${value.toFixed(2)}%` : value.toFixed(2);
+    const isSuccess = higherIsBetter ? value >= target : value <= target;
 
     return (
-        <div>
-            <div className="flex justify-between items-center mb-1">
-                <span className="text-xs font-medium">{titre}</span>
-                <span className={cn("text-xs font-bold", atteintObjectif ? "text-green-600" : "text-red-600")}>
-                    {valeur.toFixed(2)}{unite}
+        <div className="flex flex-col items-center justify-center p-2 text-center bg-gray-50 rounded-lg">
+            <span className="text-xs font-semibold text-gray-600">{title}</span>
+            <div className="flex items-center gap-1">
+                <span className={`text-lg font-bold ${isSuccess ? 'text-green-600' : 'text-red-600'}`}>
+                    {displayValue}
                 </span>
+                {isSuccess ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
             </div>
-            <TooltipProvider>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Progress value={Math.min(100, progression)} className={cn("h-2", !atteintObjectif && "[&>div]:bg-red-500")} />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p>Objectif: {objectif.toFixed(2)}{unite}</p>
-                    </TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
+            <span className="text-xs text-gray-500">Objectif: {target.toFixed(2)}{isRate ? '%' : ''}</span>
         </div>
-    )
-}
+    );
+};
 
-const SectionSyntheseKPIs = ({ titre, synthese, donneesRapport, objectifs }: { 
-    titre: string, 
-    synthese: { forces: string[], faiblesses: string[] },
+const SynthesisSection = ({ title, synthesis }: { title: string, synthesis: ResultatSynthese['global'] | SyntheseDepot }) => {
+    return (
+        <div>
+            <h3 className="text-md font-semibold mb-2">{title}</h3>
+            <div className="grid grid-cols-2 gap-4 text-xs">
+                <div>
+                    <h4 className="font-semibold flex items-center gap-1 text-green-700"><TrendingUp className="h-4 w-4" /> Forces</h4>
+                    <ul className="list-disc pl-4 mt-1 space-y-1">
+                        {synthesis.forces.map((force, i) => <li key={i}>{force}</li>)}
+                    </ul>
+                </div>
+                <div>
+                    <h4 className="font-semibold flex items-center gap-1 text-red-700"><TrendingDown className="h-4 w-4" /> Faiblesses</h4>
+                    <ul className="list-disc pl-4 mt-1 space-y-1">
+                        {synthesis.faiblesses.map((faiblesse, i) => <li key={i}>{faiblesse}</li>)}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+interface SectionRapportProps {
+    titre: string;
+    synthese: ResultatSynthese['global'] | SyntheseDepot;
     donneesRapport: {
         statistiques: {
             tauxReussite: number | undefined;
             noteMoyenne: number | undefined;
-            sentimentMoyen: number | undefined;
+            sentimentMoyen?: number;
             tauxPonctualite: number | undefined;
         }
-    },
-    objectifs: Objectifs
-}) => (
-    <Card className="mb-4 break-inside-avoid">
-        <CardHeader className="p-3"><CardTitle className="flex items-center text-base"><Target className="h-4 w-4 mr-2" />{titre}</CardTitle></CardHeader>
-        <CardContent className="p-3 space-y-3">
-            <div>
-                 <h4 className="font-semibold mb-2 text-sm">Indicateurs de Performance Clés (KPIs)</h4>
-                 <div className="space-y-2">
-                    <KpiBar titre="Taux de Succès" valeur={donneesRapport.statistiques.tauxReussite} objectif={100 - objectifs.tauxEchec} meilleurSiEleve={true} />
-                    <KpiBar titre="Note Moyenne" valeur={donneesRapport.statistiques.noteMoyenne} objectif={objectifs.noteMoyenne} meilleurSiEleve={true} unite="/5" />
-                    <KpiBar titre="Note des Commentaires" valeur={donneesRapport.statistiques.sentimentMoyen} objectif={objectifs.sentimentMoyen} meilleurSiEleve={true} unite="/10" />
-                    <KpiBar titre="Ponctualité" valeur={donneesRapport.statistiques.tauxPonctualite} objectif={objectifs.tauxPonctualite} meilleurSiEleve={true} />
-                 </div>
-            </div>
-             <Separator/>
-            <div>
-                <h4 className="font-semibold text-green-700 flex items-center mb-2 text-sm"><ThumbsUp className="h-4 w-4 mr-2" />Points forts</h4>
-                {synthese.forces.length > 0 ? (
-                    <ul className="list-disc pl-4 space-y-1">
-                        {synthese.forces.map((point, index) => <li key={index} className="text-xs">{point}</li>)}
-                    </ul>
-                ) : <p className="text-xs text-muted-foreground">Aucun.</p>}
-            </div>
-            <div>
-                <h4 className="font-semibold text-red-700 flex items-center mb-2 text-sm"><ThumbsDown className="h-4 w-4 mr-2" />Axes d'amélioration</h4>
-                 {synthese.faiblesses.length > 0 ? (
-                    <ul className="list-disc pl-4 space-y-1">
-                        {synthese.faiblesses.map((point, index) => <li key={index} className="text-xs">{point}</li>)}
-                    </ul>
-                ) : <p className="text-xs text-muted-foreground">Aucun.</p>}
-            </div>
-        </CardContent>
-    </Card>
-);
+    };
+    objectifs: Objectifs;
+}
 
-const TableauClassementSimpleImpression = ({ titre, icone, donnees, unite }: { titre: string; icone: React.ReactNode; donnees: EntiteClassement[]; unite: string; }) => (
-    <div>
-        <h5 className="font-semibold flex items-center mb-1 text-sm">{icone}{titre}</h5>
-        <Table>
-            <TableBody>
-                {donnees.length > 0 ? (
-                    donnees.map(item => (
-                        <TableRow key={item.nom}>
-                            <TableCell className="text-xs p-1 truncate max-w-[100px]">{item.nom}</TableCell>
-                            <TableCell className="text-right font-bold text-xs p-1">{item.valeur.toFixed(2)}{unite}</TableCell>
-                        </TableRow>
-                    ))
-                ) : <TableRow><TableCell colSpan={2} className="text-xs text-center text-gray-500 p-1">N/A</TableCell></TableRow>}
-            </TableBody>
-        </Table>
-    </div>
-);
-
-
-const ClassementsKpiImpression = ({ donneesRapport, typeRapport }: { donneesRapport: DonneesSectionRapport, typeRapport: 'Dépôt' | 'Transporteur' }) => {
-    const kpis = [
-        { key: 'noteMoyenne', name: 'Note Moyenne', icon: <Star className="h-4 w-4 mr-2"/>, unit: '/5' },
-        { key: 'tauxReussite', name: 'Taux de Succès', icon: <Percent className="h-4 w-4 mr-2"/>, unit: '%' },
-        { key: 'tauxPonctualite', name: 'Ponctualité', icon: <Clock className="h-4 w-4 mr-2"/>, unit: '%' },
-        { key: 'sentimentMoyen', name: 'Note des Comms', icon: <MessageCircle className="h-4 w-4 mr-2"/>, unit: '/10' }
-    ];
-
-    const entiteSecondaireNom = typeRapport === 'Dépôt' ? 'Transporteurs' : 'Dépôts';
-    const entiteSecondaireIcone = typeRapport === 'Dépôt' ? <Truck className="h-5 w-5 mr-2"/> : <Warehouse className="h-5 w-5 mr-2"/>;
+const SectionRapport = ({ titre, synthese, donneesRapport, objectifs }: SectionRapportProps) => {
+    const stats = donneesRapport.statistiques;
+    const tauxEchec = stats.tauxReussite !== undefined ? 100 - stats.tauxReussite : undefined;
 
     return (
-        <div className="break-inside-avoid mt-4">
-            <h4 className="text-base font-semibold mb-2">Classements par Indicateur Clé (KPI)</h4>
-            <div className="space-y-4">
-                {kpis.map(kpi => (
-                    <div key={kpi.key} className="p-2 border rounded-md">
-                        <h5 className="font-bold text-sm mb-2 flex items-center">{kpi.icon} {kpi.name}</h5>
-                         <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <h6 className="font-semibold text-gray-800 mb-2 flex items-center text-sm"><Users className="h-5 w-5 mr-2"/> Livreurs</h6>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <TableauClassementSimpleImpression titre="Top 3" icone={<Award className="h-4 w-4 mr-1 text-green-600"/>} donnees={donneesRapport.classementsKpi.chauffeurs[kpi.key as keyof typeof donneesRapport.classementsKpi.chauffeurs].top} unite={kpi.unit} />
-                                    <TableauClassementSimpleImpression titre="Flop 3" icone={<UserX className="h-4 w-4 mr-1 text-red-600"/>} donnees={donneesRapport.classementsKpi.chauffeurs[kpi.key as keyof typeof donneesRapport.classementsKpi.chauffeurs].flop} unite={kpi.unit} />
-                                </div>
-                            </div>
-                             <div>
-                                <h6 className="font-semibold text-gray-800 mb-2 flex items-center text-sm">{entiteSecondaireIcone} {entiteSecondaireNom}</h6>
-                                <div className="grid grid-cols-2 gap-2">
-                                     <TableauClassementSimpleImpression titre="Top 3" icone={<Award className="h-4 w-4 mr-1 text-green-600"/>} donnees={donneesRapport.classementsKpi.transporteurs[kpi.key as keyof typeof donneesRapport.classementsKpi.transporteurs].top} unite={kpi.unit} />
-                                    <TableauClassementSimpleImpression titre="Flop 3" icone={<UserX className="h-4 w-4 mr-1 text-red-600"/>} donnees={donneesRapport.classementsKpi.transporteurs[kpi.key as keyof typeof donneesRapport.classementsKpi.transporteurs].flop} unite={kpi.unit} />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    )
+        <Card className="break-inside-avoid-page mb-4">
+            <CardHeader>
+                <CardTitle className="text-lg">{titre}</CardTitle>
+                {'entrepot' in synthese && synthese.entrepot && (
+                    <CardDescription>{synthese.entrepot}</CardDescription>
+                )}
+            </CardHeader>
+            <CardContent className="text-sm">
+                <div className="grid grid-cols-4 gap-2 mb-4">
+                    <KpiCard title="Taux d'échec" value={tauxEchec} target={objectifs.tauxEchec} higherIsBetter={false} />
+                    <KpiCard title="Note Moyenne" value={stats.noteMoyenne} target={objectifs.noteMoyenne} isRate={false} />
+                    <KpiCard title="Note Commentaires" value={stats.sentimentMoyen} target={objectifs.sentimentMoyen} isRate={false} />
+                    <KpiCard title="Ponctualité" value={stats.tauxPonctualite} target={objectifs.tauxPonctualite} />
+                </div>
+                <Separator className="my-3" />
+                <SynthesisSection title="Synthèse Qualitative" synthesis={synthese} />
+            </CardContent>
+        </Card>
+    );
 };
 
 
-const ClassementsNotesChauffeurImpression = ({ top, flop }: { top: EntiteClassementNoteChauffeur[], flop: EntiteClassementNoteChauffeur[] }) => (
-    <div className="break-inside-avoid">
-        <h4 className="text-base font-semibold mb-2">Classement par Volume de Notes</h4>
-        <div className="grid grid-cols-2 gap-4">
-            <div>
-                <h5 className="font-semibold flex items-center text-green-600 mb-1 text-sm"><Smile className="h-4 w-4 mr-2" /> Top Positives</h5>
-                <Table>
-                     <TableBody>{top.map((item, i) => <TableRow key={i}><TableCell className="text-xs p-1">{item.nom} <span className="text-gray-500">({(item.noteMoyenne || 0).toFixed(2)}/5)</span></TableCell><TableCell className="text-right font-bold text-xs p-1">{item.nombre}</TableCell></TableRow>)}</TableBody>
-                </Table>
-            </div>
-            <div>
-                <h5 className="font-semibold flex items-center text-red-600 mb-1 text-sm"><Frown className="h-4 w-4 mr-2" /> Top Négatives</h5>
-                <Table>
-                    <TableBody>{flop.map((item, i) => <TableRow key={i}><TableCell className="text-xs p-1">{item.nom} <span className="text-gray-500">({(item.noteMoyenne || 0).toFixed(2)}/5)</span></TableCell><TableCell className="text-right font-bold text-xs p-1">{item.nombre}</TableCell></TableRow>)}</TableBody>
-                </Table>
-            </div>
-        </div>
-    </div>
-);
+// --- Main Printable Component ---
 
-const ExemplesCommentairesImpression = ({ top, flop }: { top: ExempleCommentaire[], flop: ExempleCommentaire[] }) => (
-    <div className="break-inside-avoid mt-4">
-        <h4 className="text-base font-semibold mb-2 flex items-center"><MessageSquare className="h-4 w-4 mr-2"/>Exemples de Commentaires</h4>
-        <div className="grid grid-cols-2 gap-x-4">
-            <div>
-                <h5 className="font-semibold flex items-center text-green-600 mb-1 text-sm"><ThumbsUp className="h-4 w-4 mr-2" /> Positifs</h5>
-                {top.slice(0, 2).map((c, i) => (<div key={i} className="border-l-2 border-green-500 pl-2 mb-2 text-xs italic">"{c.commentaire}"<p className="text-xs text-gray-500 mt-1 not-italic">- {c.chauffeur}</p></div>))}
-            </div>
-            <div>
-                <h5 className="font-semibold flex items-center text-red-600 mb-1 text-sm"><ThumbsDown className="h-4 w-4 mr-2" /> Négatifs</h5>
-                 {flop.slice(0, 2).map((c, i) => (<div key={i} className="border-l-2 border-red-500 pl-2 mb-2 text-xs italic">"{c.commentaire}"<p className="text-xs text-gray-500 mt-1 not-italic">- {c.chauffeur}</p></div>))}
-            </div>
-        </div>
-    </div>
-);
-
-const AnalyseCategorielleImpression = ({ resultats, totalCommentairesNegatifs, afficherDetailsCommentaires = true }: { resultats: ResultatsCategorisation, totalCommentairesNegatifs: number, afficherDetailsCommentaires?: boolean }) => (
-    <div className="mt-4 break-inside-avoid">
-        <h4 className="text-base font-semibold mb-2 flex items-center"><ClipboardList className="h-4 w-4 mr-2"/>Analyse des Commentaires Négatifs</h4>
-        <div className="space-y-3">
-            {CATEGORIES_PROBLEMES.map(cat => {
-                const chauffeurs = resultats[cat];
-                if (chauffeurs.length === 0) return null;
-
-                const totalCasCategorie = chauffeurs.reduce((acc, curr) => acc + curr.recurrence, 0);
-                const pourcentageCategorie = totalCommentairesNegatifs > 0 ? (totalCasCategorie / totalCommentairesNegatifs) * 100 : 0;
-
-                return (
-                    <div key={cat} className="p-2 border rounded-md text-xs">
-                        <div className="flex justify-between items-center mb-1">
-                            <h5 className="font-bold capitalize">{cat}</h5>
-                            <span className="font-semibold">{totalCasCategorie} cas ({pourcentageCategorie.toFixed(1)}%)</span>
-                        </div>
-                        {afficherDetailsCommentaires && (
-                            <ul className="list-disc pl-4 space-y-2 mt-2">
-                                {chauffeurs.map(chauffeur => (
-                                    <li key={chauffeur.nom}>
-                                        <span className="font-medium">{chauffeur.nom}</span> <span className="text-gray-500">({chauffeur.recurrence} cas)</span>
-                                        <ul className="list-['-_'] pl-4 mt-1 space-y-1">
-                                            {chauffeur.exemplesCommentaires.map((commentaire, index) => (
-                                                <li key={index} className="text-gray-600 italic">"{commentaire}"</li>
-                                            ))}
-                                        </ul>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </div>
-                );
-            })}
-        </div>
-    </div>
-);
-
-const SectionTendanceImpression = ({ donneesTendance, objectifs }: { donneesTendance: SerieTemporelle, objectifs: Objectifs }) => {
-    
-    const getChartDomain = (minVal: number, maxVal: number, objective?: number): [number, number] => {
-        let min = minVal;
-        let max = maxVal;
-        if (objective !== undefined) {
-          min = Math.min(min, objective);
-          max = Math.max(max, objective);
-        }
-        const padding = (max - min) * 0.1 || 1;
-        return [Math.max(0, min - padding), Math.min(100, max + padding)];
-    }
-
-    const successDomain = getChartDomain(donneesTendance.domaines.tauxReussite.min, donneesTendance.domaines.tauxReussite.max, 100 - objectifs.tauxEchec);
-    const ratingDomain = getChartDomain(donneesTendance.domaines.noteMoyenne.min, donneesTendance.domaines.noteMoyenne.max, objectifs.noteMoyenne);
-    const punctualityDomain = getChartDomain(donneesTendance.domaines.tauxPonctualite.min, donneesTendance.domaines.tauxPonctualite.max, objectifs.tauxPonctualite);
-
-    const chartConfig = { height: 150, fontSize: 10 };
+export const PrintableReport = forwardRef<HTMLDivElement, { 
+    donneesRapport: DonneesRapportPerformance, 
+    donneesSynthese: ResultatSynthese, 
+    objectifs: Objectifs,
+    dateRange: string,
+    depotSelectionne: string
+}>(({ donneesRapport, donneesSynthese, objectifs, dateRange, depotSelectionne }, ref) => {
 
     return (
-        <div className="break-inside-avoid mt-4">
-            <h4 className="text-base font-semibold mb-2 flex items-center"><TrendingUp className="h-4 w-4 mr-2"/>Évolution des Indicateurs</h4>
-            <div className="space-y-4">
-                 <Card>
-                    <CardHeader className="p-2"><CardTitle className="text-sm">Évolution du Taux de Succès</CardTitle></CardHeader>
-                    <CardContent className="p-2">
-                        <TrendChart 
-                            data={donneesTendance.points} 
-                            lineKey="tauxReussite" 
-                            yAxisLabel="Succès (%)" 
-                            color="hsl(var(--primary))" 
-                            objective={100 - objectifs.tauxEchec}
-                            domain={successDomain}
-                            height={chartConfig.height}
-                            fontSize={chartConfig.fontSize}
-                        />
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="p-2"><CardTitle className="text-sm">Évolution de la Note Moyenne</CardTitle></CardHeader>
-                    <CardContent className="p-2">
-                        <TrendChart 
-                            data={donneesTendance.points} 
-                            lineKey="noteMoyenne" 
-                            yAxisLabel="Note Moy." 
-                            color="hsl(var(--primary))" 
-                            objective={objectifs.noteMoyenne}
-                            domain={ratingDomain}
-                            height={chartConfig.height}
-                            fontSize={chartConfig.fontSize}
-                        />
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="p-2"><CardTitle className="text-sm">Évolution de la Ponctualité</CardTitle></CardHeader>
-                    <CardContent className="p-2">
-                        <TrendChart 
-                            data={donneesTendance.points} 
-                            lineKey="tauxPonctualite" 
-                            yAxisLabel="Ponctualité (%)" 
-                            color="hsl(var(--primary))"
-                            objective={objectifs.tauxPonctualite}
-                            domain={punctualityDomain}
-                            height={chartConfig.height}
-                            fontSize={chartConfig.fontSize}
-                        />
-                    </CardContent>
-                </Card>
-            </div>
-        </div>
-    )
-}
-
-// --- Composant principal imprimable ---
-export function PrintableReport({ donneesRapport, donneesSynthese, objectifs, typeRapport, plageDates, donneesTendance }: RapportImprimableProps) {
-  if (!donneesRapport || !donneesSynthese) return null;
-  
-  const formattedDateRange = plageDates?.from ? 
-    (plageDates.to ? 
-        `Période du ${format(plageDates.from, "d LLLL yyyy", { locale: fr })} au ${format(plageDates.to, "d LLLL yyyy", { locale: fr })}` 
-      : `Jour du ${format(plageDates.from, "d LLLL yyyy", { locale: fr })}`)
-    : "Toutes les dates";
-
-  return (
-    <div className="printable-content">
-        <div className="page-break flex flex-col items-center justify-center h-screen text-center">
-            <Image src="/logos/logo-crf.jpg" alt="Logo CLCV" width={120} height={120} className="rounded-lg mb-6"/>
-            <h1 className="text-4xl font-bold text-primary">Rapport Qualité des Livraisons</h1>
-            <p className="text-lg text-muted-foreground mt-2">Analyse par {typeRapport}</p>
-            <p className="text-md text-muted-foreground mt-4">{formattedDateRange}</p>
-            <p className="text-sm text-muted-foreground mt-8">Généré le: {new Date().toLocaleDateString('fr-FR')}</p>
-        </div>
-
-        {/* Section globale */}
-        <div className="page-break">
-            <h2 className="text-2xl font-bold mb-4">Vision d'Ensemble</h2>
-            <div className="grid grid-cols-2 gap-4 items-start">
-                 <SectionSyntheseKPIs 
+        <div ref={ref} className="bg-white text-gray-900 text-xs p-4 print-container">
+            {/* Header */}
+            <header className="mb-6">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-2xl font-bold">Rapport de Performance Qualité</h1>
+                        <p className="text-gray-600">Généré le {new Date().toLocaleDateString('fr-FR')}</p>
+                    </div>
+                    <div className="text-right">
+                         <img src="/logos/logo-crf.jpg" alt="Logo" className="h-12" />
+                    </div>
+                </div>
+                <div className="mt-4 text-sm">
+                    <p><span className="font-semibold">Période :</span> {dateRange}</p>
+                    <p><span className="font-semibold">Dépôt(s) :</span> {depotSelectionne}</p>
+                </div>
+            </header>
+            
+            <main>
+                {/* Global Section */}
+                <SectionRapport
                     titre="Synthèse Globale"
                     synthese={donneesSynthese.global}
                     donneesRapport={{statistiques: donneesRapport.global.statistiques}}
                     objectifs={objectifs}
                 />
-                 <Card>
-                    <CardHeader className="p-3">
-                        <CardTitle className="text-base">Analyse Détaillée</CardTitle>
-                        <CardDescription className="text-xs">{donneesRapport.global.statistiques.totalLivraisons} livraisons analysées.</CardDescription>
+                 <Card className="break-inside-avoid-page mb-4">
+                    <CardHeader>
+                        <CardTitle className="text-lg">Analyse Détaillée Globale</CardTitle>
                     </CardHeader>
-                    <CardContent className="p-3 space-y-3">
-                         <ClassementsNotesChauffeurImpression top={donneesRapport.global.chauffeursMieuxNotes} flop={donneesRapport.global.chauffeursMoinsBienNotes} />
-                        <Separator/>
-                         <ExemplesCommentairesImpression top={donneesRapport.global.meilleursCommentaires} flop={donneesRapport.global.piresCommentaires} />
+                    <CardContent>
+                        <AnalyseSection title="Analyse des Échecs" data={donneesRapport.global} type="echecs" />
+                        <Separator className="my-3"/>
+                        <AnalyseSection title="Analyse de la Satisfaction Client" data={donneesRapport.global} type="satisfaction" />
                     </CardContent>
                 </Card>
-            </div>
-             <div className="grid grid-cols-2 gap-4 items-start mt-4">
-                 <AnalyseCategorielleImpression 
-                    resultats={donneesRapport.global.resultatsCategorisation} 
-                    totalCommentairesNegatifs={donneesRapport.global.totalCommentairesNegatifs}
-                    afficherDetailsCommentaires={false}
-                />
-                <SectionTendanceImpression donneesTendance={donneesTendance} objectifs={objectifs} />
-            </div>
-             <ClassementsKpiImpression donneesRapport={donneesRapport.global} typeRapport={typeRapport} />
+
+                <div className="page-break"><!-- Page break for printing --></div>
+
+                {/* Depot Sections */}
+                {donneesRapport.depots.map((depotData, index) => {
+                    const syntheseDepot = donneesSynthese.depots.find(d => d.nom === depotData.nom);
+                    if (!syntheseDepot) return null;
+
+                    return (
+                        <React.Fragment key={depotData.nom}>
+                            <SectionRapport
+                                titre={`Synthèse - ${depotData.nom}`}
+                                synthese={syntheseDepot}
+                                donneesRapport={{statistiques: depotData.statistiques}}
+                                objectifs={objectifs}
+                            />
+                             <Card className="break-inside-avoid-page mb-4">
+                                <CardHeader>
+                                    <CardTitle className="text-lg">Analyse Détaillée - {depotData.nom}</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <AnalyseSection title="Analyse des Échecs" data={depotData} type="echecs" />
+                                    <Separator className="my-3"/>
+                                    <AnalyseSection title="Analyse de la Satisfaction Client" data={depotData} type="satisfaction" />
+                                </CardContent>
+                            </Card>
+                            {/* Add page break except for the last element */}
+                            {index < donneesRapport.depots.length - 1 && <div className="page-break"></div>}
+                        </React.Fragment>
+                    );
+                })}
+            </main>
         </div>
+    );
+});
 
-        {/* Sections par entité (dépôt ou transporteur) */}
-        {donneesRapport.depots.map((entite) => {
-            const syntheseEntite = donneesSynthese.depots.find(d => (d.nom === entite.nom) && (d.entrepot === entite.entrepot));
-            if (!syntheseEntite) return null;
-            
-            const titreEntite = entite.entrepot ? `${entite.nom} (${entite.entrepot})` : entite.nom;
+PrintableReport.displayName = 'PrintableReport';
 
-            return (
-                <div className="page-break" key={titreEntite}>
-                    <h2 className="text-2xl font-bold mb-4 flex items-center">
-                        <LogoEntiteImpression nom={entite.nom} entrepot={entite.entrepot} type={typeRapport} />
-                        {titreEntite}
-                    </h2>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                        <SectionSyntheseKPIs 
-                            titre={`Synthèse ${titreEntite}`}
-                            synthese={syntheseEntite}
-                            donneesRapport={entite}
-                            objectifs={objectifs}
-                        />
-                         <Card>
-                            <CardHeader className="p-3">
-                                <CardTitle className="text-base">Analyse Détaillée - {titreEntite}</CardTitle>
-                                <CardDescription className="text-xs">{entite.statistiques.totalLivraisons} livraisons analysées.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="p-3 space-y-3">
-                                 <ClassementsNotesChauffeurImpression top={entite.chauffeursMieuxNotes} flop={entite.chauffeursMoinsBienNotes} />
-                                <Separator/>
-                                <ExemplesCommentairesImpression top={entite.meilleursCommentaires} flop={entite.piresCommentaires} />
-                                <Separator/>
-                                <AnalyseCategorielleImpression 
-                                    resultats={entite.resultatsCategorisation} 
-                                    totalCommentairesNegatifs={entite.totalCommentairesNegatifs}
-                                    afficherDetailsCommentaires={true}
-                                />
-                                <Separator/>
-                                <ClassementsKpiImpression donneesRapport={entite} typeRapport={typeRapport} />
-                            </CardContent>
-                        </Card>
-                    </div>
+
+const AnalyseSection = ({ title, data, type }: { title: string, data: DonneesSectionRapport, type: 'echecs' | 'satisfaction' }) => {
+    const chauffeurs = type === 'echecs' 
+        ? data.classementsKpi.chauffeurs.tauxReussite.flop
+        : data.chauffeursMoinsBienNotes;
+    
+    const transporteurs = type === 'echecs' 
+        ? data.classementsKpi.transporteurs.tauxReussite.flop
+        : data.classementsKpi.transporteurs.noteMoyenne.flop;
+
+    return (
+        <div>
+            <h3 className="font-semibold mb-2">{title}</h3>
+            <div className="grid grid-cols-2 gap-x-6">
+                <div className="break-inside-avoid">
+                    <h4 className="font-semibold text-xs mb-1">Classement Flop Livreurs</h4>
+                    <ul className="text-xs space-y-1">
+                        {chauffeurs.slice(0, 5).map(c => (
+                            <li key={c.nom} className="flex justify-between">
+                                <span>{c.nom.replace(/\s*\([^)]*\)$/, '').trim()}</span>
+                                <span className="font-semibold">
+                                    {type === 'echecs' ? `${(100 - c.valeur).toFixed(2)}%` : `${(c as any).noteMoyenne.toFixed(2)}/5`}
+                                    <span className="text-gray-500 text-2xs"> ({type === 'echecs' ? `${(c as any).livraisonsRatees} cas` : `${(c as any).nombre} notes`})</span>
+                                </span>
+                            </li>
+                        ))}
+                         {chauffeurs.length === 0 && <li className="text-gray-500">Aucune donnée</li>}
+                    </ul>
                 </div>
-            );
-        })}
-    </div>
-  );
+
+                <div className="break-inside-avoid">
+                     <h4 className="font-semibold text-xs mb-1">Classement Flop Transporteurs</h4>
+                     <ul className="text-xs space-y-1">
+                        {transporteurs.slice(0, 5).map(t => (
+                            <li key={t.nom} className="flex justify-between">
+                                <span>{t.nom}</span>
+                                <span className="font-semibold">
+                                     {type === 'echecs' ? `${(100 - t.valeur).toFixed(2)}%` : `${t.valeur.toFixed(2)}/5`}
+                                      <span className="text-gray-500 text-2xs"> ({type === 'echecs' ? `${(t as any).livraisonsRatees} cas` : `${(t as any).nombreNotes} notes`})</span>
+                                </span>
+                            </li>
+                        ))}
+                        {transporteurs.length === 0 && <li className="text-gray-500">Aucune donnée</li>}
+                    </ul>
+                </div>
+
+                {type === 'satisfaction' && (
+                     <div className="col-span-2 mt-2 break-inside-avoid">
+                        <h4 className="font-semibold text-xs mb-1">Analyse des commentaires négatifs</h4>
+                        <div className="grid grid-cols-2 gap-x-6">
+                        {Object.entries(data.resultatsCategorisation).map(([categorie, chauffeurs]) => {
+                           if (chauffeurs.length === 0) return null;
+                           return (
+                               <div key={categorie} className="mb-2">
+                                   <h5 className="font-semibold text-2xs capitalize">{categorie} ({chauffeurs.reduce((acc, c) => acc + c.recurrence, 0)})</h5>
+                                    <ul className="text-2xs list-disc pl-3">
+                                        {chauffeurs.slice(0,2).map(c => (
+                                             <li key={c.nom}>{c.nom.replace(/\s*\([^)]*\)$/, '').trim()} ({c.recurrence})</li>
+                                        ))}
+                                    </ul>
+                               </div>
+                           )
+                        })}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 }
+
+// Styles for printing
+const PrintStyles = () => (
+    <style jsx global>{`
+        @media print {
+            @page {
+                size: A4;
+                margin: 0.5in;
+            }
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .print-container {
+                font-size: 10pt;
+            }
+            .no-print {
+                display: none;
+            }
+            .page-break {
+                page-break-before: always;
+            }
+            .break-inside-avoid {
+                page-break-inside: avoid;
+            }
+            .break-inside-avoid-page {
+                 page-break-inside: avoid;
+            }
+        }
+    `}</style>
+);
+
+export const ComponentToPrint = forwardRef<HTMLDivElement, { 
+    donneesRapport: DonneesRapportPerformance, 
+    donneesSynthese: ResultatSynthese, 
+    objectifs: Objectifs,
+    dateRange: string,
+    depotSelectionne: string
+}>(({ donneesRapport, donneesSynthese, objectifs, dateRange, depotSelectionne }, ref) => {
+    return (
+        <div>
+            <PrintStyles />
+            <PrintableReport 
+                ref={ref} 
+                donneesRapport={donneesRapport} 
+                donneesSynthese={donneesSynthese} 
+                objectifs={objectifs}
+                dateRange={dateRange}
+                depotSelectionne={depotSelectionne}
+            />
+        </div>
+    );
+});
+
+ComponentToPrint.displayName = 'ComponentToPrint';
