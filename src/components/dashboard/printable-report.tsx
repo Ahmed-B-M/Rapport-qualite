@@ -109,10 +109,9 @@ interface PrintableReportProps {
 }
 
 export const PrintableReport = forwardRef<HTMLDivElement, PrintableReportProps>(
-    ({ donneesRapport, donneesSynthese, objectifs, dateRange, depotSelectionne }, ref) => {
+    function PrintableReport({ donneesRapport, donneesSynthese, objectifs, dateRange, depotSelectionne }, ref) {
         return (
             <div ref={ref} className="bg-white text-gray-900 text-xs p-4 print-container">
-                {/* Header */}
                 <header className="mb-6">
                     <div className="flex justify-between items-center">
                         <div>
@@ -130,7 +129,6 @@ export const PrintableReport = forwardRef<HTMLDivElement, PrintableReportProps>(
                 </header>
                 
                 <main>
-                    {/* Global Section */}
                     <SectionRapport
                         titre="Synthèse Globale"
                         synthese={donneesSynthese.global}
@@ -148,9 +146,8 @@ export const PrintableReport = forwardRef<HTMLDivElement, PrintableReportProps>(
                         </CardContent>
                     </Card>
 
-                    <div className="page-break"><!-- Page break for printing --></div>
+                    <div className="page-break" />
 
-                    {/* Depot Sections */}
                     {donneesRapport.depots.map((depotData, index) => {
                         const syntheseDepot = donneesSynthese.depots.find(d => d.nom === depotData.nom);
                         if (!syntheseDepot) return null;
@@ -173,8 +170,7 @@ export const PrintableReport = forwardRef<HTMLDivElement, PrintableReportProps>(
                                         <AnalyseSection title="Analyse de la Satisfaction Client" data={depotData} type="satisfaction" />
                                     </CardContent>
                                 </Card>
-                                {/* Add page break except for the last element */}
-                                {index < donneesRapport.depots.length - 1 && <div className="page-break"></div>}
+                                {index < donneesRapport.depots.length - 1 && <div className="page-break" />}
                             </React.Fragment>
                         );
                     })}
@@ -183,7 +179,6 @@ export const PrintableReport = forwardRef<HTMLDivElement, PrintableReportProps>(
         );
     }
 );
-
 PrintableReport.displayName = 'PrintableReport';
 
 
@@ -297,7 +292,7 @@ interface ComponentToPrintProps {
 }
 
 export const ComponentToPrint = forwardRef<HTMLDivElement, ComponentToPrintProps>(
-    ({ donneesRapport, donneesSynthese, objectifs, dateRange, depotSelectionne }, ref) => {
+    function ComponentToPrint({ donneesRapport, donneesSynthese, objectifs, dateRange, depotSelectionne }, ref) {
         return (
             <div>
                 <PrintStyles />
@@ -313,5 +308,4 @@ export const ComponentToPrint = forwardRef<HTMLDivElement, ComponentToPrintProps
         );
     }
 );
-
 ComponentToPrint.displayName = 'ComponentToPrint';
