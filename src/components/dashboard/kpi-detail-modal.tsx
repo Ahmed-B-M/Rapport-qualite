@@ -32,6 +32,13 @@ const CONFIG_METRIQUE: Record<ClassementMetrique, { titre: string; description: 
         libelleValeur: "Taux de ponctualité",
         meilleurSiEleve: true,
     },
+    tauxNotation: {
+        titre: "Analyse du Taux de Notation",
+        description: "Détails sur les entités avec les taux de notation les plus bas.",
+        unite: '%',
+        libelleValeur: "Taux de notation",
+        meilleurSiEleve: true,
+    },
     tauxForceSurSite: {
         titre: "Analyse 'Sur Place Forcé'",
         description: "Détails sur les entités avec les taux de 'sur place forcé' les plus élevés.",
@@ -106,6 +113,7 @@ const ListeClassementFlop = ({ titre, classements, metrique, icone: Icone }: {
             case 'tauxForceSansContact': return item.nombreForceSansContact;
             case 'tauxCompletionWeb': return item.nombreCompletionWeb;
             case 'noteMoyenne': return item.nombreNotes;
+            case 'tauxNotation': return item.totalLivraisons;
             default: return item.totalLivraisons;
         }
     }
