@@ -28,7 +28,8 @@
           depot: string;
           sumOfRatings: number;
           numberOfRatings: number;
-          [transporter: string]: number | string;
+        } & {
+          [transporter: string]: number;
         };
       }
       
@@ -459,7 +460,7 @@
               }
               
               if(noteLivraison <= 3) {
-                  pivotData[driverName][transporteur] = (pivotData[driverName][transporteur] || 0) + 1;
+                  pivotData[driverName][transporteur] = ((pivotData[driverName][transporteur] as number) || 0) + 1;
                   pivotData[driverName].total = (pivotData[driverName].total || 0) + 1;
               }
       
@@ -663,4 +664,5 @@
       }
       
 
+    
     
