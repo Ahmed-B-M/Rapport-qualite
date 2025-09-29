@@ -249,7 +249,7 @@ export default function DashboardPage() {
         <div className="p-4 sm:p-6 lg:p-8">
             <header id="main-header" className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 print-hide gap-4">
                 <div className="flex items-center gap-4">
-                    <Image src="/logos/logo-crf.jpg" alt="Logo CLCV" width={60} height={60} className="rounded-lg"/>
+                    <Image src="/logos/logo-crf.jpg" alt="Logo CLCV" width={80} height={80} className="rounded-lg"/>
                     <div>
                         <h1 className="text-3xl font-bold font-headline text-primary">Rapport qualité clcv</h1>
                         <p className="text-muted-foreground">Importez et analysez les données de performance de livraison.</p>
@@ -374,3 +374,5 @@ export default function DashboardPage() {
     </SidebarProvider>
   );
 }
+
+    
