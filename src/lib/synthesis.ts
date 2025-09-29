@@ -1,5 +1,5 @@
 
-import { type DonneesRapportPerformance, type Objectifs, type ResultatSynthese, type DonneesSectionRapport, PointsSynthese, type SyntheseDepot } from './definitions';
+import { type DonneesRapportPerformance, type Objectifs, type ResultatSynthese, type DonneesSectionRapport, PointsSynthese, type SyntheseDepot, type ExempleCommentaire } from './definitions';
 
 const KPI_CONFIG = {
     tauxReussite: {
@@ -56,7 +56,7 @@ function analyzeKpi(
 function generatePointsForScope(
     data: DonneesSectionRapport,
     objectives: Objectifs,
-): PointsSynthese & { global: 'positif' | 'négatif' | 'mitigé' } {
+): PointsSynthese & { global: 'positif' | 'négatif' | 'mitigé'; piresCommentaires: ExempleCommentaire[] } {
     const points: PointsSynthese = { forces: [], faiblesses: [] };
     let score = 0;
 
@@ -113,7 +113,7 @@ function generatePointsForScope(
     else if (score < 0) overallStatus = 'négatif';
     else overallStatus = 'mitigé';
 
-    return { ...points, global: overallStatus };
+    return { ...points, global: overallStatus, piresCommentaires: data.piresCommentaires };
 }
 
 

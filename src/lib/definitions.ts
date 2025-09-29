@@ -152,6 +152,7 @@ export interface SyntheseDepot extends PointsSynthese {
   nom: string;
   entrepot?: string;
   global: 'positif' | 'négatif' | 'mitigé';
+  piresCommentaires: ExempleCommentaire[];
 }
 
 export interface ResultatSynthese {
