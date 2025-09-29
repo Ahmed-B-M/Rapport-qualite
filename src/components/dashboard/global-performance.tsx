@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import * as XLSX from 'xlsx';
+import { renderCell, renderNoteCell } from './table-cell-renderers';
 
 interface PerformanceGlobaleProps {
   data?: any[];
@@ -74,20 +75,6 @@ export function GlobalPerformance({ data, depotsUniques, depotActif, setDepotAct
       XLSX.utils.book_append_sheet(classeur, feuilleCalcul, 'Performance Globale');
       XLSX.writeFile(classeur, 'performance_globale.xlsx');
   };
-
-  const renderCell = (taux: number, nombre: number) => (
-    <div className="text-right">
-        <div>{taux.toFixed(2)}%</div>
-        <div className="text-xs text-muted-foreground">({nombre})</div>
-    </div>
-  );
-
-  const renderNoteCell = (note: number | undefined, nombre: number) => (
-    <div className="text-right">
-        <div>{note ? note.toFixed(2) : 'N/A'}</div>
-        <div className="text-xs text-muted-foreground">({nombre})</div>
-    </div>
-  );
 
   const getDepotDisplay = (item: PerformanceChauffeur) => {
     if (item.depot === 'Magasin') {
@@ -171,5 +158,3 @@ export function GlobalPerformance({ data, depotsUniques, depotActif, setDepotAct
     </Card>
   );
 }
-
-    

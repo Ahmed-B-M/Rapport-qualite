@@ -8,107 +8,19 @@ import { type Livraison, type StatistiquesAgregees, type Objectifs, type SerieTe
 import { filtrerDonneesParDepot, getStatistiquesGlobales, agregerStatistiquesParEntite, analyserCommentaires, getDonneesSerieTemporelle } from '@/lib/analysis';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList, CartesianGrid, LineChart, Line, Legend } from 'recharts';
 import { StatCard } from './stat-card';
-import { CheckCircle, XCircle, Star, Clock, Percent, Users, User, Truck, MessageCircle } from 'lucide-react';
+import { CheckCircle, XCircle, Star, Clock, Percent, Users, User, Truck } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
 import { TrendChart } from './trend-chart';
+import { TransporteurPerformanceChart } from './transporteur-performance-chart';
+import { FeedbackChart } from './feedback-chart';
 
 interface ApercuProps {
   donnees: Livraison[];
   objectifs: Objectifs;
 }
-
-const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="p-2 bg-background border rounded-md shadow-md">
-          <p className="font-bold">{label}</p>
-          <p className="text-sm">{`${payload[0].name}: ${payload[0].value.toFixed(2)}%`}</p>
-        </div>
-      );
-    }
-    return null;
-};
-
-const TransporteurPerformanceChart = ({ data }: { data: (StatistiquesAgregees & { nom: string })[]}) => {
-    
-    const chartData = [
-        { name: 'Taux de Succès', kpi: 'tauxReussite' },
-        { name: 'Ponctualité', kpi: 'tauxPonctualite' }
-    ];
-
-    const noteMoyenneData = data.map(d => ({
-        nom: d.nom,
-        valeur: d.noteMoyenne || 0
-    }));
-
-    return (
-        <div className="grid md:grid-cols-3 gap-6">
-             <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">Note Moyenne / Transporteur</CardTitle>
-                </CardHeader>
-                <CardContent>
-                     <ResponsiveContainer width="100%" height={250}>
-                        <BarChart data={noteMoyenneData} layout="vertical" margin={{ top: 5, right: 20, left: 50, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis type="number" domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} />
-                            <YAxis type="category" dataKey="nom" width={50} tick={{ fontSize: 12 }} />
-                            <Tooltip formatter={(value: number) => `${value.toFixed(2)}/5`} />
-                            <Bar dataKey="valeur" name="Note Moyenne" fill="hsl(var(--primary))" barSize={20}>
-                                <LabelList dataKey="valeur" position="right" formatter={(value: number) => value.toFixed(2)} />
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
-                </CardContent>
-             </Card>
-
-            {chartData.map(chart => (
-                 <Card key={chart.name}>
-                    <CardHeader>
-                        <CardTitle className="text-base">{chart.name} / Transporteur</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={250}>
-                             <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: 50, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis type="number" domain={[0, 100]} unit="%" />
-                                <YAxis type="category" dataKey="nom" width={50} tick={{ fontSize: 12 }}/>
-                                <Tooltip formatter={(value: number) => `${value.toFixed(2)}%`} />
-                                <Bar dataKey={chart.kpi} name={chart.name} fill="hsl(var(--primary))" barSize={20}>
-                                    <LabelList dataKey={chart.kpi} position="right" formatter={(value: number) => `${value.toFixed(2)}%`} />
-                                 </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-            ))}
-        </div>
-    );
-}
-
-const FeedbackChart = ({ data }: { data: { categorie: string, nombre: number }[] }) => {
-    if (!data || data.length === 0) {
-        return <div className="text-center text-sm text-muted-foreground">Aucun retour client à analyser pour cette sélection.</div>;
-    }
-
-    return (
-        <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data} layout="vertical" margin={{ left: 80 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis type="category" dataKey="categorie" tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Bar dataKey="nombre" name="Nombre de mentions" fill="hsl(var(--primary))">
-                    <LabelList dataKey="nombre" position="right" />
-                </Bar>
-            </BarChart>
-        </ResponsiveContainer>
-    );
-};
 
 export function Overview({ donnees, objectifs }: ApercuProps) {
   const [depotActif, setDepotActif] = useState<string>('all');
@@ -170,7 +82,7 @@ export function Overview({ donnees, objectifs }: ApercuProps) {
       max = Math.max(max, objective);
     }
     
-    const padding = (max - min) * 0.1 || 1; // Add padding, default to 1 if max equals min
+    const padding = (max - min) * 0.1 || 1;
     return [Math.max(0, min - padding), Math.min(100, max + padding)];
   }
 
@@ -217,7 +129,6 @@ export function Overview({ donnees, objectifs }: ApercuProps) {
         <Card>
             <CardHeader>
                 <CardTitle>Evolution du Taux de Succès</CardTitle>
-                <CardDescription>Tendances du taux de succès sur la période sélectionnée.</CardDescription>
             </CardHeader>
             <CardContent>
                 <TrendChart 
@@ -234,7 +145,6 @@ export function Overview({ donnees, objectifs }: ApercuProps) {
         <Card>
             <CardHeader>
                 <CardTitle>Evolution de la Note Moyenne</CardTitle>
-                <CardDescription>Tendances de la note moyenne sur la période sélectionnée.</CardDescription>
             </CardHeader>
             <CardContent>
                  <TrendChart 
@@ -251,7 +161,6 @@ export function Overview({ donnees, objectifs }: ApercuProps) {
         <Card>
             <CardHeader>
                 <CardTitle>Evolution de la Ponctualité</CardTitle>
-                <CardDescription>Tendances de la ponctualité sur la période sélectionnée.</CardDescription>
             </CardHeader>
             <CardContent>
                  <TrendChart 
@@ -265,12 +174,10 @@ export function Overview({ donnees, objectifs }: ApercuProps) {
             </CardContent>
         </Card>
 
-
         <div className="grid lg:grid-cols-2 gap-6">
             <Card>
                 <CardHeader>
                     <CardTitle>Analyse des Retours Clients</CardTitle>
-                    <CardDescription>Principaux motifs d'insatisfaction mentionnés dans les commentaires.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <FeedbackChart data={feedbackData} />
@@ -281,20 +188,9 @@ export function Overview({ donnees, objectifs }: ApercuProps) {
                 <Card>
                     <CardHeader>
                         <CardTitle>Performance par Transporteur</CardTitle>
-                        <CardDescription>Note moyenne des transporteurs sur la période.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={statsTransporteurs.map(d => ({ nom: d.nom, valeur: d.noteMoyenne || 0 }))} layout="vertical" margin={{ left: 50 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis type="number" domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} />
-                                <YAxis type="category" dataKey="nom" tick={{ fontSize: 12 }} />
-                                <Tooltip formatter={(value: number) => `${value.toFixed(2)}/5`} />
-                                <Bar dataKey="valeur" name="Note Moyenne" fill="hsl(var(--primary))">
-                                    <LabelList dataKey="valeur" position="right" formatter={(value: number) => value.toFixed(2)} />
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
+                        <TransporteurPerformanceChart data={statsTransporteurs} />
                     </CardContent>
                 </Card>
             )}
